@@ -31,4 +31,11 @@
 *.out
 *.app
 
+# emacs backups
 *~
+
+# bazel =dirs
+bazel-bin
+bazel-graveyard
+bazel-out
+bazel-testlogs

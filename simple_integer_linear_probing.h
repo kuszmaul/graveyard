@@ -3,7 +3,10 @@
 
 #include <cassert>
 #include <iostream>
+#include <limits>
 #include <vector>
+
+#include "hash_benchmark.h"
 
 class SimpleIntegerLinearProbing {
   // Ranges from 3/4 full to 7/8 full.

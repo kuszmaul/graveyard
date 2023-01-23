@@ -14,7 +14,7 @@ inline __attribute__((always_inline)) void DoNotOptimize(Tp& value) {
 #endif
 }
 
-uint64_t operator-(struct timespec a, struct timespec b) {
+inline uint64_t operator-(struct timespec a, struct timespec b) {
   return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;
 }
 

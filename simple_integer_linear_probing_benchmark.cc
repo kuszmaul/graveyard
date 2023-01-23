@@ -10,6 +10,6 @@
 int main() {
   SimpleIntegerLinearProbing set;
   std::unordered_set<uint64_t> values;
-  constexpr size_t N = 100000;
+  constexpr size_t N = 10000000;
   IntHashSetBenchmark<SimpleIntegerLinearProbing>(N);
 }

@@ -19,15 +19,19 @@ const std::vector<uint64_t> GetSomeOtherNumbers(size_t size);
 template<class HashSet>
 void IntHashSetBenchmark(size_t size) {
   const auto& values = GetSomeNumbers(size);
-  HashSet set;
   Benchmark(
       [&]() {
+        HashSet set;
         for (uint64_t value : values) {
           set.insert(value);
         }
         return values.size();
       },
       "insert   ", "insertion");
+  HashSet set;
+  for (uint64_t value : values) {
+    set.insert(value);
+  }
   Benchmark(
       [&]() {
         for (uint64_t value : values) {

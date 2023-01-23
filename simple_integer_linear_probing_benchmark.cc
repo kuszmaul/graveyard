@@ -8,11 +8,8 @@
 #include <random>
 #include <unordered_set>
 
+#include "benchmark.h"
 #include "simple_integer_linear_probing.h"
-
-uint64_t operator-(struct timespec a, struct timespec b) {
-  return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;
-}
 
 int main() {
   SimpleIntegerLinearProbing set;
@@ -20,24 +17,48 @@ int main() {
   std::random_device r;
   std::default_random_engine e1(r());
   std::uniform_int_distribution<uint64_t> uniform_dist;
-  while (values.size() < 10) {
+  constexpr size_t N = 10000000;
+  while (values.size() < N) {
     values.insert(uniform_dist(e1));
   }
-  for (uint64_t value : values) {
-    set.insert(value);
-  }
-  for (uint64_t value : values) {
-    assert(set.contains(value));
-  }
-  for (size_t i = 0; i < 10; ++i) {
-    uint64_t value = uniform_dist(e1);
-    if (values.find(value) == values.end()) {
-      assert(!set.contains(value));
+  Benchmark([&]() {
+    for (uint64_t value : values) {
+      set.insert(value);
     }
+    return values.size();
+  },
+    "insert", "insertion");
+  {
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    for (uint64_t value : values) {
+      bool contains = set.contains(value);
+      assert(contains);
+      DoNotOptimize(contains);
+    }
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    std::cerr << "contains=" << (end-start)/double(N) << "ns/found" << std::endl;
+  }
+  std::unordered_set<uint64_t> not_values;
+  while (not_values.size() < N) {
+    not_values.insert(uniform_dist(e1));
+  }
+  {
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    for (uint64_t value : not_values) {
+      bool contains = set.contains(value);
+      assert(!contains);
+      DoNotOptimize(contains);
+    }
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    std::cerr << "!contains=" << (end-start)/double(N) << "ns/not_found" << std::endl;
   }
   struct timespec start;
   clock_gettime(CLOCK_MONOTONIC, &start);
   struct timespec end;
   clock_gettime(CLOCK_MONOTONIC, &end);
-  std::cerr << "tdiff=" << (end-start) << "ns" << std::endl;
+  std::cerr << "nothing=" << (end-start) << "ns" << std::endl;
 }

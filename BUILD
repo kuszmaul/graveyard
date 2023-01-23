@@ -8,10 +8,17 @@ cc_test(
 cc_binary(
   name = "simple_integer_linear_probing_benchmark",
   srcs = ["simple_integer_linear_probing_benchmark.cc"],
-  deps = [":simple_integer_linear_probing",],
+  deps = [":simple_integer_linear_probing",
+          ":benchmark",
+  ],
 )
 
 cc_library(
     name = "simple_integer_linear_probing",
     hdrs = ["simple_integer_linear_probing.h"],
+)
+
+cc_library(
+    name = "benchmark",
+    hdrs = ["benchmark.h",],
 )

@@ -11,10 +11,9 @@ class SimpleIntegerLinearProbing {
   bool insert(uint64_t value);
   bool contains(uint64_t value) const;
   size_t size() const;
+
  private:
-  static constexpr size_t ceil(size_t a, size_t b) {
-    return (a + b - 1)/b;
-  }
+  static constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }
   // Rehashes the table so that we can hold at least count.
   void rehash(size_t count);
 
@@ -23,7 +22,8 @@ class SimpleIntegerLinearProbing {
   size_t occupied_slot_count_ = 0;
   size_t slot_count_ = 0;
   bool max_is_present_ = false;
-  std::vector<uint64_t> slots_; // slots_.size() may be bigger than slot_count_.
+  std::vector<uint64_t>
+      slots_;  // slots_.size() may be bigger than slot_count_.
 };
 
 bool SimpleIntegerLinearProbing::insert(uint64_t value) {
@@ -36,16 +36,20 @@ bool SimpleIntegerLinearProbing::insert(uint64_t value) {
   }
   // If (size_ + 1) > 7*8 slot_count_ then rehash
   if ((occupied_slot_count_ + 1) * 8 > slot_count_ * 7) {
-    if (0) std::cerr << "osc=" << occupied_slot_count_ << " slot_count_=" << slot_count_ << std::endl;
+    if (0)
+      std::cerr << "osc=" << occupied_slot_count_
+                << " slot_count_=" << slot_count_ << std::endl;
     // rehash to be 3/4 full
     rehash(ceil((occupied_slot_count_ + 1) * 4, 3));
   }
   size_t slot = size_t((__int128(value) * __int128(slot_count_)) >> 64);
-  if (0) std::cerr << "value=" << value << " slot_count_=" << slot_count_ << " slot_=" << slot << std::endl;
+  if (0)
+    std::cerr << "value=" << value << " slot_count_=" << slot_count_
+              << " slot_=" << slot << std::endl;
   for (; slots_[slot] <= value; ++slot) {
     assert(slot < slots_.size());
     if (slots_[slot] == value) {
-      return false; // already there.
+      return false;  // already there.
     }
   }
   while (true) {
@@ -58,7 +62,6 @@ bool SimpleIntegerLinearProbing::insert(uint64_t value) {
     }
     ++slot;
   }
-
 }
 
 void SimpleIntegerLinearProbing::rehash(size_t slot_count) {
@@ -80,7 +83,7 @@ bool SimpleIntegerLinearProbing::contains(uint64_t value) const {
   for (; slots_[slot] <= value; ++slot) {
     assert(slot < slots_.size());
     if (slots_[slot] == value) {
-      return true; // already there.
+      return true;  // already there.
     }
   }
   return false;

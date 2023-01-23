@@ -28,7 +28,7 @@ double Benchmark(Fun fun, std::string_view description,
   clock_gettime(CLOCK_MONOTONIC, &end);
   double ns_per_op = (end - start) / double(count);
   std::cerr << description << ": " << ns_per_op << "ns/" << item_name
-            << std::endl;
+            << " count=" << count << std::endl;
   return ns_per_op;
 }
 

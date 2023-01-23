@@ -1,9 +1,6 @@
 /* Benchmark lookups for the simplest ordered linear probing table: It
  * implemenets a set of integers with no vector instructions. */
 
-#include <time.h>
-
-#include <iostream>
 #include <cstdint>
 #include <random>
 #include <unordered_set>
@@ -21,44 +18,37 @@ int main() {
   while (values.size() < N) {
     values.insert(uniform_dist(e1));
   }
-  Benchmark([&]() {
-    for (uint64_t value : values) {
-      set.insert(value);
-    }
-    return values.size();
-  },
-    "insert", "insertion");
-  {
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    for (uint64_t value : values) {
-      bool contains = set.contains(value);
-      assert(contains);
-      DoNotOptimize(contains);
-    }
-    struct timespec end;
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    std::cerr << "contains=" << (end-start)/double(N) << "ns/found" << std::endl;
-  }
+  Benchmark(
+      [&]() {
+        for (uint64_t value : values) {
+          set.insert(value);
+        }
+        return values.size();
+      },
+      "insert", "insertion");
+  Benchmark(
+      [&]() {
+        for (uint64_t value : values) {
+          bool contains = set.contains(value);
+          assert(contains);
+          DoNotOptimize(contains);
+        }
+        return values.size();
+      },
+      "contains", "found");
   std::unordered_set<uint64_t> not_values;
   while (not_values.size() < N) {
     not_values.insert(uniform_dist(e1));
   }
-  {
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    for (uint64_t value : not_values) {
-      bool contains = set.contains(value);
-      assert(!contains);
-      DoNotOptimize(contains);
-    }
-    struct timespec end;
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    std::cerr << "!contains=" << (end-start)/double(N) << "ns/not_found" << std::endl;
-  }
-  struct timespec start;
-  clock_gettime(CLOCK_MONOTONIC, &start);
-  struct timespec end;
-  clock_gettime(CLOCK_MONOTONIC, &end);
-  std::cerr << "nothing=" << (end-start) << "ns" << std::endl;
+  Benchmark(
+      [&]() {
+        for (uint64_t value : not_values) {
+          bool contains = set.contains(value);
+          assert(!contains);
+          DoNotOptimize(contains);
+        }
+        return not_values.size();
+      },
+      "!contains", "not_found");
+  Benchmark([]() { return 1; }, "1 nothing", "nothing");
 }

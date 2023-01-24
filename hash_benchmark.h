@@ -2,6 +2,7 @@
 #define HASH_BENCHMARK_H_
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 

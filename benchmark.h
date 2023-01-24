@@ -3,9 +3,12 @@
 
 #include <time.h>
 
+#include <algorithm>    // for max, min
 #include <cmath>
+#include <cstdint>      // for uint64_t
 #include <iostream>
 #include <limits>
+#include <string_view>  // for operator<<, string_view
 
 template <class Tp>
 inline __attribute__((always_inline)) void DoNotOptimize(Tp& value) {

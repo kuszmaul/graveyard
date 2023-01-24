@@ -2,11 +2,12 @@
 #define _SIMPLE_INTEGER_LINEAR_PROBING_H_
 
 #include <cassert>
+#include <cstddef>   // for size_t
+#include <cstdint>   // for uint64_t
 #include <iostream>
 #include <limits>
+#include <utility>   // for swap
 #include <vector>
-
-#include "hash_benchmark.h"
 
 class SimpleIntegerLinearProbing {
   // Ranges from 3/4 full to 7/8 full.

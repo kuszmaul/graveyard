@@ -9,5 +9,7 @@
 
 int main() {
   constexpr size_t N = 10000000;
-  IntHashSetBenchmark<SimpleIntegerLinearProbing>(N);
+  IntHashSetBenchmark<SimpleIntegerLinearProbing>("SimpleIntegerLinearProbing",
+                                                  N)
+      .Print();
 }

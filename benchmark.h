@@ -8,6 +8,7 @@
 #include <cstdint>      // for uint64_t
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <string_view>  // for operator<<, string_view
 
 template <class Tp>
@@ -23,14 +24,51 @@ inline uint64_t operator-(struct timespec a, struct timespec b) {
   return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;
 }
 
+class BenchmarkResult {
+ public:
+  void AddSample(double x_i) {
+    ++n_;
+    min_ns_ = min_ns_ ? std::min(x_i, *min_ns_) : x_i;
+    max_ns_ = max_ns_ ? std::max(x_i, *max_ns_) : x_i;
+    sum_x_ += x_i;
+    sum_x2_ += x_i * x_i;
+  }
+  double Mean() const { return sum_x_ / n_; }
+  double StandardDeviation() const {
+    double mean = Mean();
+    return sqrt(sum_x2_ / n_ - mean * mean);
+  }
+
+ private:
+  size_t n_ = 0; // number of runs
+  std::optional<double> min_ns_ = std::nullopt;
+  std::optional<double> max_ns_ = std::nullopt;
+  double sum_x_ = 0;   // sum of `x_i`.
+  double sum_x2_ = 0;  // sum of `x_i_2`.
+
+};
+
+
+
+template <class Fun>
+BenchmarkResult Benchmark(Fun fun, size_t n_runs = 20) {
+  BenchmarkResult result;
+  fun();  // Run the benchmark once, since the first run is often different.
+  for (size_t run = 0; run < n_runs; ++run) {
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    uint64_t count = fun();
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    result.AddSample((end - start) / double(count));
+  }
+  return result;
+}
+
 template <class Fun>
 double Benchmark(Fun fun, std::string_view description,
                  std::string_view item_name) {
-  double min = std::numeric_limits<double>::max();
-  double max = std::numeric_limits<double>::min();
-  double n = 0;
-  double sum_x = 0;   // sum of x_i
-  double sum_x2 = 0;  // sum of x_i^2
+  BenchmarkResult result;
   uint64_t firstcount;
   {
     struct timespec start;
@@ -47,20 +85,11 @@ double Benchmark(Fun fun, std::string_view description,
     uint64_t count = fun();
     struct timespec end;
     clock_gettime(CLOCK_MONOTONIC, &end);
-    double ns_per_op = (end - start) / double(count);
-    //std::cerr << " " << ns_per_op << std::endl;
-    min = std::min(ns_per_op, min);
-    max = std::max(ns_per_op, max);
-    sum_x += ns_per_op;
-    sum_x2 += ns_per_op*ns_per_op;
-    ++n;
+    result.AddSample((end - start) / double(count));
   }
-  double Ex = sum_x / n;
-  double E_x2 = sum_x2 / n;
-  double stddev = sqrt(E_x2 - Ex * Ex);
-  std::cerr << description << ": " << Ex << "±" << stddev * 2 << "ns/" << item_name
+  std::cerr << description << ": " << result.Mean() << "±" << result.StandardDeviation() * 2 << "ns/" << item_name
             << " count=" << firstcount << std::endl;
-  return Ex;
+  return result.Mean();
 }
 
 #endif  // BENCHMARK_H_

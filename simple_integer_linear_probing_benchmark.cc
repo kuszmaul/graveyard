@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <unordered_set>
 
-#include "benchmark.h"
 #include "simple_integer_linear_probing.h"
 
 int main() {

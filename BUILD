@@ -16,7 +16,7 @@ cc_binary(
 cc_binary(
   name = "flat_hash_set_benchmark",
   srcs = ["flat_hash_set_benchmark.cc"],
-  deps = [":simple_integer_linear_probing",
+  deps = [":hash_benchmark",
           "@com_google_absl//absl/container:flat_hash_set"],
 )
 
@@ -43,10 +43,4 @@ cc_library(
 cc_library(
     name = "contains",
     hdrs = ["contains.h",],
-)
-
-cc_binary(
-  name = "hello_world",
-  deps = ["@com_google_absl//absl/strings"],
-  srcs = ["hello_world.cc"],
 )

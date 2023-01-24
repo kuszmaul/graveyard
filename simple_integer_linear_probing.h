@@ -2,11 +2,11 @@
 #define _SIMPLE_INTEGER_LINEAR_PROBING_H_
 
 #include <cassert>
-#include <cstddef>   // for size_t
-#include <cstdint>   // for uint64_t
+#include <cstddef>  // for size_t
+#include <cstdint>  // for uint64_t
 #include <iostream>
 #include <limits>
-#include <utility>   // for swap
+#include <utility>  // for swap
 #include <vector>
 
 class SimpleIntegerLinearProbing {

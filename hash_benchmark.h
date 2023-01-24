@@ -17,7 +17,7 @@ const std::vector<uint64_t> GetSomeNumbers(size_t size);
 // in the same process.
 const std::vector<uint64_t> GetSomeOtherNumbers(size_t size);
 
-template<class HashSet>
+template <class HashSet>
 void IntHashSetBenchmark(size_t size) {
   const auto& values = GetSomeNumbers(size);
   Benchmark(
@@ -54,12 +54,14 @@ void IntHashSetBenchmark(size_t size) {
         return not_values.size();
       },
       "!contains", "not_found");
-  Benchmark([&]() {
-      for (uint64_t value : values) {
-        DoNotOptimize(value);
-      }
-      return values.size();
-    }, "nothing  ", "nop      ");
+  Benchmark(
+      [&]() {
+        for (uint64_t value : values) {
+          DoNotOptimize(value);
+        }
+        return values.size();
+      },
+      "nothing  ", "nop      ");
 }
 
 #endif  // HASH_BENCHMARK_H_

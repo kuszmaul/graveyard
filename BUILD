@@ -13,6 +13,14 @@ cc_binary(
           "@com_google_absl//absl/container:flat_hash_set"],
 )
 
+cc_binary(
+  name = "hash_tables_benchmark",
+  srcs = ["hash_tables_benchmark.cc"],
+  deps = [":hash_benchmark",
+          ":simple_integer_linear_probing",
+          "@com_google_absl//absl/container:flat_hash_set"],
+)
+
 cc_library(
     name = "simple_integer_linear_probing",
     hdrs = ["simple_integer_linear_probing.h"],

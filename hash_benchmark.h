@@ -1,10 +1,17 @@
 #ifndef HASH_BENCHMARK_H_
 #define HASH_BENCHMARK_H_
 
+#include <bits/utility.h>  // for tuple_element<>::type
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>  // for operator<<, basic_ostream, basic_ostream<>...
 #include <map>
+#include <string>       // for operator<, string, operator<<, char_traits
+#include <string_view>  // for string_view
+#include <type_traits>  // for add_const<>::type
+#include <utility>      // for move
 #include <vector>
 
 #include "benchmark.h"
@@ -18,7 +25,7 @@ const std::vector<uint64_t> GetSomeNumbers(size_t size);
 // in the same process.
 const std::vector<uint64_t> GetSomeOtherNumbers(size_t size);
 
-class HashBenchmarkResult {
+class HashBenchmarkResults {
  public:
   void Add(std::string_view implementation, std::string_view operation,
            size_t size, BenchmarkResult result, size_t final_memory) {
@@ -47,11 +54,13 @@ class HashBenchmarkResult {
 
    private:
     friend bool operator<(const Key& a, const Key& b) {
-      if (a.implementation < b.implementation) return true;
-      if (b.implementation < a.implementation) return false;
       if (a.operation < b.operation) return true;
       if (b.operation < a.operation) return false;
-      return a.size < b.size;
+      if (a.size < b.size) return true;
+      if (b.size < a.size) return false;
+      if (a.implementation < b.implementation) return true;
+      if (b.implementation < a.implementation) return false;
+      return false;
     }
   };
   struct Result {
@@ -62,10 +71,9 @@ class HashBenchmarkResult {
 };
 
 template <class HashSet>
-HashBenchmarkResult IntHashSetBenchmark(std::string_view implementation,
-                                        size_t size) {
+void IntHashSetBenchmark(HashBenchmarkResults& results,
+                         std::string_view implementation, size_t size) {
   const auto& values = GetSomeNumbers(size);
-  HashBenchmarkResult results;
   results.Add(implementation, "insert", size, Benchmark([&]() {
                 HashSet set;
                 for (uint64_t value : values) {
@@ -104,7 +112,6 @@ HashBenchmarkResult IntHashSetBenchmark(std::string_view implementation,
                 return values.size();
               }),
               0);
-  return results;
 }
 
 #endif  // HASH_BENCHMARK_H_

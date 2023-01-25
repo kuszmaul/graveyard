@@ -40,7 +40,7 @@ class HashBenchmarkResults {
     friend bool operator<(const Key& a, const Key& b);
   };
  private:
-  std::map<Key, std::vector<BenchmarkResult>> results;
+  std::map<Key, BenchmarkResult> results_;
 };
 
 template <class HashSet>

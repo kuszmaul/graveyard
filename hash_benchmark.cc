@@ -54,21 +54,45 @@ const std::vector<uint64_t> GetSomeOtherNumbers(size_t size) {
 
 void HashBenchmarkResults::Add(std::string_view implementation, std::string_view operation,
                                size_t size, BenchmarkResult result) {
-  results[Key{.implementation = std::string(implementation),
+  Key key = {.implementation = std::string(implementation),
       .operation = std::string(operation),
-      .input_size = size}]
-      .push_back(std::move(result));
+      .input_size = size};
+  auto it [[maybe_unused]] = results_.find(key);
+  assert(it == result_.end());
+  results_.insert({std::move(key), std::move(result)});
 }
 
 void HashBenchmarkResults::Print() const {
   std::cout << "|Implementation|Operation|Table size|Time/op|Memory Utilization|" << std::endl;
   std::cout << "|--------------|---------|---------:|------:|-----------------:|" << std::endl;
-  for (const auto& [key, result_vector] : results) {
-    for (const BenchmarkResult& result : result_vector) {
-      std::cout << "|`" << key.implementation << "`|" << key.operation << "|" << key.input_size << "|" << absl::StrFormat("%.1f", result.Mean()) << "±" << absl::StrFormat("%.1f", result.StandardDeviation() * 2) << "ns|" << absl::StrFormat("%.1f", result.MinimalMemoryEstimate() * 100.0 / result.MemorySize()) << "%|" << std::endl;
-   }
+  for (const auto& [key, result] : results_) {
+    std::cout << "|`" << key.implementation << "`|" << key.operation << "|" << key.input_size << "|" << absl::StrFormat("%.1f", result.Mean()) << "±" << absl::StrFormat("%.1f", result.StandardDeviation() * 2) << "ns|" << absl::StrFormat("%.1f", result.MinimalMemoryEstimate() * 100.0 / result.MemorySize()) << "%|" << std::endl;
   }
 }
+
+#if 0
+void HashBenchmarkResults::Print2() const {
+  std::string_view kSimple = "SimpleIntegerLinearProbing";
+  std::string_view kFlat = "flat_hash_set";
+  std::string_view kInsert = "insert";
+  std::set<size_t> sizes;
+  for (const auto& [key, result] : results_) {
+    if ((key.implementation==kSimple || key.implementation == kFlat)
+        && key.operation == kInsert) {
+      sizes.insert(key.size);
+    }
+  }
+  for (size_t size : sizes) {
+    auto flat = results_.find(Key{kFlat, kInsert, size});
+    assert(flat != results_.end());
+
+    auto simple = results_.find(Key{kSimple, kInsert, size});
+    assert(simple != results_.end());
+
+    std::cout << "|" << size << "|" << PrintTime(*flat) << "|" << PrintTime(*simple) << "|" <<
+  }
+}
+#endif
 
 bool operator<(const HashBenchmarkResults::Key& a, const HashBenchmarkResults::Key& b) {
   if (a.operation < b.operation) return true;

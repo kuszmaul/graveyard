@@ -31,6 +31,8 @@ class HashBenchmarkResults {
   void Add(std::string_view implementation, std::string_view operation,
            size_t size, BenchmarkResult result);
   void Print() const;
+  void Print2() const;
+  void PrintOp(std::string_view op) const;
   struct Key {
     std::string implementation;
     std::string operation;

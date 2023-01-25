@@ -1,6 +1,7 @@
 #include "hash_benchmark.h"
 
 #include <random>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>  // for pair
@@ -71,13 +72,58 @@ void HashBenchmarkResults::Print() const {
 }
 
 namespace {
-constexpr std::string_view reference_implementation = "flat_hash_set";
-constexpr std::vector<std::string_view> other_implementations = {"SimpleIntegerLinearProbing"};
-constexpr std::vector<std::string_view> ops = {"insert"};
+constexpr std::string_view kReferenceImplementation = "flat_hash_set";
+const std::vector<std::string_view> kOtherImplementations = {"SimpleIntegerLinearProbing"};
+const std::vector<std::string_view> kOps = {"insert"};
+
+template<class Table, class Key>
+const typename Table::value_type& FindOrDie(const Table& table, const Key& key) {
+  auto it = table.find(key );
+  if (it == table.end()) {
+    abort();
+  }
+  return *it;
+}
+
+std::string TimeString(const BenchmarkResult &result) {
+  return absl::StrFormat("%.1f±%.1fns", result.Mean(), result.StandardDeviation() * 2);
+}
 }
 
 void HashBenchmarkResults::Print2() const {
-  for (std::string_view op : ops) {
+  for (std::string_view op : kOps) {
+    PrintOp(op);
+  }
+}
+
+void HashBenchmarkResults::PrintOp(std::string_view op) const {
+  std::set<size_t> sizes;
+  for (const auto& [key, result] : results_) {
+    if (key.operation == op) {
+      sizes.insert(key.input_size);
+    }
+  }
+  std::cout << "## " << op << std::endl;
+  std::cout << "|Size|Time/op|";
+  for (auto other : kOtherImplementations) {
+    std::cout << other << " Time/op|Change|";
+  }
+  // Extra | here
+  std::cout << "|memory|";
+  std::cout << std::endl;
+  std::cout << "|---:|------:|";
+  for (auto other [[maybe_unused]] : kOtherImplementations) {
+    std::cout << "---:|---:|---:|";
+  }
+  std::cout << std::endl;
+  for (size_t size : sizes) {
+    const auto& [ref_key, ref_result] = FindOrDie(results_, Key{std::string(kReferenceImplementation), std::string(op), size});
+    std::cout << "|" << ref_key.input_size << "|" << TimeString(ref_result) << "|";
+    for (auto other : kOtherImplementations) {
+      const auto& [other_key, other_result] = FindOrDie(results_, Key{std::string(other), std::string(op), size});
+      std::cout << TimeString(other_result) << "|" << absl::StrFormat("%.1f", 100.0 * (other_result.Mean() - ref_result.Mean()) / ref_result.Mean()) << "%|";
+    }
+    std::cout << std::endl;
   }
 }
 #if 0
@@ -85,12 +131,6 @@ void HashBenchmarkResults::Print2() const {
   std::string_view kFlat = "flat_hash_set";
   std::string_view kInsert = "insert";
   std::set<size_t> sizes;
-  for (const auto& [key, result] : results_) {
-    if ((key.implementation==kSimple || key.implementation == kFlat)
-        && key.operation == kInsert) {
-      sizes.insert(key.size);
-    }
-  }
   for (size_t size : sizes) {
     auto flat = results_.find(Key{kFlat, kInsert, size});
     assert(flat != results_.end());

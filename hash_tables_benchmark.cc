@@ -7,7 +7,7 @@
 #include "simple_integer_linear_probing.h"
 
 int main() {
-  constexpr size_t N = 1000000;
+  constexpr size_t N = 100000;
   HashBenchmarkResults results;
   for (size_t i = N / 2; i < N; i += N / 20) {
     size_t n = i + N / 20;
@@ -27,4 +27,5 @@ int main() {
         "flat_hash_set", n);
   }
   results.Print();
+  results.Print2();
 }

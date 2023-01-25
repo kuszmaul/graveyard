@@ -89,15 +89,6 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                     return memory_estimator(set);
                   },
                   size, minimal_memory_consumption, n_runs));
-  results.Add("nop", "nop", size,
-              Benchmark(
-                  [&]() {
-                    for (uint64_t value : values) {
-                      DoNotOptimize(value);
-                    }
-                    return 1;
-                  },
-                  size, 1, n_runs));
 }
 
 template <class HashSet>

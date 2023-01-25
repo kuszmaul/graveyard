@@ -59,7 +59,10 @@ void HashBenchmarkResults::Add(std::string_view implementation, std::string_view
       .operation = std::string(operation),
       .input_size = size};
   auto it [[maybe_unused]] = results_.find(key);
-  assert(it == result_.end());
+  if (it != results_.end()) {
+    std::cerr << "Reinserting " << implementation << " " << operation << " " << size << std::endl;
+  }
+  assert(it == results_.end());
   results_.insert({std::move(key), std::move(result)});
 }
 
@@ -67,7 +70,7 @@ void HashBenchmarkResults::Print() const {
   std::cout << "|Implementation|Operation|Table size|Time/op|Memory Utilization|" << std::endl;
   std::cout << "|--------------|---------|---------:|------:|-----------------:|" << std::endl;
   for (const auto& [key, result] : results_) {
-    std::cout << "|`" << key.implementation << "`|" << key.operation << "|" << key.input_size << "|" << absl::StrFormat("%.1f", result.Mean()) << "±" << absl::StrFormat("%.1f", result.StandardDeviation() * 2) << "ns|" << absl::StrFormat("%.1f", result.MinimalMemoryEstimate() * 100.0 / result.MemorySize()) << "%|" << std::endl;
+    std::cout << "|`" << key.implementation << "`|" << key.operation << "|" << key.input_size << "|" << absl::StrFormat("%.1f", result.Mean()) << "±" << absl::StrFormat("%.1f", result.StandardDeviation() * 2) << "ns|" << absl::StrFormat("%+.1f", result.MinimalMemoryEstimate() * 100.0 / result.MemorySize()) << "%|" << std::endl;
   }
 }
 
@@ -104,24 +107,29 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
     }
   }
   std::cout << "## " << op << std::endl;
-  std::cout << "|Size|Time/op|";
+  std::cout << "|Size|Time/op|Memory|";
   for (auto other : kOtherImplementations) {
     std::cout << other << " Time/op|Change|";
   }
-  // Extra | here
-  std::cout << "|memory|";
+  std::cout << "Memory|Change|";
   std::cout << std::endl;
   std::cout << "|---:|------:|";
   for (auto other [[maybe_unused]] : kOtherImplementations) {
-    std::cout << "---:|---:|---:|";
+    std::cout << "---:|---:|---:|---:|---:|";
   }
   std::cout << std::endl;
   for (size_t size : sizes) {
     const auto& [ref_key, ref_result] = FindOrDie(results_, Key{std::string(kReferenceImplementation), std::string(op), size});
-    std::cout << "|" << ref_key.input_size << "|" << TimeString(ref_result) << "|";
+    std::cout << "|" << ref_key.input_size << "|" << TimeString(ref_result) << "|" << absl::StrFormat("%.1f%%", ref_result.MinimalMemoryEstimate() * 100.0 / ref_result.MemorySize()) <<
+        "|";
+    double ref_memory_size = ref_result.MemorySize();
     for (auto other : kOtherImplementations) {
       const auto& [other_key, other_result] = FindOrDie(results_, Key{std::string(other), std::string(op), size});
-      std::cout << TimeString(other_result) << "|" << absl::StrFormat("%.1f", 100.0 * (other_result.Mean() - ref_result.Mean()) / ref_result.Mean()) << "%|";
+      double other_memory_size = other_result.MemorySize();
+      std::cout << TimeString(other_result) << "|" << absl::StrFormat("%+.1f%%", 100.0 * (other_result.Mean() - ref_result.Mean()) / ref_result.Mean()) << "|";
+      std::cout << absl::StrFormat("%.1f%%", other_result.MinimalMemoryEstimate() * 100.0 / other_memory_size) << "|";
+      if (ref_result.MinimalMemoryEstimate() != other_result.MinimalMemoryEstimate()) abort();
+      std::cout << absl::StrFormat("%+.1f%%", 100.0 * (other_memory_size - ref_memory_size) / ref_memory_size) << "|";
     }
     std::cout << std::endl;
   }

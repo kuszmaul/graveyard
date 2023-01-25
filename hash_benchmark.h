@@ -93,7 +93,7 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                     for (uint64_t value : values) {
                       DoNotOptimize(value);
                     }
-                    return 0;
+                    return 1;
                   },
                   size, 1, n_runs));
 }

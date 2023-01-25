@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "contains.h"
+#include "absl/strings/str_format.h"
 
 namespace {
 // `numbers[n]` contains a set of cardinality `n`.
@@ -60,11 +61,11 @@ void HashBenchmarkResults::Add(std::string_view implementation, std::string_view
 }
 
 void HashBenchmarkResults::Print() const {
-  std::cout << "|Implementation|Operation|Table size|Mean Time|±   |Memory Utilization|" << std::endl;
-  std::cout << "|--------------|---------|---------:|--------:|---:|-----------------:|" << std::endl;
+  std::cout << "|Implementation|Operation|Table size|Time/op|Memory Utilization|" << std::endl;
+  std::cout << "|--------------|---------|---------:|------:|-----------------:|" << std::endl;
   for (const auto& [key, result_vector] : results) {
     for (const BenchmarkResult& result : result_vector) {
-      std::cout << "|" << key.implementation << "|" << key.operation << "|" << key.input_size << "|" << result.Mean() << "ns|±" << result.StandardDeviation() * 2 << "ns/op|" << result.MinimalMemoryEstimate() * 100.0 / result.MemorySize() << "%|" << std::endl;
+      std::cout << "|`" << key.implementation << "`|" << key.operation << "|" << key.input_size << "|" << absl::StrFormat("%.1f", result.Mean()) << "±" << absl::StrFormat("%.1f", result.StandardDeviation() * 2) << "ns|" << absl::StrFormat("%.1f", result.MinimalMemoryEstimate() * 100.0 / result.MemorySize()) << "%|" << std::endl;
    }
   }
 }

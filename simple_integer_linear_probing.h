@@ -12,6 +12,7 @@
 class SimpleIntegerLinearProbing {
   // Ranges from 3/4 full to 7/8 full.
  public:
+  using value_type = uint64_t;
   bool insert(uint64_t value);
   bool contains(uint64_t value) const;
   size_t size() const;

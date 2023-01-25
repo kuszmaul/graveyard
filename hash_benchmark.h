@@ -29,40 +29,17 @@ const std::vector<uint64_t> GetSomeOtherNumbers(size_t size);
 class HashBenchmarkResults {
  public:
   void Add(std::string_view implementation, std::string_view operation,
-           size_t size, BenchmarkResult result) {
-    results[Key{.implementation = std::string(implementation),
-                .operation = std::string(operation),
-                .input_size = size}]
-        .push_back(std::move(result));
-  }
-  void Print() const {
-    for (const auto& [key, result_vector] : results) {
-      for (const BenchmarkResult& result : result_vector) {
-        std::cout << key.implementation << ": " << result.Mean() << "±"
-                  << result.StandardDeviation() * 2 << "ns/" << key.operation
-                  << " size=" << key.input_size
-                  << " memory=" << result.MemorySize() << std::endl;
-      }
-    }
-  }
-
- private:
+           size_t size, BenchmarkResult result);
+  void Print() const;
   struct Key {
     std::string implementation;
     std::string operation;
     size_t input_size;
 
    private:
-    friend bool operator<(const Key& a, const Key& b) {
-      if (a.operation < b.operation) return true;
-      if (b.operation < a.operation) return false;
-      if (a.input_size < b.input_size) return true;
-      if (b.input_size < a.input_size) return false;
-      if (a.implementation < b.implementation) return true;
-      if (b.implementation < a.implementation) return false;
-      return false;
-    }
+    friend bool operator<(const Key& a, const Key& b);
   };
+ private:
   std::map<Key, std::vector<BenchmarkResult>> results;
 };
 
@@ -72,6 +49,7 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                          std::string_view implementation, size_t size,
                          size_t n_runs = 20) {
   const auto& values = GetSomeNumbers(size);
+  size_t minimal_memory_consumption = size * sizeof(typename HashSet::value_type);
   results.Add(implementation, "insert", size,
               Benchmark(
                   [&]() {
@@ -81,7 +59,7 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                     }
                     return memory_estimator(set);
                   },
-                  size, n_runs));
+                  size, minimal_memory_consumption, n_runs));
   HashSet set;
   for (uint64_t value : values) {
     set.insert(value);
@@ -96,7 +74,7 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                     }
                     return memory_estimator(set);
                   },
-                  size, n_runs));
+                  size, minimal_memory_consumption, n_runs));
   const auto& not_values = GetSomeOtherNumbers(size);
   results.Add(implementation, "contains(false)", size,
               Benchmark(
@@ -108,7 +86,7 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                     }
                     return memory_estimator(set);
                   },
-                  size, n_runs));
+                  size, minimal_memory_consumption, n_runs));
   results.Add("nop", "nop", size,
               Benchmark(
                   [&]() {
@@ -117,7 +95,7 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                     }
                     return 0;
                   },
-                  size, n_runs));
+                  size, 1, n_runs));
 }
 
 template <class HashSet>

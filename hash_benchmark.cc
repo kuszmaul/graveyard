@@ -49,3 +49,35 @@ const std::vector<uint64_t> GetSomeOtherNumbers(size_t size) {
   }
   return numbers[size] = std::vector(values.begin(), values.end());
 }
+
+
+void HashBenchmarkResults::Add(std::string_view implementation, std::string_view operation,
+                               size_t size, BenchmarkResult result) {
+  results[Key{.implementation = std::string(implementation),
+      .operation = std::string(operation),
+      .input_size = size}]
+      .push_back(std::move(result));
+}
+
+void HashBenchmarkResults::Print() const {
+  for (const auto& [key, result_vector] : results) {
+    for (const BenchmarkResult& result : result_vector) {
+      std::cout << key.implementation << ": " << result.Mean() << "±"
+                << result.StandardDeviation() * 2 << "ns/" << key.operation
+                << " size=" << key.input_size
+                << " memory=" << result.MemorySize()
+                << " (" << result.MinimalMemoryEstimate() * 100.0 / result.MemorySize() << "%)" <<
+          std::endl;
+   }
+  }
+}
+
+bool operator<(const HashBenchmarkResults::Key& a, const HashBenchmarkResults::Key& b) {
+  if (a.operation < b.operation) return true;
+  if (b.operation < a.operation) return false;
+  if (a.input_size < b.input_size) return true;
+  if (b.input_size < a.input_size) return false;
+  if (a.implementation < b.implementation) return true;
+  if (b.implementation < a.implementation) return false;
+  return false;
+}

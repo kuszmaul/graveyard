@@ -21,6 +21,9 @@ int main() {
     IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
         results,
         SwissMemoryEstimator<absl::flat_hash_set<uint64_t>>,
+        //        [](const absl::flat_hash_set<uint64_t>& set) {
+        //  return set.capacity() * (1 + sizeof(absl::flat_hash_set<uint64_t>::value_type));
+        //},
         "flat_hash_set", n);
   }
   results.Print();

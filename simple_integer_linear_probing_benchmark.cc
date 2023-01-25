@@ -11,6 +11,10 @@ int main() {
   constexpr size_t N = 10000000;
   HashBenchmarkResults results;
   IntHashSetBenchmark<SimpleIntegerLinearProbing>(
-      results, "SimpleIntegerLinearProbing", N);
+      results,
+      [](const SimpleIntegerLinearProbing &table) {
+        return table.memory_estimate();
+      },
+      "SimpleIntegerLinearProbing", N);
   results.Print();
 }

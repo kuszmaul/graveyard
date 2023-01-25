@@ -39,6 +39,7 @@ cc_library(
 cc_library(
     name = "benchmark",
     hdrs = ["benchmark.h",],
+    srcs = ["benchmark.cc",],
 )
 
 cc_library(

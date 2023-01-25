@@ -12,7 +12,9 @@ int main() {
   absl::flat_hash_set<uint64_t> set;
   constexpr size_t N = 10000000;
   HashBenchmarkResults results;
-  IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(results, "flat_hash_set",
-                                                     N);
+  IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
+      results,
+      SwissMemoryEstimator<absl::flat_hash_set<uint64_t>>,
+      "flat_hash_set", N);
   results.Print();
 }

@@ -6,6 +6,7 @@
 #include <algorithm>  // for max, min
 #include <cmath>
 #include <cstdint>  // for uint64_t
+#include <functional>
 #include <iostream>
 #include <optional>
 #include <string_view>  // for operator<<, string_view
@@ -37,6 +38,8 @@ class BenchmarkResult {
     double mean = Mean();
     return sqrt(sum_x2_ / n_ - mean * mean);
   }
+  void SetMemoryEstimate(size_t memory_size) { memory_size_ = memory_size; }
+  size_t MemorySize() const { return memory_size_; }
 
  private:
   size_t n_ = 0;  // number of runs
@@ -44,50 +47,10 @@ class BenchmarkResult {
   std::optional<double> max_ns_ = std::nullopt;
   double sum_x_ = 0;   // sum of `x_i`.
   double sum_x2_ = 0;  // sum of `x_i_2`.
+  size_t memory_size_ = 0;
 };
 
-template <class Fun>
-BenchmarkResult Benchmark(Fun fun, size_t n_runs = 20) {
-  BenchmarkResult result;
-  fun();  // Run the benchmark once, since the first run is often different.
-  for (size_t run = 0; run < n_runs; ++run) {
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    uint64_t count = fun();
-    struct timespec end;
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    result.AddSample((end - start) / double(count));
-  }
-  return result;
-}
-
-template <class Fun>
-double Benchmark(Fun fun, std::string_view description,
-                 std::string_view item_name) {
-  BenchmarkResult result;
-  uint64_t firstcount;
-  {
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    firstcount =
-        fun();  // call fun once since the first run is often different.
-    struct timespec end;
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    // double ns_per_op = (end - start) / double(firstcount);
-    // std::cerr << " first " << ns_per_op << std::endl;
-  }
-  for (size_t samples = 0; samples < 20; ++samples) {
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    uint64_t count = fun();
-    struct timespec end;
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    result.AddSample((end - start) / double(count));
-  }
-  std::cerr << description << ": " << result.Mean() << "±"
-            << result.StandardDeviation() * 2 << "ns/" << item_name
-            << " count=" << firstcount << std::endl;
-  return result.Mean();
-}
+BenchmarkResult Benchmark(std::function<size_t()> fun, size_t count,
+                          size_t n_runs);
 
 #endif  // BENCHMARK_H_

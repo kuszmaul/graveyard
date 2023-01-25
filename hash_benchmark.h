@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <iostream>  // for operator<<, basic_ostream, basic_ostream<>...
 #include <map>
 #include <string>       // for operator<, string, operator<<, char_traits
@@ -28,20 +29,19 @@ const std::vector<uint64_t> GetSomeOtherNumbers(size_t size);
 class HashBenchmarkResults {
  public:
   void Add(std::string_view implementation, std::string_view operation,
-           size_t size, BenchmarkResult result, size_t final_memory) {
+           size_t size, BenchmarkResult result) {
     results[Key{.implementation = std::string(implementation),
                 .operation = std::string(operation),
-                .size = size}]
-        .push_back({.benchmark_result = std::move(result),
-                    .final_memory = final_memory});
+                .input_size = size}]
+        .push_back(std::move(result));
   }
   void Print() const {
     for (const auto& [key, result_vector] : results) {
-      for (const Result& result : result_vector) {
-        std::cout << key.implementation << ": "
-                  << result.benchmark_result.Mean() << "±"
-                  << result.benchmark_result.StandardDeviation() * 2 << "ns/"
-                  << key.operation << " size=" << key.size << std::endl;
+      for (const BenchmarkResult& result : result_vector) {
+        std::cout << key.implementation << ": " << result.Mean() << "±"
+                  << result.StandardDeviation() * 2 << "ns/" << key.operation
+                  << " size=" << key.input_size
+                  << " memory=" << result.MemorySize() << std::endl;
       }
     }
   }
@@ -50,68 +50,79 @@ class HashBenchmarkResults {
   struct Key {
     std::string implementation;
     std::string operation;
-    size_t size;
+    size_t input_size;
 
    private:
     friend bool operator<(const Key& a, const Key& b) {
       if (a.operation < b.operation) return true;
       if (b.operation < a.operation) return false;
-      if (a.size < b.size) return true;
-      if (b.size < a.size) return false;
+      if (a.input_size < b.input_size) return true;
+      if (b.input_size < a.input_size) return false;
       if (a.implementation < b.implementation) return true;
       if (b.implementation < a.implementation) return false;
       return false;
     }
   };
-  struct Result {
-    BenchmarkResult benchmark_result;
-    size_t final_memory;
-  };
-  std::map<Key, std::vector<Result>> results;
+  std::map<Key, std::vector<BenchmarkResult>> results;
 };
 
 template <class HashSet>
 void IntHashSetBenchmark(HashBenchmarkResults& results,
-                         std::string_view implementation, size_t size) {
+                         std::function<size_t(const HashSet&)> memory_estimator,
+                         std::string_view implementation, size_t size,
+                         size_t n_runs = 20) {
   const auto& values = GetSomeNumbers(size);
-  results.Add(implementation, "insert", size, Benchmark([&]() {
-                HashSet set;
-                for (uint64_t value : values) {
-                  set.insert(value);
-                }
-                return values.size();
-              }),
-              0);
+  results.Add(implementation, "insert", size,
+              Benchmark(
+                  [&]() {
+                    HashSet set;
+                    for (uint64_t value : values) {
+                      set.insert(value);
+                    }
+                    return memory_estimator(set);
+                  },
+                  size, n_runs));
   HashSet set;
   for (uint64_t value : values) {
     set.insert(value);
   }
-  results.Add(implementation, "contains(true)", size, Benchmark([&]() {
-                for (uint64_t value : values) {
-                  bool contains = set.contains(value);
-                  assert(contains);
-                  DoNotOptimize(contains);
-                }
-                return values.size();
-              }),
-              0);
+  results.Add(implementation, "contains(true)", size,
+              Benchmark(
+                  [&]() {
+                    for (uint64_t value : values) {
+                      bool contains = set.contains(value);
+                      assert(contains);
+                      DoNotOptimize(contains);
+                    }
+                    return memory_estimator(set);
+                  },
+                  size, n_runs));
   const auto& not_values = GetSomeOtherNumbers(size);
-  results.Add(implementation, "contains(false)", size, Benchmark([&]() {
-                for (uint64_t value : not_values) {
-                  bool contains = set.contains(value);
-                  assert(!contains);
-                  DoNotOptimize(contains);
-                }
-                return not_values.size();
-              }),
-              0);
-  results.Add("nop", "nop", size, Benchmark([&]() {
-                for (uint64_t value : values) {
-                  DoNotOptimize(value);
-                }
-                return values.size();
-              }),
-              0);
+  results.Add(implementation, "contains(false)", size,
+              Benchmark(
+                  [&]() {
+                    for (uint64_t value : not_values) {
+                      bool contains = set.contains(value);
+                      assert(!contains);
+                      DoNotOptimize(contains);
+                    }
+                    return memory_estimator(set);
+                  },
+                  size, n_runs));
+  results.Add("nop", "nop", size,
+              Benchmark(
+                  [&]() {
+                    for (uint64_t value : values) {
+                      DoNotOptimize(value);
+                    }
+                    return 0;
+                  },
+                  size, n_runs));
+}
+
+template <class HashSet>
+size_t SwissMemoryEstimator(const HashSet& table) {
+  return table.capacity() * (1 + sizeof(typename HashSet::value_type));
 }
 
 #endif  // HASH_BENCHMARK_H_

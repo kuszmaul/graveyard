@@ -15,6 +15,8 @@ class SimpleIntegerLinearProbing {
   bool insert(uint64_t value);
   bool contains(uint64_t value) const;
   size_t size() const;
+  size_t capacity() const { return 1 + slots_.size(); }
+  size_t memory_estimate() const { return capacity() * sizeof(slots_[0]); }
 
  private:
   static constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }

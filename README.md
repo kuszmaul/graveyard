@@ -79,6 +79,7 @@ bazel run -c opt hash_tables_benchmark
 |`flat_hash_set`|insert|1000000|29.4±1.2ns|42.4%|
 
 ## insert
+
 |Size|Time/op|SimpleIntegerLinearProbing Time/op|Change||memory|
 |---:|------:|---:|---:|---:|
 |55000|17.2±0.2ns|94.0±1.1ns|447.2%|

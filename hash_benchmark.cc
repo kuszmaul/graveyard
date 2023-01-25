@@ -60,14 +60,11 @@ void HashBenchmarkResults::Add(std::string_view implementation, std::string_view
 }
 
 void HashBenchmarkResults::Print() const {
+  std::cout << "|Implementation|Operation|Table size|Mean Time|±   |Memory Utilization|" << std::endl;
+  std::cout << "|--------------|---------|---------:|--------:|---:|-----------------:|" << std::endl;
   for (const auto& [key, result_vector] : results) {
     for (const BenchmarkResult& result : result_vector) {
-      std::cout << key.implementation << ": " << result.Mean() << "±"
-                << result.StandardDeviation() * 2 << "ns/" << key.operation
-                << " size=" << key.input_size
-                << " memory=" << result.MemorySize()
-                << " (" << result.MinimalMemoryEstimate() * 100.0 / result.MemorySize() << "%)" <<
-          std::endl;
+      std::cout << "|" << key.implementation << "|" << key.operation << "|" << key.input_size << "|" << result.Mean() << "ns|±" << result.StandardDeviation() * 2 << "ns/op|" << result.MinimalMemoryEstimate() * 100.0 / result.MemorySize() << "%|" << std::endl;
    }
   }
 }

@@ -80,7 +80,7 @@ bazel run -c opt hash_tables_benchmark
 
 ## insert
 
-|Size|Time/op|SimpleIntegerLinearProbing Time/op|Change||memory|
+|Size|Time/op|SimpleIntegerLinearProbing Time/op||memory|
 |---:|------:|---:|---:|---:|
 |55000|17.2±0.2ns|94.0±1.1ns|447.2%|
 |60000|23.1±0.1ns|97.9±0.4ns|324.1%|

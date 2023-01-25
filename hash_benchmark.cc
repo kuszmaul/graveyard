@@ -70,8 +70,17 @@ void HashBenchmarkResults::Print() const {
   }
 }
 
-#if 0
+namespace {
+constexpr std::string_view reference_implementation = "flat_hash_set";
+constexpr std::vector<std::string_view> other_implementations = {"SimpleIntegerLinearProbing"};
+constexpr std::vector<std::string_view> ops = {"insert"};
+}
+
 void HashBenchmarkResults::Print2() const {
+  for (std::string_view op : ops) {
+  }
+}
+#if 0
   std::string_view kSimple = "SimpleIntegerLinearProbing";
   std::string_view kFlat = "flat_hash_set";
   std::string_view kInsert = "insert";

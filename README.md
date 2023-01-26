@@ -15,83 +15,51 @@ hash tables such as Abseil or F11.
 bazel run -c opt hash_tables_benchmark
 ```
 
-|Implementation|Operation|Table size|Time/op|Memory Utilization|
-|--------------|---------|---------:|------:|-----------------:|
-|`SimpleIntegerLinearProbing`|contains(false)|550000|17.8±4.3ns|83.4%|
-|`flat_hash_set`|contains(false)|550000|6.2±3.2ns|46.6%|
-|`SimpleIntegerLinearProbing`|contains(false)|600000|16.9±4.6ns|78.0%|
-|`flat_hash_set`|contains(false)|600000|6.7±3.1ns|50.9%|
-|`SimpleIntegerLinearProbing`|contains(false)|650000|18.5±3.5ns|84.5%|
-|`flat_hash_set`|contains(false)|650000|7.0±3.4ns|55.1%|
-|`SimpleIntegerLinearProbing`|contains(false)|700000|18.5±4.4ns|78.0%|
-|`flat_hash_set`|contains(false)|700000|7.1±3.4ns|59.3%|
-|`SimpleIntegerLinearProbing`|contains(false)|750000|19.9±3.9ns|83.6%|
-|`flat_hash_set`|contains(false)|750000|8.3±3.6ns|63.6%|
-|`SimpleIntegerLinearProbing`|contains(false)|800000|20.4±3.4ns|76.4%|
-|`flat_hash_set`|contains(false)|800000|10.2±3.8ns|67.8%|
-|`SimpleIntegerLinearProbing`|contains(false)|850000|23.0±2.8ns|81.2%|
-|`flat_hash_set`|contains(false)|850000|12.4±2.9ns|72.1%|
-|`SimpleIntegerLinearProbing`|contains(false)|900000|27.3±6.9ns|86.0%|
-|`flat_hash_set`|contains(false)|900000|16.6±2.9ns|76.3%|
-|`SimpleIntegerLinearProbing`|contains(false)|950000|24.9±2.0ns|77.8%|
-|`flat_hash_set`|contains(false)|950000|7.7±2.4ns|40.3%|
-|`SimpleIntegerLinearProbing`|contains(false)|1000000|26.6±1.9ns|81.9%|
-|`flat_hash_set`|contains(false)|1000000|8.3±2.1ns|42.4%|
-|`SimpleIntegerLinearProbing`|contains(true)|550000|16.6±0.4ns|83.4%|
-|`flat_hash_set`|contains(true)|550000|20.2±3.6ns|46.6%|
-|`SimpleIntegerLinearProbing`|contains(true)|600000|14.9±0.3ns|78.0%|
-|`flat_hash_set`|contains(true)|600000|19.3±2.4ns|50.9%|
-|`SimpleIntegerLinearProbing`|contains(true)|650000|17.5±0.5ns|84.5%|
-|`flat_hash_set`|contains(true)|650000|20.8±6.0ns|55.1%|
-|`SimpleIntegerLinearProbing`|contains(true)|700000|16.6±0.8ns|78.0%|
-|`flat_hash_set`|contains(true)|700000|19.6±1.9ns|59.3%|
-|`SimpleIntegerLinearProbing`|contains(true)|750000|19.0±0.6ns|83.6%|
-|`flat_hash_set`|contains(true)|750000|19.7±1.9ns|63.6%|
-|`SimpleIntegerLinearProbing`|contains(true)|800000|19.3±2.0ns|76.4%|
-|`flat_hash_set`|contains(true)|800000|20.1±1.8ns|67.8%|
-|`SimpleIntegerLinearProbing`|contains(true)|850000|22.7±2.6ns|81.2%|
-|`flat_hash_set`|contains(true)|850000|20.5±1.4ns|72.1%|
-|`SimpleIntegerLinearProbing`|contains(true)|900000|28.3±3.7ns|86.0%|
-|`flat_hash_set`|contains(true)|900000|20.5±1.5ns|76.3%|
-|`SimpleIntegerLinearProbing`|contains(true)|950000|24.5±2.0ns|77.8%|
-|`flat_hash_set`|contains(true)|950000|28.1±1.1ns|40.3%|
-|`SimpleIntegerLinearProbing`|contains(true)|1000000|27.1±1.0ns|81.9%|
-|`flat_hash_set`|contains(true)|1000000|28.2±1.3ns|42.4%|
-|`SimpleIntegerLinearProbing`|insert|550000|113.2±15.6ns|83.4%|
-|`flat_hash_set`|insert|550000|26.3±1.6ns|46.6%|
-|`SimpleIntegerLinearProbing`|insert|600000|108.8±3.7ns|78.0%|
-|`flat_hash_set`|insert|600000|25.9±0.9ns|50.9%|
-|`SimpleIntegerLinearProbing`|insert|650000|103.3±2.9ns|84.5%|
-|`flat_hash_set`|insert|650000|25.3±0.7ns|55.1%|
-|`SimpleIntegerLinearProbing`|insert|700000|111.6±3.5ns|78.0%|
-|`flat_hash_set`|insert|700000|24.6±0.6ns|59.3%|
-|`SimpleIntegerLinearProbing`|insert|750000|106.4±2.5ns|83.6%|
-|`flat_hash_set`|insert|750000|24.0±0.5ns|63.6%|
-|`SimpleIntegerLinearProbing`|insert|800000|114.8±3.3ns|76.4%|
-|`flat_hash_set`|insert|800000|24.0±0.6ns|67.8%|
-|`SimpleIntegerLinearProbing`|insert|850000|109.3±2.4ns|81.2%|
-|`flat_hash_set`|insert|850000|23.6±2.4ns|72.1%|
-|`SimpleIntegerLinearProbing`|insert|900000|106.5±6.2ns|86.0%|
-|`flat_hash_set`|insert|900000|23.7±2.2ns|76.3%|
-|`SimpleIntegerLinearProbing`|insert|950000|112.6±2.6ns|77.8%|
-|`flat_hash_set`|insert|950000|29.4±0.4ns|40.3%|
-|`SimpleIntegerLinearProbing`|insert|1000000|109.5±3.6ns|81.9%|
-|`flat_hash_set`|insert|1000000|29.4±1.2ns|42.4%|
-
-## insert
+## Benchmark Results
+### insert
 
 |Size|flatset Time/op|SimpleILP Time/op|SimpleILP Time Change|flatset Memory|SimpleILP Memory|SimpleILP Memory Change|
 |---:|------:|---:|---:|---:|---:|---:|
-|55000|16.5±0.0ns|92.0±1.5ns|+456.5%|590K|522K|-11.4%|
-|60000|22.6±1.0ns|96.4±0.2ns|+325.9%|1180K|609K|-48.3%|
-|65000|22.0±0.1ns|91.8±1.2ns|+317.2%|1180K|609K|-48.3%|
-|70000|20.8±0.6ns|96.8±0.6ns|+365.5%|1180K|711K|-39.7%|
-|75000|19.7±0.2ns|93.2±3.9ns|+372.8%|1180K|711K|-39.7%|
-|80000|20.1±2.5ns|98.6±0.5ns|+390.5%|1180K|829K|-29.7%|
-|85000|18.6±0.1ns|94.9±1.1ns|+409.9%|1180K|829K|-29.7%|
-|90000|18.2±0.9ns|91.7±0.9ns|+404.9%|1180K|829K|-29.7%|
-|95000|17.9±0.0ns|98.2±0.7ns|+449.5%|1180K|968K|-18.0%|
-|100000|17.5±0.6ns|94.5±0.5ns|+438.8%|1180K|968K|-18.0%|
+|55000|16.6±0.2ns|92.6±1.9ns|+457.5%|590K|522K|-11.4%|
+|60000|22.6±0.3ns|96.9±1.0ns|+328.9%|1180K|609K|-48.3%|
+|65000|22.0±0.1ns|91.6±0.5ns|+317.1%|1180K|609K|-48.3%|
+|70000|21.1±1.9ns|97.7±1.8ns|+363.4%|1180K|711K|-39.7%|
+|75000|20.1±0.1ns|93.0±0.8ns|+362.0%|1180K|711K|-39.7%|
+|80000|19.3±0.0ns|99.7±1.2ns|+416.7%|1180K|829K|-29.7%|
+|85000|18.8±0.1ns|95.3±0.4ns|+408.1%|1180K|829K|-29.7%|
+|90000|18.0±1.2ns|90.9±0.4ns|+404.0%|1180K|829K|-29.7%|
+|95000|17.5±0.0ns|99.3±5.9ns|+468.7%|1180K|968K|-18.0%|
+|100000|17.4±1.7ns|95.3±2.1ns|+447.1%|1180K|968K|-18.0%|
+
+### contains-found
+
+|Size|flatset Time/op|SimpleILP Time/op|SimpleILP Time Change|flatset Memory|SimpleILP Memory|SimpleILP Memory Change|
+|---:|------:|---:|---:|---:|---:|---:|
+|55000|4.7±0.5ns|16.5±0.5ns|+250.3%|590K|522K|-11.4%|
+|60000|4.8±0.6ns|14.4±1.1ns|+201.7%|1180K|609K|-48.3%|
+|65000|4.7±0.3ns|16.0±1.3ns|+240.2%|1180K|609K|-48.3%|
+|70000|4.9±0.5ns|14.4±1.0ns|+193.3%|1180K|711K|-39.7%|
+|75000|4.7±0.2ns|16.4±1.1ns|+246.6%|1180K|711K|-39.7%|
+|80000|4.7±0.1ns|14.1±0.8ns|+198.9%|1180K|829K|-29.7%|
+|85000|4.8±0.3ns|15.3±0.9ns|+219.9%|1180K|829K|-29.7%|
+|90000|4.9±0.4ns|17.3±1.4ns|+254.5%|1180K|829K|-29.7%|
+|95000|4.9±0.4ns|14.4±0.7ns|+193.4%|1180K|968K|-18.0%|
+|100000|4.9±0.3ns|16.1±1.0ns|+227.8%|1180K|968K|-18.0%|
+
+### contains-not-found
+
+|Size|flatset Time/op|SimpleILP Time/op|SimpleILP Time Change|flatset Memory|SimpleILP Memory|SimpleILP Memory Change|
+|---:|------:|---:|---:|---:|---:|---:|
+|55000|10.9±0.2ns|15.3±0.9ns|+40.4%|590K|522K|-11.4%|
+|60000|3.4±0.4ns|14.0±0.9ns|+316.2%|1180K|609K|-48.3%|
+|65000|3.4±0.1ns|15.4±0.3ns|+352.1%|1180K|609K|-48.3%|
+|70000|3.6±0.3ns|14.5±2.3ns|+303.6%|1180K|711K|-39.7%|
+|75000|3.7±0.3ns|15.6±1.1ns|+320.5%|1180K|711K|-39.7%|
+|80000|3.9±0.2ns|13.9±0.5ns|+255.3%|1180K|829K|-29.7%|
+|85000|4.3±0.4ns|14.9±0.6ns|+244.3%|1180K|829K|-29.7%|
+|90000|4.9±0.3ns|16.1±0.6ns|+229.6%|1180K|829K|-29.7%|
+|95000|5.6±0.2ns|14.1±0.3ns|+154.7%|1180K|968K|-18.0%|
+|100000|6.9±1.1ns|15.1±0.3ns|+119.8%|1180K|968K|-18.0%|
 
 ## Coding Style
 

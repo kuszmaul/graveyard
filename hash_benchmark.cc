@@ -108,6 +108,7 @@ std::string TimeString(const BenchmarkResult& result) {
 }  // namespace
 
 void HashBenchmarkResults::Print2() const {
+  std::cout << "## Benchmark Results" << std::endl;
   for (std::string_view op : kOps) {
     PrintOp(op);
   }
@@ -136,7 +137,7 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
       sizes.insert(key.input_size);
     }
   }
-  std::cout << "## " << op << std::endl << std::endl;
+  std::cout << "### " << op << std::endl << std::endl;
   std::cout << "|Size|" << kReferenceImplementation << " Time/op|";
   for (auto other : kOtherImplementations) {
     std::cout << other << " Time/op|" << other << " Time Change|";
@@ -177,6 +178,7 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
     }
     std::cout << std::endl;
   }
+  std::cout << std::endl;
 }
 
 bool operator<(const HashBenchmarkResults::Key& a,

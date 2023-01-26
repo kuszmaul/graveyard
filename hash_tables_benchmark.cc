@@ -20,12 +20,8 @@ int main() {
         "SimpleILP", n);
     IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
         results, SwissMemoryEstimator<absl::flat_hash_set<uint64_t>>,
-        //        [](const absl::flat_hash_set<uint64_t>& set) {
-        //  return set.capacity() * (1 +
-        //  sizeof(absl::flat_hash_set<uint64_t>::value_type));
-        //},
         "flatset", n);
   }
-  results.Print();
+  // results.Print();
   results.Print2();
 }

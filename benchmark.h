@@ -38,7 +38,10 @@ class BenchmarkResult {
     double mean = Mean();
     return sqrt(sum_x2_ / n_ - mean * mean);
   }
-  void SetMemoryEstimate(size_t memory_size, size_t minimal_memory_estimate) { memory_size_ = memory_size; minimal_memory_estimate_ = minimal_memory_estimate; }
+  void SetMemoryEstimate(size_t memory_size, size_t minimal_memory_estimate) {
+    memory_size_ = memory_size;
+    minimal_memory_estimate_ = minimal_memory_estimate;
+  }
   size_t MemorySize() const { return memory_size_; }
   size_t MinimalMemoryEstimate() const { return minimal_memory_estimate_; }
 
@@ -46,14 +49,15 @@ class BenchmarkResult {
   size_t n_ = 0;  // number of runs
   std::optional<double> min_ns_ = std::nullopt;
   std::optional<double> max_ns_ = std::nullopt;
-  double sum_x_ = 0;   // sum of `x_i`.
-  double sum_x2_ = 0;  // sum of `x_i_2`.
-  size_t memory_size_ = 0; // an estimate of how much memory was actually used
-  size_t minimal_memory_estimate_ = 0; // and estimate of how much memory is required (e.g., at 100% load factor).
+  double sum_x_ = 0;        // sum of `x_i`.
+  double sum_x2_ = 0;       // sum of `x_i_2`.
+  size_t memory_size_ = 0;  // an estimate of how much memory was actually used
+  size_t minimal_memory_estimate_ = 0;  // and estimate of how much memory is
+                                        // required (e.g., at 100% load factor).
 };
 
 // `fun` returns an estimate of the memory consumed
-BenchmarkResult Benchmark(std::function<size_t()> fun, size_t count, size_t minimal_memory_estimate,
-                          size_t n_runs);
+BenchmarkResult Benchmark(std::function<size_t()> fun, size_t count,
+                          size_t minimal_memory_estimate, size_t n_runs);
 
 #endif  // BENCHMARK_H_

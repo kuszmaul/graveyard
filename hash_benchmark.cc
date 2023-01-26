@@ -7,8 +7,8 @@
 #include <utility>  // for pair
 #include <vector>
 
-#include "contains.h"
 #include "absl/strings/str_format.h"
+#include "contains.h"
 
 namespace {
 // `numbers[n]` contains a set of cardinality `n`.
@@ -52,46 +52,60 @@ const std::vector<uint64_t> GetSomeOtherNumbers(size_t size) {
   return numbers[size] = std::vector(values.begin(), values.end());
 }
 
-
-void HashBenchmarkResults::Add(std::string_view implementation, std::string_view operation,
-                               size_t size, BenchmarkResult result) {
+void HashBenchmarkResults::Add(std::string_view implementation,
+                               std::string_view operation, size_t size,
+                               BenchmarkResult result) {
   Key key = {.implementation = std::string(implementation),
-      .operation = std::string(operation),
-      .input_size = size};
+             .operation = std::string(operation),
+             .input_size = size};
   auto it [[maybe_unused]] = results_.find(key);
   if (it != results_.end()) {
-    std::cerr << "Reinserting " << implementation << " " << operation << " " << size << std::endl;
+    std::cerr << "Reinserting " << implementation << " " << operation << " "
+              << size << std::endl;
   }
   assert(it == results_.end());
   results_.insert({std::move(key), std::move(result)});
 }
 
 void HashBenchmarkResults::Print() const {
-  std::cout << "|Implementation|Operation|Table size|Time/op|Memory Utilization|" << std::endl;
-  std::cout << "|--------------|---------|---------:|------:|-----------------:|" << std::endl;
+  std::cout
+      << "|Implementation|Operation|Table size|Time/op|Memory Utilization|"
+      << std::endl;
+  std::cout
+      << "|--------------|---------|---------:|------:|-----------------:|"
+      << std::endl;
   for (const auto& [key, result] : results_) {
-    std::cout << "|`" << key.implementation << "`|" << key.operation << "|" << key.input_size << "|" << absl::StrFormat("%.1f", result.Mean()) << "±" << absl::StrFormat("%.1f", result.StandardDeviation() * 2) << "ns|" << absl::StrFormat("%+.1f", result.MinimalMemoryEstimate() * 100.0 / result.MemorySize()) << "%|" << std::endl;
+    std::cout << "|`" << key.implementation << "`|" << key.operation << "|"
+              << key.input_size << "|" << absl::StrFormat("%.1f", result.Mean())
+              << "±" << absl::StrFormat("%.1f", result.StandardDeviation() * 2)
+              << "ns|"
+              << absl::StrFormat("%+.1f", result.MinimalMemoryEstimate() *
+                                              100.0 / result.MemorySize())
+              << "%|" << std::endl;
   }
 }
 
 namespace {
 constexpr std::string_view kReferenceImplementation = "flatset";
 const std::vector<std::string_view> kOtherImplementations = {"SimpleILP"};
-const std::vector<std::string_view> kOps = {"insert"};
+const std::vector<std::string_view> kOps = {"insert", "contains-found",
+                                            "contains-not-found"};
 
-template<class Table, class Key>
-const typename Table::value_type& FindOrDie(const Table& table, const Key& key) {
-  auto it = table.find(key );
+template <class Table, class Key>
+const typename Table::value_type& FindOrDie(const Table& table,
+                                            const Key& key) {
+  auto it = table.find(key);
   if (it == table.end()) {
     abort();
   }
   return *it;
 }
 
-std::string TimeString(const BenchmarkResult &result) {
-  return absl::StrFormat("%.1f±%.1fns", result.Mean(), result.StandardDeviation() * 2);
+std::string TimeString(const BenchmarkResult& result) {
+  return absl::StrFormat("%.1f±%.1fns", result.Mean(),
+                         result.StandardDeviation() * 2);
 }
-}
+}  // namespace
 
 void HashBenchmarkResults::Print2() const {
   for (std::string_view op : kOps) {
@@ -105,13 +119,13 @@ std::string MemoryAmount(double actual) {
     return absl::StrFormat("%.0f", actual);
   }
   if (actual < 10000000) {
-    return absl::StrFormat("%.0fK", actual/1000);
+    return absl::StrFormat("%.0fK", actual / 1000);
   }
   return absl::StrFormat("%.0f", actual);
 }
 
 std::string PercentUp(double reference, double other) {
-  return absl::StrFormat("%+.1f%%", 100.0*(other-reference)/reference);
+  return absl::StrFormat("%+.1f%%", 100.0 * (other - reference) / reference);
 }
 }  // namespace
 
@@ -142,23 +156,31 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
   }
   std::cout << std::endl;
   for (size_t size : sizes) {
-    const auto& [ref_key, ref_result] = FindOrDie(results_, Key{std::string(kReferenceImplementation), std::string(op), size});
-    std::cout << "|" << ref_key.input_size << "|" << TimeString(ref_result) << "|";
+    const auto& [ref_key, ref_result] = FindOrDie(
+        results_,
+        Key{std::string(kReferenceImplementation), std::string(op), size});
+    std::cout << "|" << ref_key.input_size << "|" << TimeString(ref_result)
+              << "|";
     for (auto other : kOtherImplementations) {
-      const auto& [other_key, other_result] = FindOrDie(results_, Key{std::string(other), std::string(op), size});
-      std::cout << TimeString(other_result) << "|" << PercentUp(ref_result.Mean(), other_result.Mean()) << "|";
+      const auto& [other_key, other_result] =
+          FindOrDie(results_, Key{std::string(other), std::string(op), size});
+      std::cout << TimeString(other_result) << "|"
+                << PercentUp(ref_result.Mean(), other_result.Mean()) << "|";
     }
     std::cout << MemoryAmount(ref_result.MemorySize()) << "|";
     for (auto other : kOtherImplementations) {
-      const auto& [other_key, other_result] = FindOrDie(results_, Key{std::string(other), std::string(op), size});
+      const auto& [other_key, other_result] =
+          FindOrDie(results_, Key{std::string(other), std::string(op), size});
       std::cout << MemoryAmount(other_result.MemorySize()) << "|";
-      std::cout << PercentUp(ref_result.MemorySize(), other_result.MemorySize()) << "|";
+      std::cout << PercentUp(ref_result.MemorySize(), other_result.MemorySize())
+                << "|";
     }
     std::cout << std::endl;
   }
 }
 
-bool operator<(const HashBenchmarkResults::Key& a, const HashBenchmarkResults::Key& b) {
+bool operator<(const HashBenchmarkResults::Key& a,
+               const HashBenchmarkResults::Key& b) {
   if (a.operation < b.operation) return true;
   if (b.operation < a.operation) return false;
   if (a.input_size < b.input_size) return true;

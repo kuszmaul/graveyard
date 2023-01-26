@@ -41,6 +41,7 @@ class HashBenchmarkResults {
    private:
     friend bool operator<(const Key& a, const Key& b);
   };
+
  private:
   std::map<Key, BenchmarkResult> results_;
 };
@@ -51,7 +52,8 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                          std::string_view implementation, size_t size,
                          size_t n_runs = 20) {
   const auto& values = GetSomeNumbers(size);
-  size_t minimal_memory_consumption = size * sizeof(typename HashSet::value_type);
+  size_t minimal_memory_consumption =
+      size * sizeof(typename HashSet::value_type);
   results.Add(implementation, "insert", size,
               Benchmark(
                   [&]() {
@@ -66,7 +68,7 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
   for (uint64_t value : values) {
     set.insert(value);
   }
-  results.Add(implementation, "contains(true)", size,
+  results.Add(implementation, "contains-found", size,
               Benchmark(
                   [&]() {
                     for (uint64_t value : values) {
@@ -78,7 +80,7 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                   },
                   size, minimal_memory_consumption, n_runs));
   const auto& not_values = GetSomeOtherNumbers(size);
-  results.Add(implementation, "contains(false)", size,
+  results.Add(implementation, "contains-not-found", size,
               Benchmark(
                   [&]() {
                     for (uint64_t value : not_values) {

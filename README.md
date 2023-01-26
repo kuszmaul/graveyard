@@ -80,9 +80,9 @@ bazel run -c opt hash_tables_benchmark
 
 ## insert
 
-|Size |flatset Time/op|SimpleILP Time/op|SimpleILP Time Change|flatset Memory|SimpleILP Memory|
-|----:|--------------:|----------------:|--------------------:|-------------:|---------------:|
-|55000|16.8±0.1ns     |92.5±1.5ns       |+452.0%              |          590K|            522K|
+|Size |flatset Time/op|SimpleILP Time/op|SimpleILP Time Change|flatset Memory|
+|----:|--------------:|----------------:|--------------------:|-------------:|
+|55000|16.8±0.1ns     |92.5±1.5ns       |+452.0%              |          590K|
 
 
 |Size |flatset Time/op|SimpleILP Time/op|SimpleILP Time Change||flatset Memory|SimpleILP Memory|SimpleILP Memory Change|

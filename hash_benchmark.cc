@@ -122,7 +122,7 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
       sizes.insert(key.input_size);
     }
   }
-  std::cout << "## " << op << std::endl;
+  std::cout << "## " << op << std::endl << std::endl;
   std::cout << "|Size|" << kReferenceImplementation << " Time/op|";
   for (auto other : kOtherImplementations) {
     std::cout << other << " Time/op|" << other << " Time Change||";
@@ -134,7 +134,11 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
   std::cout << std::endl;
   std::cout << "|---:|------:|";
   for (auto other [[maybe_unused]] : kOtherImplementations) {
-    std::cout << "---:|---:|---:|---:|---:|";
+    std::cout << "---:|---:|";
+  }
+  std::cout << "|---:|";
+  for (auto other [[maybe_unused]] : kOtherImplementations) {
+    std::cout << "---:|---:|";
   }
   std::cout << std::endl;
   for (size_t size : sizes) {

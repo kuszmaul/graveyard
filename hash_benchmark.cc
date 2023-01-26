@@ -125,7 +125,7 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
   std::cout << "## " << op << std::endl << std::endl;
   std::cout << "|Size|" << kReferenceImplementation << " Time/op|";
   for (auto other : kOtherImplementations) {
-    std::cout << other << " Time/op|" << other << " Time Change||";
+    std::cout << other << " Time/op|" << other << " Time Change|";
   }
   std::cout << kReferenceImplementation << " Memory|";
   for (auto other : kOtherImplementations) {
@@ -136,7 +136,7 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
   for (auto other [[maybe_unused]] : kOtherImplementations) {
     std::cout << "---:|---:|";
   }
-  std::cout << "|---:|";
+  std::cout << "---:|";
   for (auto other [[maybe_unused]] : kOtherImplementations) {
     std::cout << "---:|---:|";
   }
@@ -148,7 +148,7 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
       const auto& [other_key, other_result] = FindOrDie(results_, Key{std::string(other), std::string(op), size});
       std::cout << TimeString(other_result) << "|" << PercentUp(ref_result.Mean(), other_result.Mean()) << "|";
     }
-    std::cout << "|" << MemoryAmount(ref_result.MemorySize()) << "|";
+    std::cout << MemoryAmount(ref_result.MemorySize()) << "|";
     for (auto other : kOtherImplementations) {
       const auto& [other_key, other_result] = FindOrDie(results_, Key{std::string(other), std::string(op), size});
       std::cout << MemoryAmount(other_result.MemorySize()) << "|";

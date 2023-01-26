@@ -13,6 +13,7 @@ class SimpleIntegerLinearProbing {
   // Ranges from 3/4 full to 7/8 full.
  public:
   using value_type = uint64_t;
+  void reserve(size_t count);
   bool insert(uint64_t value);
   bool contains(uint64_t value) const;
   size_t size() const;
@@ -33,6 +34,14 @@ class SimpleIntegerLinearProbing {
       slots_;  // slots_.size() may be bigger than slot_count_.
 };
 
+void SimpleIntegerLinearProbing::reserve(size_t count) {
+  if (occupied_slot_count_ * 8 > count * 7) {
+    rehash(count);
+  }
+}
+
+static constexpr bool DEBUG = true;
+
 bool SimpleIntegerLinearProbing::insert(uint64_t value) {
   if (value == kMax) {
     if (max_is_present_) {
@@ -41,7 +50,7 @@ bool SimpleIntegerLinearProbing::insert(uint64_t value) {
     max_is_present_ = true;
     return true;
   }
-  // If (size_ + 1) > 7*8 slot_count_ then rehash
+  // If (size_ + 1) > 7*8 slot_count_ then rehash.
   if ((occupied_slot_count_ + 1) * 8 > slot_count_ * 7) {
     if (0)
       std::cerr << "osc=" << occupied_slot_count_
@@ -50,16 +59,27 @@ bool SimpleIntegerLinearProbing::insert(uint64_t value) {
     rehash(ceil((occupied_slot_count_ + 1) * 4, 3));
   }
   size_t slot = size_t((__int128(value) * __int128(slot_count_)) >> 64);
-  if (0)
-    std::cerr << "value=" << value << " slot_count_=" << slot_count_
-              << " slot_=" << slot << std::endl;
+  if (DEBUG && slot >= slots_.size()) {
+    std::cerr << "Overflow 2: slot_count_=" << slot_count_ << " slot=" << slot << " value=" << value << std::endl;
+    abort();
+  }
   for (; slots_[slot] <= value; ++slot) {
     assert(slot < slots_.size());
     if (slots_[slot] == value) {
       return false;  // already there.
     }
+    if (DEBUG && slot + 1 >= slots_.size()) {
+      std::cerr << "Overflow 3" << std::endl;
+      abort();
+    }
   }
   while (true) {
+    // Make sure that we don't overflow and also that there is one more slot
+    // left over at the end (to serve as a sentinal to stop lookup).
+    if (DEBUG && slot + 1 >= slots_.size()) {
+      std::cerr << "Overflow" << std::endl;
+      abort();
+    }
     assert(slot < slots_.size());
     if (0) std::cerr << " Storing " << value << " at " << slot << std::endl;
     std::swap(value, slots_[slot]);
@@ -87,10 +107,18 @@ bool SimpleIntegerLinearProbing::contains(uint64_t value) const {
     return max_is_present_;
   }
   size_t slot = size_t((__int128(value) * __int128(slot_count_)) >> 64);
+  if (DEBUG && slot >= slots_.size()) {
+    std::cerr << "contains overflow" << std::endl;
+    abort();
+  }
   for (; slots_[slot] <= value; ++slot) {
     assert(slot < slots_.size());
     if (slots_[slot] == value) {
       return true;  // already there.
+    }
+    if (DEBUG && slot+1 >= slots_.size()) {
+      std::cerr << "contains overflow" << std::endl;
+      abort();
     }
   }
   return false;

@@ -64,6 +64,17 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                     return memory_estimator(set);
                   },
                   size, minimal_memory_consumption, n_runs));
+  results.Add(implementation, "reserved-insert", size,
+              Benchmark(
+                  [&]() {
+                    HashSet set;
+                    set.reserve(values.size());
+                    for (uint64_t value : values) {
+                      set.insert(value);
+                    }
+                    return memory_estimator(set);
+                  },
+                  size, minimal_memory_consumption, n_runs));
   HashSet set;
   for (uint64_t value : values) {
     set.insert(value);

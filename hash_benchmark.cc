@@ -88,7 +88,7 @@ void HashBenchmarkResults::Print() const {
 namespace {
 constexpr std::string_view kReferenceImplementation = "flatset";
 const std::vector<std::string_view> kOtherImplementations = {"SimpleILP"};
-const std::vector<std::string_view> kOps = {"insert", "contains-found",
+const std::vector<std::string_view> kOps = {"insert", "reserved-insert", "contains-found",
                                             "contains-not-found"};
 
 template <class Table, class Key>
@@ -119,10 +119,13 @@ std::string MemoryAmount(double actual) {
   if (actual < 10000) {
     return absl::StrFormat("%.0f", actual);
   }
-  if (actual < 10000000) {
+  if (actual < 10'000'000) {
     return absl::StrFormat("%.0fK", actual / 1000);
   }
-  return absl::StrFormat("%.0f", actual);
+  if (actual < 10'000'000'000) {
+    return absl::StrFormat("%.0fM", actual / 1'000'000);
+  }
+  return absl::StrFormat("%.0fG", actual / 1'000'000'000);
 }
 
 std::string PercentUp(double reference, double other) {

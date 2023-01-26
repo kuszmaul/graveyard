@@ -75,8 +75,8 @@ void HashBenchmarkResults::Print() const {
 }
 
 namespace {
-constexpr std::string_view kReferenceImplementation = "flat_hash_set";
-const std::vector<std::string_view> kOtherImplementations = {"SimpleIntegerLinearProbing"};
+constexpr std::string_view kReferenceImplementation = "flatset";
+const std::vector<std::string_view> kOtherImplementations = {"SimpleILP"};
 const std::vector<std::string_view> kOps = {"insert"};
 
 template<class Table, class Key>
@@ -99,6 +99,22 @@ void HashBenchmarkResults::Print2() const {
   }
 }
 
+namespace {
+std::string MemoryAmount(double actual) {
+  if (actual < 10000) {
+    return absl::StrFormat("%.0f", actual);
+  }
+  if (actual < 10000000) {
+    return absl::StrFormat("%.0fK", actual/1000);
+  }
+  return absl::StrFormat("%.0f", actual);
+}
+
+std::string PercentUp(double reference, double other) {
+  return absl::StrFormat("%+.1f%%", 100.0*(other-reference)/reference);
+}
+}  // namespace
+
 void HashBenchmarkResults::PrintOp(std::string_view op) const {
   std::set<size_t> sizes;
   for (const auto& [key, result] : results_) {
@@ -107,11 +123,14 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
     }
   }
   std::cout << "## " << op << std::endl;
-  std::cout << "|Size|Time/op|Memory|";
+  std::cout << "|Size|" << kReferenceImplementation << " Time/op|";
   for (auto other : kOtherImplementations) {
-    std::cout << other << " Time/op|Time Change|";
+    std::cout << other << " Time/op|" << other << " Time Change||";
   }
-  std::cout << "Memory|Memory Change|";
+  std::cout << kReferenceImplementation << " Memory|";
+  for (auto other : kOtherImplementations) {
+    std::cout << other << " Memory|" << other << " Memory Change|";
+  }
   std::cout << std::endl;
   std::cout << "|---:|------:|";
   for (auto other [[maybe_unused]] : kOtherImplementations) {
@@ -120,36 +139,20 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
   std::cout << std::endl;
   for (size_t size : sizes) {
     const auto& [ref_key, ref_result] = FindOrDie(results_, Key{std::string(kReferenceImplementation), std::string(op), size});
-    std::cout << "|" << ref_key.input_size << "|" << TimeString(ref_result) << "|" << absl::StrFormat("%.1f%%", ref_result.MinimalMemoryEstimate() * 100.0 / ref_result.MemorySize()) <<
-        "|";
-    double ref_memory_size = ref_result.MemorySize();
+    std::cout << "|" << ref_key.input_size << "|" << TimeString(ref_result) << "|";
     for (auto other : kOtherImplementations) {
       const auto& [other_key, other_result] = FindOrDie(results_, Key{std::string(other), std::string(op), size});
-      double other_memory_size = other_result.MemorySize();
-      std::cout << TimeString(other_result) << "|" << absl::StrFormat("%+.1f%%", 100.0 * (other_result.Mean() - ref_result.Mean()) / ref_result.Mean()) << "|";
-      std::cout << absl::StrFormat("%.1f%%", other_result.MinimalMemoryEstimate() * 100.0 / other_memory_size) << "|";
-      if (ref_result.MinimalMemoryEstimate() != other_result.MinimalMemoryEstimate()) abort();
-      std::cout << absl::StrFormat("%+.1f%%", 100.0 * (other_memory_size - ref_memory_size) / ref_memory_size) << "|";
+      std::cout << TimeString(other_result) << "|" << PercentUp(ref_result.Mean(), other_result.Mean()) << "|";
+    }
+    std::cout << "|" << MemoryAmount(ref_result.MemorySize()) << "|";
+    for (auto other : kOtherImplementations) {
+      const auto& [other_key, other_result] = FindOrDie(results_, Key{std::string(other), std::string(op), size});
+      std::cout << MemoryAmount(other_result.MemorySize()) << "|";
+      std::cout << PercentUp(ref_result.MemorySize(), other_result.MemorySize()) << "|";
     }
     std::cout << std::endl;
   }
 }
-#if 0
-  std::string_view kSimple = "SimpleIntegerLinearProbing";
-  std::string_view kFlat = "flat_hash_set";
-  std::string_view kInsert = "insert";
-  std::set<size_t> sizes;
-  for (size_t size : sizes) {
-    auto flat = results_.find(Key{kFlat, kInsert, size});
-    assert(flat != results_.end());
-
-    auto simple = results_.find(Key{kSimple, kInsert, size});
-    assert(simple != results_.end());
-
-    std::cout << "|" << size << "|" << PrintTime(*flat) << "|" << PrintTime(*simple) << "|" <<
-  }
-}
-#endif
 
 bool operator<(const HashBenchmarkResults::Key& a, const HashBenchmarkResults::Key& b) {
   if (a.operation < b.operation) return true;

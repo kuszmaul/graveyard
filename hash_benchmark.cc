@@ -109,9 +109,9 @@ void HashBenchmarkResults::PrintOp(std::string_view op) const {
   std::cout << "## " << op << std::endl;
   std::cout << "|Size|Time/op|Memory|";
   for (auto other : kOtherImplementations) {
-    std::cout << other << " Time/op|Change|";
+    std::cout << other << " Time/op|Time Change|";
   }
-  std::cout << "Memory|Change|";
+  std::cout << "Memory|Memory Change|";
   std::cout << std::endl;
   std::cout << "|---:|------:|";
   for (auto other [[maybe_unused]] : kOtherImplementations) {

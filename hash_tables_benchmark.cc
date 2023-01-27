@@ -6,6 +6,10 @@
 #include "hash_benchmark.h"  // for IntHashSetBenchmark
 #include "simple_integer_linear_probing.h"
 
+struct IdentityHash {
+  size_t operator()(uint64_t v) const { return v; }
+};
+
 int main() {
   constexpr size_t N = 10'000'000;
   HashBenchmarkResults results;
@@ -21,7 +25,11 @@ int main() {
     IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
         results, SwissMemoryEstimator<absl::flat_hash_set<uint64_t>>,
         "flatset", n);
+    using FlatNoHash = absl::flat_hash_set<uint64_t, IdentityHash>;
+    IntHashSetBenchmark<FlatNoHash>(
+        results, SwissMemoryEstimator<FlatNoHash>,
+        "flatset-nohash", n);
   }
   // results.Print();
-  results.Print2();
+  results.Print2(N);
 }

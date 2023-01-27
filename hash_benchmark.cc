@@ -11,45 +11,38 @@
 #include "contains.h"
 
 namespace {
-// `numbers[n]` contains a set of cardinality `n`.
-std::unordered_map<size_t, std::vector<uint64_t>> numbers;
-// `other_numbers[n]` contains a set of cardinality `n` and doesn't intersect
-// `numbers[i]`.
-std::unordered_map<size_t, std::vector<uint64_t>> other_numbers;
 std::random_device r;
 std::default_random_engine e1(r());
 std::uniform_int_distribution<uint64_t> uniform_dist;
 }  // namespace
 
-const std::vector<uint64_t> GetSomeNumbers(size_t size) {
-  {
-    auto it = numbers.find(size);
-    if (it != numbers.end()) {
-      return it->second;
-    }
-  }
-  std::unordered_set<uint64_t> values;
-  while (values.size() < size) {
-    values.insert(uniform_dist(e1));
-  }
-  return numbers[size] = std::vector(values.begin(), values.end());
-}
-
-const std::vector<uint64_t> GetSomeOtherNumbers(size_t size) {
-  {
-    auto it = other_numbers.find(size);
-    if (it != other_numbers.end()) {
-      return it->second;
-    }
-  }
-  std::unordered_set<uint64_t> values;
+std::vector<uint64_t> GetSomeNumbers(size_t size) {
+  std::vector<uint64_t> vec;
+  absl::flat_hash_set<uint64_t> values;
   while (values.size() < size) {
     uint64_t value = uniform_dist(e1);
-    if (!Contains(numbers, value)) {
-      values.insert(value);
+    auto [it, inserted] = values.insert(value);
+    if (inserted) {
+      vec.push_back(value);
     }
   }
-  return numbers[size] = std::vector(values.begin(), values.end());
+  return vec;
+}
+
+std::vector<uint64_t> GetSomeOtherNumbers(const std::vector<uint64_t>& other_numbers) {
+  absl::flat_hash_set<uint64_t> other(other_numbers.begin(), other_numbers.end());
+  absl::flat_hash_set<uint64_t> values;
+  std::vector<uint64_t> vec;
+  while (values.size() < other_numbers.size()) {
+    uint64_t value = uniform_dist(e1);
+    if (!other.contains(value)) {
+      auto [it, inserted] = values.insert(value);
+      if (inserted) {
+        vec.push_back(value);
+      }
+    }
+  }
+  return vec;
 }
 
 void HashBenchmarkResults::Add(std::string_view implementation,
@@ -87,7 +80,7 @@ void HashBenchmarkResults::Print() const {
 
 namespace {
 constexpr std::string_view kReferenceImplementation = "flatset";
-const std::vector<std::string_view> kOtherImplementations = {"SimpleILP"};
+const std::vector<std::string_view> kOtherImplementations = {"SimpleILP", "flatset-nohash"};
 const std::vector<std::string_view> kOps = {"insert", "reserved-insert", "contains-found",
                                             "contains-not-found"};
 
@@ -107,8 +100,8 @@ std::string TimeString(const BenchmarkResult& result) {
 }
 }  // namespace
 
-void HashBenchmarkResults::Print2() const {
-  std::cout << "## Benchmark Results" << std::endl;
+void HashBenchmarkResults::Print2(size_t N) const {
+  std::cout << "## Benchmark Results: N=" << N << std::endl;
   for (std::string_view op : kOps) {
     PrintOp(op);
   }

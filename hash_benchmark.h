@@ -15,23 +15,28 @@
 #include <utility>      // for move
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "benchmark.h"
 
+// These functions don't return a flat-hash-set since the sort order will be
+// correlated and make the flat hash set look much faster than it is.  The
+// returned vector is full or random integers, in a random order.
+//
 // Returns a set of distinct number of cardinality `size`.  Returns the same set
 // if we run this several times within a single process (but the set may be
 // different from run-to-run).
-const std::vector<uint64_t> GetSomeNumbers(size_t size);
+std::vector<uint64_t> GetSomeNumbers(size_t size);
 // Return a set of distinct numbers of cardinality `size`, but it doesn't
 // interesect `GetSomeNumbers(size)`.  Return the same set within several runs
 // in the same process.
-const std::vector<uint64_t> GetSomeOtherNumbers(size_t size);
+std::vector<uint64_t> GetSomeOtherNumbers(const std::vector<uint64_t>& other_numbers);
 
 class HashBenchmarkResults {
  public:
   void Add(std::string_view implementation, std::string_view operation,
            size_t size, BenchmarkResult result);
   void Print() const;
-  void Print2() const;
+  void Print2(size_t N) const;
   void PrintOp(std::string_view op) const;
   struct Key {
     std::string implementation;
@@ -90,7 +95,7 @@ void IntHashSetBenchmark(HashBenchmarkResults& results,
                     return memory_estimator(set);
                   },
                   size, minimal_memory_consumption, n_runs));
-  const auto& not_values = GetSomeOtherNumbers(size);
+  const auto& not_values = GetSomeOtherNumbers(values);
   results.Add(implementation, "contains-not-found", size,
               Benchmark(
                   [&]() {

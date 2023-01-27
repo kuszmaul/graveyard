@@ -13,17 +13,17 @@ std::default_random_engine e1(r());
 std::uniform_int_distribution<uint64_t> uniform_dist;
 }  // namespace
 
-std::vector<uint64_t> GetSomeNumbers(size_t size) {
-  std::vector<uint64_t> vec;
+void GetSomeNumbers(size_t size, std::vector<uint64_t> &result) {
+  result.clear();
+  result.reserve(size);
   absl::flat_hash_set<uint64_t> values;
   while (values.size() < size) {
     uint64_t value = uniform_dist(e1);
     auto [it, inserted] = values.insert(value);
     if (inserted) {
-      vec.push_back(value);
+      result.push_back(value);
     }
   }
-  return vec;
 }
 
 std::vector<uint64_t> GetSomeOtherNumbers(

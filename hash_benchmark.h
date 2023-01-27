@@ -20,7 +20,7 @@
 // Returns a set of distinct number of cardinality `size`.  Returns the same set
 // if we run this several times within a single process (but the set may be
 // different from run-to-run).
-std::vector<uint64_t> GetSomeNumbers(size_t size);
+void GetSomeNumbers(size_t size, std::vector<uint64_t>& result);
 // Return a set of distinct numbers of cardinality `size`, but it doesn't
 // interesect `GetSomeNumbers(size)`.  Return the same set within several runs
 // in the same process.
@@ -34,7 +34,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
   for (size_t size = 1; size < 200; ++size) {
     sizes.push_back(size);
   }
-  for (size_t size = 200; size < 1'000'00; size += size / 100) {
+  for (size_t size = 200; size < 10'000'000; size += size / 100) {
     sizes.push_back(size);
   }
   //LOG(INFO) << "Opening " << absl::StrCat(implementation, ".data");
@@ -52,7 +52,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
       insert_output,
       [&](size_t size) {
         set = HashSet();
-        values = GetSomeNumbers(size);
+        GetSomeNumbers(size, values);
       },
       [&]() {
         for (uint64_t value : values) {
@@ -68,7 +68,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
       [&](size_t size) {
         set = HashSet();
         set.reserve(size);
-        values = GetSomeNumbers(size);
+        GetSomeNumbers(size, values);
       },
       [&]() {
         for (uint64_t value : values) {
@@ -82,7 +82,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
       found_output,
       [&](size_t size) {
         set = HashSet();
-        values = GetSomeNumbers(size);
+        GetSomeNumbers(size, values);
         for (uint64_t value : values) {
           set.insert(value);
         }
@@ -101,7 +101,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
       notfound_output,
       [&](size_t size) {
         set = HashSet();
-        values = GetSomeNumbers(size);
+        GetSomeNumbers(size, values);
         other_numbers = GetSomeOtherNumbers(values);
         for (uint64_t value : values) {
           set.insert(value);

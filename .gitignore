@@ -39,3 +39,5 @@ bazel-bin
 bazel-graveyard
 bazel-out
 bazel-testlogs
+
+fit.log

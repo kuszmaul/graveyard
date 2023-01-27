@@ -149,12 +149,12 @@
 </g>
 	<g id="gnuplot_plot_1" ><title>flatset</title>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<g transform="translate(198.38,75.91)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="end">
+	<g transform="translate(257.72,75.91)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="end">
 		<text><tspan font-family="Arial" >flatset</tspan></text>
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<path stroke='rgb(148,   0, 211)'  d='M206.77,72.01 L249.33,72.01 M72.53,54.01 L72.53,318.64 L72.53,356.50 L72.53,344.12 L72.53,350.93 L72.53,366.73
+	<path stroke='rgb(148,   0, 211)'  d='M89.31,72.01 L131.87,72.01 M72.53,54.01 L72.53,318.64 L72.53,356.50 L72.53,344.12 L72.53,350.93 L72.53,366.73
 		L72.53,370.83 L72.53,356.09 L72.53,364.82 L72.53,356.46 L72.53,368.70 L72.53,373.59 L72.53,376.12 L72.53,372.93
 		L72.53,355.43 L72.53,358.39 L72.53,368.08 L72.53,366.94 L72.53,371.86 L72.53,375.43 L72.53,372.11 L72.53,376.07
 		L72.53,372.48 L72.53,375.43 L72.53,377.36 L72.53,378.29 L72.53,375.46 L72.53,381.00 L72.53,362.70 L72.53,367.22
@@ -322,12 +322,12 @@
 	</g>
 	<g id="gnuplot_plot_2" ><title>flatset-nohash</title>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<g transform="translate(198.38,93.91)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="end">
+	<g transform="translate(257.72,93.91)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="end">
 		<text><tspan font-family="Arial" >flatset-nohash</tspan></text>
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<path stroke='rgb(  0, 158, 115)'  d='M206.77,90.01 L249.33,90.01 M72.53,54.01 L72.53,197.68 L72.53,322.12 L72.53,298.68 L72.53,316.30 L72.53,352.00
+	<path stroke='rgb(  0, 158, 115)'  d='M89.31,90.01 L131.87,90.01 M72.53,54.01 L72.53,197.68 L72.53,322.12 L72.53,298.68 L72.53,316.30 L72.53,352.00
 		L72.53,355.39 L72.53,323.24 L72.53,342.04 L72.53,343.56 L72.53,347.83 L72.53,344.63 L72.53,352.69 L72.53,355.91
 		L72.53,341.03 L72.53,344.88 L72.53,350.96 L72.53,347.97 L72.53,354.73 L72.53,359.47 L72.53,362.29 L72.53,359.16
 		L72.53,363.94 L72.53,364.28 L72.53,363.26 L72.53,370.26 L72.53,363.82 L72.53,365.39 L72.53,350.29 L72.53,355.15
@@ -495,12 +495,12 @@
 	</g>
 	<g id="gnuplot_plot_3" ><title>SimpleILP</title>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<g transform="translate(198.38,111.91)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="end">
+	<g transform="translate(257.72,111.91)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="end">
 		<text><tspan font-family="Arial" >SimpleILP</tspan></text>
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
-	<path stroke='rgb( 86, 180, 233)'  d='M206.77,108.01 L249.33,108.01 M72.53,54.01 L72.53,111.11 L72.53,148.56 L72.53,155.62 L72.53,231.08 L72.53,212.62
+	<path stroke='rgb( 86, 180, 233)'  d='M89.31,108.01 L131.87,108.01 M72.53,54.01 L72.53,111.11 L72.53,148.56 L72.53,155.62 L72.53,231.08 L72.53,212.62
 		L72.53,238.91 L72.53,189.09 L72.53,245.16 L72.53,157.28 L72.53,191.88 L72.53,213.13 L72.53,191.64 L72.53,206.10
 		L72.53,226.91 L72.53,168.90 L72.53,226.94 L72.53,218.15 L72.53,216.23 L72.53,201.06 L72.53,207.45 L72.53,216.38
 		L72.53,231.69 L72.53,202.13 L72.53,211.29 L72.53,219.55 L72.53,204.41 L72.53,235.35 L72.53,183.54 L72.53,54.01

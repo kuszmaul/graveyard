@@ -9,15 +9,32 @@ Revisted: Tombstones Mark the Death of Primary Clustering".  July 2021, 2021
 The big question is whether Graveyard hashing can compete with industrial-grade
 hash tables such as Abseil or F11.
 
-## Benchmark
+## Benchmarks for unordered set of `uint64_t`.
+
+`SimpleILP` is simple linear probing running at between $3/4$ and $7/8$ load
+factor.  This table has no vector instructions.  It uses `UINT64_MAX` as a
+not-present sentinal (and special cases the case of `UINT64_MAX` by storing a
+bit in the header.
+
+`flatset` is `absl::flat_hash_set`.
+
+Insertions for `SimpleILP` are quite a bit slower.
 
 ![Insertion time](/plots/insert-time.svg)
 
+With a reserve it doesn't make that much difference.
+
 ![Insertion With Reserve time](/plots/reserved-insert-time.svg)
+
+Find is about the same.  It's suprising that the vector instructions don't help much.
 
 ![Successful find time](/plots/found-time.svg)
 
+For unsucssful find, the vector instructions in Abseil seem to help.
+
 ![Unsuccessful find time](/plots/notfound-time.svg)
+
+On average `SimpleILP` saves about 36% memory.
 
 ![Memory](/plots/memory.svg)
 

@@ -22,19 +22,24 @@ Insertions for `SimpleILP` are quite a bit slower.
 
 ![Insertion time](/plots/insert-time.svg)
 
-With a reserve it doesn't make that much difference.
+Reserve closes the gap, showing that the performance difference is caused by the
+SimpleILP doing more rehashes.  The cost of the hash function shows up here,
+where `flatset` and `flatset-nohash` have difference performance sine the the
+nohash code doesn't have to call the hash function.
 
 ![Insertion With Reserve time](/plots/reserved-insert-time.svg)
 
-Find is about the same.  It's suprising that the vector instructions don't help much.
+Find is about the same.  It's surprising that the vector instructions in
+`flatset` don't seem to matter much.
 
 ![Successful find time](/plots/found-time.svg)
 
-For unsucssful find, the vector instructions in Abseil seem to help.
+For unsucessful find, here the `flatset` vector instructions seem to help.
 
 ![Unsuccessful find time](/plots/notfound-time.svg)
 
-On average `SimpleILP` saves about 36% memory.
+On average `SimpleILP` saves about 36% memory.  The curve fit is a linear fit
+minimizign the sum of the squares of the differences.
 
 ![Memory](/plots/memory.svg)
 

@@ -67,6 +67,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
       reserved_insert_output,
       [&](size_t size) {
         set = HashSet();
+        if (0) std::cerr << "Reserving " << size << std::endl;
         set.reserve(size);
         GetSomeNumbers(size, values);
       },

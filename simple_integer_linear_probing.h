@@ -39,8 +39,11 @@ class SimpleIntegerLinearProbing {
 };
 
 void SimpleIntegerLinearProbing::reserve(size_t count) {
-  if (occupied_slot_count_ * 8 > count * 7) {
+  // If size * 7 /8 < count  then rehash
+  if (slots_.size() * 7 < count * 8) {
+    if (0) std::cerr << "reserve: Rehashing from " << slots_.size() << " to " << count << std::endl;
     rehash(count);
+    if (0) std::cerr << "size=" << slots_.size();
   }
 }
 
@@ -111,7 +114,7 @@ bool SimpleIntegerLinearProbing::insert(uint64_t value) {
 }
 
 void SimpleIntegerLinearProbing::rehash(size_t slot_count) {
-  if (0) std::cerr << "Rehashing to " << slot_count << std::endl;
+  if (0) std::cerr << "Rehashing from " << slot_count_ << " to " << slot_count << std::endl;
   std::vector<uint64_t> slots(slot_count + 64, kMax);
   slot_count_ = slot_count;
   std::swap(slots_, slots);

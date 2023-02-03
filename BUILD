@@ -1,24 +1,29 @@
 cc_binary(
-  name = "simple_integer_linear_probing_benchmark",
-  srcs = ["simple_integer_linear_probing_benchmark.cc"],
-  deps = [":simple_integer_linear_probing",
-          ":hash_benchmark",
-  ],
+    name = "simple_integer_linear_probing_benchmark",
+    srcs = ["simple_integer_linear_probing_benchmark.cc"],
+    deps = [
+        ":hash_benchmark",
+        ":simple_integer_linear_probing",
+    ],
 )
 
 cc_binary(
-  name = "flat_hash_set_benchmark",
-  srcs = ["flat_hash_set_benchmark.cc"],
-  deps = [":hash_benchmark",
-          "@com_google_absl//absl/container:flat_hash_set"],
+    name = "flat_hash_set_benchmark",
+    srcs = ["flat_hash_set_benchmark.cc"],
+    deps = [
+        ":hash_benchmark",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
 )
 
 cc_binary(
-  name = "hash_tables_benchmark",
-  srcs = ["hash_tables_benchmark.cc"],
-  deps = [":hash_benchmark",
-          ":simple_integer_linear_probing",
-          "@com_google_absl//absl/container:flat_hash_set"],
+    name = "hash_tables_benchmark",
+    srcs = ["hash_tables_benchmark.cc"],
+    deps = [
+        ":hash_benchmark",
+        ":simple_integer_linear_probing",
+        "@com_google_absl//absl/container:flat_hash_set",
+    ],
 )
 
 cc_library(
@@ -28,29 +33,29 @@ cc_library(
 
 cc_library(
     name = "hash_benchmark",
-    hdrs = ["hash_benchmark.h",],
-    srcs = ["hash_benchmark.cc",],
+    srcs = ["hash_benchmark.cc"],
+    hdrs = ["hash_benchmark.h"],
     deps = [
         ":benchmark",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/log:log",
     ],
 )
 
 cc_library(
     name = "benchmark",
-    hdrs = ["benchmark.h",],
-    srcs = ["benchmark.cc",],
+    srcs = ["benchmark.cc"],
+    hdrs = ["benchmark.h"],
 )
 
 cc_library(
     name = "contains",
-    hdrs = ["contains.h",],
+    hdrs = ["contains.h"],
 )
 
 cc_binary(
     name = "folly_test",
     srcs = ["folly_test.cc"],
-    deps = ["@folly//folly/container:container",]
+    deps = ["@folly//folly/container:F14Set"],
 )

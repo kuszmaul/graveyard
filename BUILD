@@ -48,3 +48,9 @@ cc_library(
     name = "contains",
     hdrs = ["contains.h",],
 )
+
+cc_binary(
+    name = "folly_test",
+    srcs = ["folly_test.cc"],
+    deps = ["@folly//folly/container:container",]
+)

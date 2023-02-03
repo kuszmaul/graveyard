@@ -30,3 +30,8 @@ http_archive(
     strip_prefix = "benchmark-bf585a2789e30585b4e3ce6baf11ef2750b54677",
     sha256 = "2a778d821997df7d8646c9c59b8edb9a573a6e04c534c01892a40aa524a7b68c",
 )
+
+local_repository(
+    name = "folly",
+    path = "/home/bradleybear/github/folly",
+)

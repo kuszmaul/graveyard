@@ -63,3 +63,19 @@ Keep includes clean with iwyu:
 ```shell
 $ for x in *.h *.cc; do include-what-you-use -x c++ -std=c++17 -I/home/bradleybear/.cache/bazel/_bazel_bradleybear/06d43ecbdaa4800474a92f4f59e8b2b3/external/com_google_absl/ $x; done
 ```
+
+#### Folly install notes
+
+python3 ./build/fbcode_builder/getdeps.py --allow-system-packages build --install-prefix ~/folly2
+(cd /usr/include;sudo ln -s ~/folly2/folly/include/folly)
+
+python3 ./build/fbcode_builder/getdeps.py --allow-system-packages build --install-prefix=
+
+----
+Try again 2023-02-02 15:55:13
+
+sudo python3 ./build/fbcode_builder/getdeps.py --allow-system-packages build --install-prefix /usr/local
+
+folly is a pain...
+
+----

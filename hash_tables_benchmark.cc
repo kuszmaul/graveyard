@@ -3,6 +3,7 @@
 #include <vector>   // for vector
 
 #include "absl/container/flat_hash_set.h"
+#include "folly/container/F14Set.h"
 #include "hash_benchmark.h"  // for IntHashSetBenchmark
 #include "simple_integer_linear_probing.h"
 
@@ -21,4 +22,7 @@ int main() {
   using FlatNoHash = absl::flat_hash_set<uint64_t, IdentityHash>;
   IntHashSetBenchmark<FlatNoHash>(SwissMemoryEstimator<FlatNoHash>,
                                   "flatset-nohash");
+  using F14 = folly::F14FastSet<uint64_t>;
+  IntHashSetBenchmark<F14>(F14MemoryEstimator<F14>,
+                           "F14");
 }

@@ -18,28 +18,36 @@ bit in the header.
 
 `flatset` is `absl::flat_hash_set`.
 
-Insertions for `SimpleILP` are quite a bit slower.
+`F14` is `folly::F14FastSet`.
+
+Insertions for `SimpleILP` are the slowest, and F14 is slow too.
 
 ![Insertion time](/plots/insert-time.svg)
 
-Reserve closes the gap, showing that the performance difference is caused by the
-SimpleILP doing more rehashes.  The cost of the hash function shows up here,
-where `flatset` and `flatset-nohash` have difference performance sine the the
-nohash code doesn't have to call the hash function.
+Reserve closes the gap for `SimpleILP`, showing that the performance difference
+is caused by the SimpleILP doing more rehashes.  The cost of the hash function
+shows up here, where `flatset` and `flatset-nohash` have difference performance
+since the the nohash code doesn't have to call the hash function. F14 doesn't
+seem to gain much from reserve.
 
 ![Insertion With Reserve time](/plots/reserved-insert-time.svg)
 
 Find is about the same.  It's surprising that the vector instructions in
-`flatset` don't seem to matter much.
+`flatset` don't seem to matter much.  F14 is the fasted for large tables, likely
+because of its strategy to have only one cache miss in most cases.
 
 ![Successful find time](/plots/found-time.svg)
 
 For unsucessful find, here the `flatset` vector instructions seem to help.
+`F14` is slow in this case: probably because it needs one cache miss to process
+14 elements, whereas `flatset` can process an average of 32 elements in the
+first cache miss.
 
 ![Unsuccessful find time](/plots/notfound-time.svg)
 
 On average `SimpleILP` saves about 36% memory.  The curve fit is a linear fit
-minimizign the sum of the squares of the differences.
+minimizign the sum of the squares of the differences.  `F14` uses the same
+amount of memory as `flatset`: they are both restricted to powers of two.
 
 ![Memory](/plots/memory.svg)
 
@@ -63,19 +71,3 @@ Keep includes clean with iwyu:
 ```shell
 $ for x in *.h *.cc; do include-what-you-use -x c++ -std=c++17 -I/home/bradleybear/.cache/bazel/_bazel_bradleybear/06d43ecbdaa4800474a92f4f59e8b2b3/external/com_google_absl/ $x; done
 ```
-
-#### Folly install notes
-
-python3 ./build/fbcode_builder/getdeps.py --allow-system-packages build --install-prefix ~/folly2
-(cd /usr/include;sudo ln -s ~/folly2/folly/include/folly)
-
-python3 ./build/fbcode_builder/getdeps.py --allow-system-packages build --install-prefix=
-
-----
-Try again 2023-02-02 15:55:13
-
-sudo python3 ./build/fbcode_builder/getdeps.py --allow-system-packages build --install-prefix /usr/local
-
-folly is a pain...
-
-----

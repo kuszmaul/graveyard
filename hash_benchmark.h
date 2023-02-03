@@ -124,4 +124,9 @@ size_t SwissMemoryEstimator(const HashSet& table) {
   return table.capacity() * (1 + sizeof(typename HashSet::value_type));
 }
 
+template <class HashSet>
+size_t F14MemoryEstimator(const HashSet& table) {
+  return table.getAllocatedMemorySize();
+}
+
 #endif  // HASH_BENCHMARK_H_

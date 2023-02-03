@@ -21,6 +21,7 @@ cc_binary(
     srcs = ["hash_tables_benchmark.cc"],
     deps = [
         ":hash_benchmark",
+        "@folly//folly/container:F14Set",
         ":simple_integer_linear_probing",
         "@com_google_absl//absl/container:flat_hash_set",
     ],

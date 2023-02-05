@@ -48,6 +48,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
   CHECK(notfound_output.is_open());
   HashSet set;
   std::vector<uint64_t> values;
+  LOG(INFO) << implementation;
   Benchmark(
       insert_output,
       [&](size_t size) {

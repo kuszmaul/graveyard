@@ -5,19 +5,30 @@ set xlabel "Final size"
 set ylabel "Time per operation (ns)"
 set yrange [0:300]
 
+Shadecolor1 = "#80e0a080"
+Shadecolor2 = "#90e0a080"
+
 set output "plots/insert-time.svg"
 set title "Insertion (from empty, no reserve)"
-plot "data/insert_flatset.data" using 1:($2/$1) with lines title "flatset",\
+plot "data/insert_flatset.data"        using 1:($2/$1) with lines title "flatset",\
      "data/insert_flatset-nohash.data" using 1:($2/$1) with lines title "flatset-nohash",\
-     "data/insert_SimpleILP.data" using 1:($2/$1) with lines title "SimpleILP",\
-     "data/insert_F14.data" using 1:($2/$1) with lines title "F14"
+     "data/insert_SimpleILP.data"      using 1:($2/$1) with lines title "SimpleILP",\
+     "data/insert_F14.data"            using 1:($2/$1) with lines title "F14",\
+     "data/insert_flatset.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 1 fs transparent solid 0.1 notitle,\
+     "data/insert_flatset-nohash.data" using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 2 fs transparent solid 0.1 notitle,\
+     "data/insert_SimpleILP.data"      using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 3 fs transparent solid 0.1 notitle,\
+     "data/insert_F14.data"            using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 4 fs transparent solid 0.1 notitle,\
 
 set output "plots/reserved-insert-time.svg"
 set title "Insertion with Reserve"
 plot "data/reserved-insert_flatset.data" using 1:($2/$1) with lines title "flatset",\
      "data/reserved-insert_flatset-nohash.data" using 1:($2/$1) with lines title "flatset-nohash",\
      "data/reserved-insert_SimpleILP.data" using 1:($2/$1) with lines title "SimpleILP",\
-     "data/reserved-insert_F14.data" using 1:($2/$1) with lines title "F14"
+     "data/reserved-insert_F14.data" using 1:($2/$1) with lines title "F14",\
+     "data/reserved-insert_flatset.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 1 fs transparent solid 0.1 notitle,\
+     "data/reserved-insert_flatset-nohash.data" using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 2 fs transparent solid 0.1 notitle,\
+     "data/reserved-insert_SimpleILP.data"      using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 3 fs transparent solid 0.1 notitle,\
+     "data/reserved-insert_F14.data"            using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 4 fs transparent solid 0.1 notitle,\
 
 set yrange [0:80]
 set output "plots/found-time.svg"
@@ -25,14 +36,23 @@ set title "Successful find"
 plot "data/found_flatset.data" using 1:($2/$1) with lines title "flatset",\
      "data/found_flatset-nohash.data" using 1:($2/$1) with lines title "flatset-nohash",\
      "data/found_SimpleILP.data" using 1:($2/$1) with lines title "SimpleILP",\
-     "data/found_F14.data" using 1:($2/$1) with lines title "F14"
+     "data/found_F14.data" using 1:($2/$1) with lines title "F14",\
+     "data/found_flatset.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 1 fs transparent solid 0.1 notitle,\
+     "data/found_flatset-nohash.data" using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 2 fs transparent solid 0.1 notitle,\
+     "data/found_SimpleILP.data"      using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 3 fs transparent solid 0.1 notitle,\
+     "data/found_F14.data"            using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 4 fs transparent solid 0.1 notitle,\
 
 set output "plots/notfound-time.svg"
 set title "Unsuccessful find"
 plot "data/notfound_flatset.data" using 1:($2/$1) with lines title "flatset",\
      "data/notfound_flatset-nohash.data" using 1:($2/$1) with lines title "flatset-nohash",\
      "data/notfound_SimpleILP.data" using 1:($2/$1) with lines title "SimpleILP",\
-     "data/notfound_F14.data" using 1:($2/$1) with lines title "F14"
+     "data/notfound_F14.data" using 1:($2/$1) with lines title "F14",\
+     "data/notfound_flatset.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 1 fs transparent solid 0.1 notitle,\
+     "data/notfound_flatset-nohash.data" using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 2 fs transparent solid 0.1 notitle,\
+     "data/notfound_SimpleILP.data"      using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 3 fs transparent solid 0.1 notitle,\
+     "data/notfound_F14.data"            using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 4 fs transparent solid 0.1 notitle,\
+
 
 set output "plots/memory.svg"
 unset yrange

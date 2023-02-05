@@ -20,6 +20,13 @@ bit in the header.
 
 `F14` is `folly::F14FastSet`.
 
+TODO: Rename `flatset` to `Google` (although their own branding is `abseil`,
+readers will understand it better as `Google`.  And rename `F14` to `Facebook`.
+It will make for more dramatic reading.
+
+In these graphs, the shaded regions are the 95% confidence interval (two
+standard deviations).
+
 Insertions for `SimpleILP` are the slowest, and F14 is slow too.
 
 ![Insertion time](/plots/insert-time.svg)
@@ -29,6 +36,9 @@ is caused by the SimpleILP doing more rehashes.  The cost of the hash function
 shows up here, where `flatset` and `flatset-nohash` have difference performance
 since the the nohash code doesn't have to call the hash function. F14 doesn't
 seem to gain much from reserve.
+
+`F14` has some weird jitter in the range of about 1.8e6 to 3.1e6.  It seems to
+be repeatable.
 
 ![Insertion With Reserve time](/plots/reserved-insert-time.svg)
 

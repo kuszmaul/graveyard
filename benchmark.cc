@@ -37,13 +37,15 @@ void Benchmark(std::ofstream& output, std::function<void(size_t count)> setup,
       uint64_t elapsed = end - start;
       x_sum += elapsed;
       x_squared_sum += elapsed * elapsed;
-      output << "#" << count << "," << elapsed << "," << memory_size << std::endl;
-      }
+      output << "#" << count << "," << elapsed << "," << memory_size
+             << std::endl;
+    }
     // These variables are named as if in Reverse Polish Notation.
     double x_expected = x_sum * kNInverse;
     double x_expected_square = x_expected * x_expected;
     double x_square_expected = x_squared_sum * kNInverse;
     double standard_deviation = sqrt(x_square_expected - x_expected_square);
-    output << count << "," << x_expected << "," << memory_size << "," << 2 * standard_deviation << std::endl;
+    output << count << "," << x_expected << "," << memory_size << ","
+           << 2 * standard_deviation << std::endl;
   }
 }

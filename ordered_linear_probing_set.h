@@ -8,9 +8,9 @@
 #include <limits>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/container/flat_hash_set.h"  // For hash_default_hash
 #include "absl/log/check.h"
-#include "absl/container/flat_hash_set.h" // For hash_default_hash
+#include "absl/log/log.h"
 
 // Hash Set with Ordered Linear Probing.  Type `T` must have a default
 // constructor.
@@ -37,15 +37,16 @@ class OrderedLinearProbingSet {
   size_t occupied_slot_count_ = 0;
   size_t slot_count_ = 0;
   bool max_is_present_ = false;
-  std::vector<T>
-      slots_;  // slots_.size() may be bigger than slot_count_.
+  std::vector<T> slots_;  // slots_.size() may be bigger than slot_count_.
 };
 
 template <class T, class Hash, class Eq>
 void OrderedLinearProbingSet<T, Hash, Eq>::reserve(size_t count) {
   // If size * 7 /8 < count  then rehash
   if (slots_.size() * 7 < count * 8) {
-    if (0) std::cerr << "reserve: Rehashing from " << slots_.size() << " to " << count << std::endl;
+    if (0)
+      std::cerr << "reserve: Rehashing from " << slots_.size() << " to "
+                << count << std::endl;
     rehash(count);
     if (0) std::cerr << "size=" << slots_.size();
   }
@@ -90,7 +91,9 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
   }
   while (true) {
     if (slot + 1 >= slots_.size()) {
-      LOG(INFO) << "Pushback: slots_.size()=" << slots_.size() << " slot_count_=" << slot_count_ << " occupied_slot_count_=" << occupied_slot_count_;
+      LOG(INFO) << "Pushback: slots_.size()=" << slots_.size()
+                << " slot_count_=" << slot_count_
+                << " occupied_slot_count_=" << occupied_slot_count_;
       slots_.push_back(kMax);
     }
     // Make sure that we don't overflow and also that there is one more slot
@@ -99,14 +102,19 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
       for (size_t i = preferred_slot; i < slots_.size(); ++i) {
         LOG(INFO) << "slots_[" << i << "]=" << slots_[i];
       }
-      for (size_t i = 0 ; i + 1 < slots_.size(); ++i ) {
+      for (size_t i = 0; i + 1 < slots_.size(); ++i) {
         if (slots_[i] != kMax) {
-          CHECK_LT(slots_[i], slots_[i+1]);
+          CHECK_LT(slots_[i], slots_[i + 1]);
         }
       }
     }
     CHECK(!DEBUG || slot + 1 < slots_.size())
-        << "Overflow slot=" << slot << " slots_.size()=" << slots_.size() << " slot_count_=" << slot_count_ << " original preferred_slot=" << preferred_slot << " this item is " << slots_[slot] << " which prefers " << PreferredSlot(slots_[slot], slot_count_) << " originally inserting " << original_value;
+        << "Overflow slot=" << slot << " slots_.size()=" << slots_.size()
+        << " slot_count_=" << slot_count_
+        << " original preferred_slot=" << preferred_slot << " this item is "
+        << slots_[slot] << " which prefers "
+        << PreferredSlot(slots_[slot], slot_count_) << " originally inserting "
+        << original_value;
     assert(slot < slots_.size());
     if (0) std::cerr << " Storing " << value << " at " << slot << std::endl;
     std::swap(value, slots_[slot]);
@@ -120,7 +128,9 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
 
 template <class T, class Hash, class Eq>
 void OrderedLinearProbingSet<T, Hash, Eq>::rehash(size_t slot_count) {
-  if (0) std::cerr << "Rehashing from " << slot_count_ << " to " << slot_count << std::endl;
+  if (0)
+    std::cerr << "Rehashing from " << slot_count_ << " to " << slot_count
+              << std::endl;
   std::vector<uint64_t> slots(slot_count + 64, kMax);
   slot_count_ = slot_count;
   std::swap(slots_, slots);
@@ -136,15 +146,13 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::contains(uint64_t value) const {
     return max_is_present_;
   }
   size_t slot = size_t((__int128(value) * __int128(slot_count_)) >> 64);
-  CHECK(!DEBUG || slot < slots_.size())
-      << "contains overflow";
+  CHECK(!DEBUG || slot < slots_.size()) << "contains overflow";
   for (; slots_[slot] <= value; ++slot) {
     assert(slot < slots_.size());
     if (slots_[slot] == value) {
       return true;  // already there.
     }
-    CHECK(!DEBUG || slot + 1 < slots_.size())
-        << "contains overflow";
+    CHECK(!DEBUG || slot + 1 < slots_.size()) << "contains overflow";
   }
   return false;
 }

@@ -40,17 +40,23 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
   for (size_t size = 1; size < size_growth; ++size) {
     sizes.push_back(size);
   }
-  for (size_t size = size_growth; size < 10'000'000; size += size / size_growth) {
+  for (size_t size = size_growth; size < 10'000'000;
+       size += size / size_growth) {
     sizes.push_back(size);
   }
-  //LOG(INFO) << "Opening " << absl::StrCat(implementation, ".data");
-  std::ofstream insert_output(absl::StrCat("data/insert_", implementation, ".data"), std::ios::out);
+  // LOG(INFO) << "Opening " << absl::StrCat(implementation, ".data");
+  std::ofstream insert_output(
+      absl::StrCat("data/insert_", implementation, ".data"), std::ios::out);
   CHECK(insert_output.is_open());
-  std::ofstream reserved_insert_output(absl::StrCat("data/reserved-insert_", implementation, ".data"), std::ios::out);
+  std::ofstream reserved_insert_output(
+      absl::StrCat("data/reserved-insert_", implementation, ".data"),
+      std::ios::out);
   CHECK(reserved_insert_output.is_open());
-  std::ofstream found_output(absl::StrCat("data/found_", implementation, ".data"), std::ios::out);
+  std::ofstream found_output(
+      absl::StrCat("data/found_", implementation, ".data"), std::ios::out);
   CHECK(found_output.is_open());
-  std::ofstream notfound_output(absl::StrCat("data/notfound_", implementation, ".data"), std::ios::out);
+  std::ofstream notfound_output(
+      absl::StrCat("data/notfound_", implementation, ".data"), std::ios::out);
   CHECK(notfound_output.is_open());
   HashSet set;
   std::vector<uint64_t> values;
@@ -68,7 +74,6 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
         return memory_estimator(set);
       },
       sizes);
-
 
   Benchmark(
       reserved_insert_output,

@@ -1,6 +1,7 @@
 #ifndef HASH_BENCHMARK_H_
 #define HASH_BENCHMARK_H_
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -8,10 +9,14 @@
 #include <string_view>  // for string_view
 #include <vector>
 
+#include "absl/flags/declare.h"
+#include "absl/flags/flag.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/strings/str_cat.h"  // for StrCat
 #include "benchmark.h"
+
+ABSL_DECLARE_FLAG(size_t, size_growth);
 
 // These functions don't return a flat-hash-set since the sort order will be
 // correlated and make the flat hash set look much faster than it is.  The
@@ -30,11 +35,12 @@ std::vector<uint64_t> GetSomeOtherNumbers(
 template <class HashSet>
 void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
                          std::string_view implementation) {
+  size_t size_growth = absl::GetFlag(FLAGS_size_growth);
   std::vector<size_t> sizes;
-  for (size_t size = 1; size < 200; ++size) {
+  for (size_t size = 1; size < size_growth; ++size) {
     sizes.push_back(size);
   }
-  for (size_t size = 200; size < 10'000'000; size += size / 100) {
+  for (size_t size = size_growth; size < 10'000'000; size += size / size_growth) {
     sizes.push_back(size);
   }
   //LOG(INFO) << "Opening " << absl::StrCat(implementation, ".data");

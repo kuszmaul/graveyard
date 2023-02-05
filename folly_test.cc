@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstdlib> // for abort
 
 #include "folly/container/F14Set.h"
 

@@ -6,6 +6,9 @@
 
 #include "absl/container/flat_hash_set.h"  // for flat_hash_set, BitMask
 #include "absl/hash/hash.h"                // for Hash
+#include "absl/strings/string_view.h"      // for string_view
+
+ABSL_FLAG(size_t, size_growth, 100, "For benchmarking tables of various sizes, increase the size by size/size_growth");
 
 namespace {
 std::random_device r;

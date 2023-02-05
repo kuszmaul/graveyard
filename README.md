@@ -79,5 +79,9 @@ $ clang-format -i *.h *.cc
 Keep includes clean with iwyu:
 
 ```shell
-$ for x in *.h *.cc; do include-what-you-use -x c++ -std=c++17 -I/home/bradleybear/.cache/bazel/_bazel_bradleybear/06d43ecbdaa4800474a92f4f59e8b2b3/external/com_google_absl/ $x; done
+$ for x in *.h *.cc; do include-what-you-use -x c++ -std=c++17 -I/home/bradleybear/.cache/bazel/_bazel_bradleybear/06d43ecbdaa4800474a92f4f59e8b2b3/external/com_google_absl/ -I/home/bradleybear/github/folly $x; done
 ```
+
+## TODO
+
+* Why is the gap between flatset and flatset-nohash larger when doing reserve?  Plot them together on one plot to see what's going on.

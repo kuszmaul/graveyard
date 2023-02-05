@@ -1,22 +1,25 @@
 #ifndef _SIMPLE_INTEGER_LINEAR_PROBING_H_
 #define _SIMPLE_INTEGER_LINEAR_PROBING_H_
 
-#include <ext/alloc_traits.h>  // for __alloc_traits<>::value_type
-
 #include <cassert>
 #include <cstddef>  // for size_t
 #include <cstdint>  // for uint64_t
 #include <iostream>
 #include <limits>
-#include <utility>  // for swap
 #include <vector>
 
+#include "absl/log/log.h"
 #include "absl/log/check.h"
+#include "absl/container/flat_hash_set.h" // For hash_default_hash
 
-class SimpleIntegerLinearProbing {
+// Hash Set with Ordered Linear Probing.  Type `T` must have a default
+// constructor.
+template <class T, class Hash = absl::container_internal::hash_default_hash<T>,
+          class Eq = absl::container_internal::hash_default_eq<T>>
+class OrderedLinearProbingSet {
   // Ranges from 3/4 full to 7/8 full.
  public:
-  using value_type = uint64_t;
+  using value_type = T;
   void reserve(size_t count);
   bool insert(uint64_t value);
   bool contains(uint64_t value) const;
@@ -34,11 +37,12 @@ class SimpleIntegerLinearProbing {
   size_t occupied_slot_count_ = 0;
   size_t slot_count_ = 0;
   bool max_is_present_ = false;
-  std::vector<uint64_t>
+  std::vector<T>
       slots_;  // slots_.size() may be bigger than slot_count_.
 };
 
-void SimpleIntegerLinearProbing::reserve(size_t count) {
+template <class T, class Hash, class Eq>
+void OrderedLinearProbingSet<T, Hash, Eq>::reserve(size_t count) {
   // If size * 7 /8 < count  then rehash
   if (slots_.size() * 7 < count * 8) {
     if (0) std::cerr << "reserve: Rehashing from " << slots_.size() << " to " << count << std::endl;
@@ -52,7 +56,8 @@ inline size_t PreferredSlot(size_t value, size_t slot_count) {
   return size_t((__int128(value) * __int128(slot_count)) >> 64);
 }
 
-bool SimpleIntegerLinearProbing::insert(uint64_t value) {
+template <class T, class Hash, class Eq>
+bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
   const uint64_t original_value = value;
   if (value == kMax) {
     if (max_is_present_) {
@@ -113,7 +118,8 @@ bool SimpleIntegerLinearProbing::insert(uint64_t value) {
   }
 }
 
-void SimpleIntegerLinearProbing::rehash(size_t slot_count) {
+template <class T, class Hash, class Eq>
+void OrderedLinearProbingSet<T, Hash, Eq>::rehash(size_t slot_count) {
   if (0) std::cerr << "Rehashing from " << slot_count_ << " to " << slot_count << std::endl;
   std::vector<uint64_t> slots(slot_count + 64, kMax);
   slot_count_ = slot_count;
@@ -124,7 +130,8 @@ void SimpleIntegerLinearProbing::rehash(size_t slot_count) {
   }
 }
 
-bool SimpleIntegerLinearProbing::contains(uint64_t value) const {
+template <class T, class Hash, class Eq>
+bool OrderedLinearProbingSet<T, Hash, Eq>::contains(uint64_t value) const {
   if (value == kMax) {
     return max_is_present_;
   }
@@ -142,7 +149,8 @@ bool SimpleIntegerLinearProbing::contains(uint64_t value) const {
   return false;
 }
 
-size_t SimpleIntegerLinearProbing::size() const {
+template <class T, class Hash, class Eq>
+size_t OrderedLinearProbingSet<T, Hash, Eq>::size() const {
   return max_is_present_ + occupied_slot_count_;
 }
 

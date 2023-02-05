@@ -6,6 +6,10 @@
 #include <functional>
 #include <vector>  // for vector
 
+#include "absl/flags/declare.h"
+
+ABSL_DECLARE_FLAG(size_t, number_of_trials);
+
 template <class Tp>
 inline __attribute__((always_inline)) void DoNotOptimize(Tp& value) {
 #if defined(__clang__)

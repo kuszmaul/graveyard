@@ -7,7 +7,7 @@ Revisted: Tombstones Mark the Death of Primary Clustering".  July 2021, 2021
 *IEEE 62nd Annual Symposium on Foundations of Computer Science (FOCS)*.
 
 The big question is whether Graveyard hashing can compete with industrial-grade
-hash tables such as Abseil or F11.
+hash tables such as Google's Abseil or Facebook's F14.
 
 ## Benchmarks for unordered set of `uint64_t`.
 
@@ -16,48 +16,49 @@ factor.  This table has no vector instructions.  It uses `UINT64_MAX` as a
 not-present sentinal (and special cases the case of `UINT64_MAX` by storing a
 bit in the header.
 
-`flatset` is `absl::flat_hash_set`.
+`Google` is `absl::flat_hash_set`.
 
-`F14` is `folly::F14FastSet`.
+`Facebook` is `folly::F14FastSet`.
 
-TODO: Rename `flatset` to `Google` (although their own branding is `abseil`,
-readers will understand it better as `Google`.  And rename `F14` to `Facebook`.
-It will make for more dramatic reading.
+`idhash` means to use the identity function as the hash.  The numbers are
+already from `std::uniform_int_distribution`, so we shouldn't need to hash them
+further.  But there are some strange results, so TODO: See if the absl random
+number generators produce better graphs.
 
 In these graphs, the shaded regions are the 95% confidence interval (two
 standard deviations).
 
-Insertions for `OLP` are the slowest, and F14 is slow too.
+Insertions for `OLP` are the slowest, and `Facebook` is slow too.
 
 ![Insertion time](plots/insert-time.svg)
 
-Reserve closes the gap for `OLP`, showing that the performance difference
-is caused by the OLP doing more rehashes.  The cost of the hash function
-shows up here, where `flatset` and `flatset-nohash` have difference performance
-since the the nohash code doesn't have to call the hash function. F14 doesn't
-seem to gain much from reserve.
+Reserve closes the gap for `OLP`, showing that the performance difference is
+caused by the OLP doing more rehashes.  The cost of the hash function shows up
+here, where `Google` and `Google-idhash` have difference performance since the
+the `idhash` code doesn't have to call the hash function. `Facebook` doesn't seem
+to gain much from reserve.
 
-`F14` has some weird jitter in the range of about 1.8e6 to 3.1e6.  It seems to
+`Facebook` has some weird jitter in the range of about 1.8e6 to 3.1e6.  It seems to
 be repeatable.
 
 ![Insertion With Reserve time](plots/reserved-insert-time.svg)
 
 Find is about the same.  It's surprising that the vector instructions in
-`flatset` don't seem to matter much.  F14 is the fasted for large tables, likely
-because of its strategy to have only one cache miss in most cases.
+`Google` don't seem to matter much.  `Facebook` is the fasted for large tables,
+likely because of its strategy to have only one cache miss in most cases.
 
 ![Successful find time](plots/found-time.svg)
 
-For unsucessful find, here the `flatset` vector instructions seem to help.
-`F14` is slow in this case: probably because it needs one cache miss to process
-14 elements, whereas `flatset` can process an average of 32 elements in the
-first cache miss.
+For unsucessful find, here the `Google` vector instructions seem to help.
+`Facebook` is slow in this case: probably because it needs one cache miss to
+process 14 elements, whereas `Google` can process an average of 32 elements in
+the first cache miss.
 
 ![Unsuccessful find time](plots/notfound-time.svg)
 
 On average `OLP` saves about 36% memory.  The curve fit is a linear fit
-minimizign the sum of the squares of the differences.  `F14` uses the same
-amount of memory as `flatset`: they are both restricted to powers of two.
+minimizign the sum of the squares of the differences.  `Facebook` uses the same
+amount of memory as `Google`: they are both restricted to powers of two.
 
 ![Memory](plots/memory.svg)
 
@@ -84,4 +85,5 @@ $ for x in *.h *.cc; do include-what-you-use -x c++ -std=c++17 -I/home/bradleybe
 
 ## TODO
 
-* Why is the gap between flatset and flatset-nohash larger when doing reserve?  Plot them together on one plot to see what's going on.
+* Why is the gap between `Google` and `Google-idhash` larger when doing reserve?
+  Plot them together on one plot to see what's going on.

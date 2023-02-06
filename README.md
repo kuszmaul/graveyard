@@ -29,7 +29,7 @@ standard deviations).
 
 Insertions for `OLP` are the slowest, and F14 is slow too.
 
-![Insertion time](/plots/insert-time.svg)
+![Insertion time](plots/insert-time.svg)
 
 Reserve closes the gap for `OLP`, showing that the performance difference
 is caused by the OLP doing more rehashes.  The cost of the hash function

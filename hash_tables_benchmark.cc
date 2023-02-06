@@ -31,32 +31,39 @@ int main(int argc, char* argv[]) {
     tables = absl::flat_hash_set<std::string>(tables_vector.begin(),
                                               tables_vector.end());
   }
-  if (tables.contains("OLP")) {
+  if (constexpr absl::string_view name = "OLP";
+      tables.contains(name)) {
     using OLP = OrderedLinearProbingSet<uint64_t>;
     IntHashSetBenchmark<OLP>(
-        [](const OLP& table) { return table.memory_estimate(); }, "OLP");
+        [](const OLP& table) { return table.memory_estimate(); }, name);
   }
-  if (tables.contains("OLP-idhash")) {
+  if (constexpr absl::string_view name = "OLP-idhash";
+      tables.contains(name)) {
     using OLPNoHash = OrderedLinearProbingSet<uint64_t, IdentityHash>;
     IntHashSetBenchmark<OLPNoHash>(
+        // TODO: Use the facebook name for `memory_estimate()`.
         [](const OLPNoHash& table) { return table.memory_estimate(); },
-        "OLP-idhash");
+        name);
   }
-  if (tables.contains("google")) {
+  if (constexpr absl::string_view name = "google";
+      tables.contains(name)) {
     IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
-        SwissMemoryEstimator<absl::flat_hash_set<uint64_t>>, "google");
+        SwissMemoryEstimator<absl::flat_hash_set<uint64_t>>, name);
   }
-  if (tables.contains("google-idhash")) {
+  if (constexpr absl::string_view name = "google-idhash";
+      tables.contains(name)) {
     using FlatNoHash = absl::flat_hash_set<uint64_t, IdentityHash>;
     IntHashSetBenchmark<FlatNoHash>(SwissMemoryEstimator<FlatNoHash>,
-                                    "google-idhash");
+                                    name);
   }
-  if (tables.contains("facebook")) {
+  if (constexpr absl::string_view name = "facebook-idhash";
+      tables.contains(name)) {
     using F14 = folly::F14FastSet<uint64_t>;
-    IntHashSetBenchmark<F14>(F14MemoryEstimator<F14>, "facebook");
+    IntHashSetBenchmark<F14>(F14MemoryEstimator<F14>, name);
   }
-  if (tables.contains("facebook-idhash")) {
+  if (constexpr absl::string_view name = "facebook-idhash";
+      tables.contains(name)) {
     using F14NoHash = folly::F14FastSet<uint64_t, IdentityHash>;
-    IntHashSetBenchmark<F14NoHash>(F14MemoryEstimator<F14NoHash>, "facebook");
+    IntHashSetBenchmark<F14NoHash>(F14MemoryEstimator<F14NoHash>, name);
   }
 }

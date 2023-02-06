@@ -11,7 +11,7 @@ hash tables such as Abseil or F11.
 
 ## Benchmarks for unordered set of `uint64_t`.
 
-`SimpleILP` is simple linear probing running at between $3/4$ and $7/8$ load
+`OLP` is simple linear probing running at between $3/4$ and $7/8$ load
 factor.  This table has no vector instructions.  It uses `UINT64_MAX` as a
 not-present sentinal (and special cases the case of `UINT64_MAX` by storing a
 bit in the header.
@@ -27,12 +27,12 @@ It will make for more dramatic reading.
 In these graphs, the shaded regions are the 95% confidence interval (two
 standard deviations).
 
-Insertions for `SimpleILP` are the slowest, and F14 is slow too.
+Insertions for `OLP` are the slowest, and F14 is slow too.
 
 ![Insertion time](/plots/insert-time.svg)
 
-Reserve closes the gap for `SimpleILP`, showing that the performance difference
-is caused by the SimpleILP doing more rehashes.  The cost of the hash function
+Reserve closes the gap for `OLP`, showing that the performance difference
+is caused by the OLP doing more rehashes.  The cost of the hash function
 shows up here, where `flatset` and `flatset-nohash` have difference performance
 since the the nohash code doesn't have to call the hash function. F14 doesn't
 seem to gain much from reserve.
@@ -55,7 +55,7 @@ first cache miss.
 
 ![Unsuccessful find time](/plots/notfound-time.svg)
 
-On average `SimpleILP` saves about 36% memory.  The curve fit is a linear fit
+On average `OLP` saves about 36% memory.  The curve fit is a linear fit
 minimizign the sum of the squares of the differences.  `F14` uses the same
 amount of memory as `flatset`: they are both restricted to powers of two.
 

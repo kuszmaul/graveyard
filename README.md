@@ -40,26 +40,26 @@ seem to gain much from reserve.
 `F14` has some weird jitter in the range of about 1.8e6 to 3.1e6.  It seems to
 be repeatable.
 
-![Insertion With Reserve time](/plots/reserved-insert-time.svg)
+![Insertion With Reserve time](plots/reserved-insert-time.svg)
 
 Find is about the same.  It's surprising that the vector instructions in
 `flatset` don't seem to matter much.  F14 is the fasted for large tables, likely
 because of its strategy to have only one cache miss in most cases.
 
-![Successful find time](/plots/found-time.svg)
+![Successful find time](plots/found-time.svg)
 
 For unsucessful find, here the `flatset` vector instructions seem to help.
 `F14` is slow in this case: probably because it needs one cache miss to process
 14 elements, whereas `flatset` can process an average of 32 elements in the
 first cache miss.
 
-![Unsuccessful find time](/plots/notfound-time.svg)
+![Unsuccessful find time](plots/notfound-time.svg)
 
 On average `OLP` saves about 36% memory.  The curve fit is a linear fit
 minimizign the sum of the squares of the differences.  `F14` uses the same
 amount of memory as `flatset`: they are both restricted to powers of two.
 
-![Memory](/plots/memory.svg)
+![Memory](plots/memory.svg)
 
 To produce these plots:
 ```shell

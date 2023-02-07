@@ -1,5 +1,5 @@
-#ifndef _SIMPLE_INTEGER_LINEAR_PROBING_H_
-#define _SIMPLE_INTEGER_LINEAR_PROBING_H_
+#ifndef _ORDERED_LINEAR_PROBING_H_
+#define _ORDERED_LINEAR_PROBING_H_
 
 #include <cassert>
 #include <cstddef>  // for size_t
@@ -162,4 +162,4 @@ size_t OrderedLinearProbingSet<T, Hash, Eq>::size() const {
   return max_is_present_ + occupied_slot_count_;
 }
 
-#endif  // _SIMPLE_INTEGER_LINEAR_PROBING_H_
+#endif  // _ORDERED_LINEAR_PROBING_H_

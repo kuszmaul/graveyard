@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
     using F14 = folly::F14FastSet<uint64_t>;
     IntHashSetBenchmark<F14>(F14MemoryEstimator<F14>, name);
   }
-  if (constexpr absl::string_view name = "facebook-idhash";
+  if (constexpr absl::string_view name = "facebook";
       tables.contains(name)) {
     using F14NoHash = folly::F14FastSet<uint64_t, IdentityHash>;
     IntHashSetBenchmark<F14NoHash>(F14MemoryEstimator<F14NoHash>, name);

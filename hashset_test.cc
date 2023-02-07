@@ -6,4 +6,6 @@
 int main() {
   SetSpan<uint64_t> uset = SetSpan<uint64_t>(std::unordered_set<uint64_t>());
   CHECK_EQ(uset.size(), 0ul);
+  auto [it, inserted] = uset.insert(1);
+  CHECK(inserted);
 }

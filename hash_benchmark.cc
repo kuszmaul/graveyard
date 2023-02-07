@@ -6,20 +6,74 @@
 
 #include "absl/container/flat_hash_set.h"  // for flat_hash_set, BitMask
 #include "absl/hash/hash.h"                // for Hash
+#include "absl/strings/str_join.h"
+#include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"      // for string_view
 
 ABSL_FLAG(size_t, size_growth, 100,
           "For benchmarking tables of various sizes, increase the size by "
           "size/size_growth");
-// TODO: Validate this
-ABSL_FLAG(std::vector<std::string>, operations,
-          std::vector<std::string>({"insert", "reserved-insert" "found", "notfound"}),
-          "comma-separated list of operatinos to benchmark");
+namespace {
+const std::array kAllOperations{Operation::kInsert, Operation::kReservedInsert, Operation::kFound, Operation::kNotFound};
+}  // namespace
+ABSL_FLAG(std::vector<Operation>, operations,
+          std::vector<Operation>(kAllOperations.begin(), kAllOperations.end()),
+          "comma-separated list of operations to benchmark");
 
-absl::flat_hash_set<std::string>& GetOperations() {
-  std::vector<std::string> operations_vector = absl::GetFlag(FLAGS_operations);
-  static absl::flat_hash_set<std::string> operations(operations_vector.begin(), operations_vector.end());
+absl::string_view ToString(Operation operation) {
+  switch (operation) {
+    case Operation::kInsert: return "insert";
+    case Operation::kReservedInsert: return "reserved-insert";
+    case Operation::kFound: return "found";
+    case Operation::kNotFound: return "notfound";
+  }
+  CHECK(false) << "This shouldn't happen";
+}
+
+namespace{
+std::optional<Operation> OperationFromString(absl::string_view operation) {
+  for (Operation op : kAllOperations) {
+    if (ToString(op) == operation) {
+      return op;
+    }
+  }
+  return std::nullopt;
+}
+
+struct OperationFormatter {
+  void operator()(std::string*out, Operation operation) {
+    out->append(ToString(operation));
+  }
+};
+}  // namespace
+
+std::string AbslUnparseFlag(std::vector<Operation> operations) {
+  return absl::StrJoin(operations, ",", OperationFormatter());
+}
+
+bool AbslParseFlag(absl::string_view text, std::vector<Operation> *operations, std::string* error) {
+  std::vector<absl::string_view> op_strings = absl::StrSplit(text, ",");
+  std::vector<Operation> result;
+  for (absl::string_view op_string : op_strings) {
+    std::optional<Operation> op = OperationFromString(op_string);
+    if (!op) {
+      *error = absl::StrCat(op_string, " is not one of ", AbslUnparseFlag(std::vector<Operation>(kAllOperations.begin(), kAllOperations.end())));
+      return false;
+    }
+    result.push_back(*op);
+  }
+  *operations = std::move(result);
+  return true;
+}
+
+absl::flat_hash_set<Operation>& GetOperations() {
+  std::vector<Operation> operations_vector = absl::GetFlag(FLAGS_operations);
+  static absl::flat_hash_set<Operation> operations(operations_vector.begin(), operations_vector.end());
   return operations;
+}
+
+std::string FileNameForHashSetBenchmark(Operation operation, absl::string_view implementation) {
+  return absl::StrCat("data/", ToString(operation), "_", implementation);
 }
 
 namespace {

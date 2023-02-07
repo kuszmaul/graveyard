@@ -18,7 +18,10 @@
 #include "benchmark.h"
 
 ABSL_DECLARE_FLAG(size_t, size_growth);
-ABSL_DECLARE_FLAG(std::vector<std::string>, operations);
+enum class Operation {
+  kInsert, kReservedInsert, kFound, kNotFound
+};
+ABSL_DECLARE_FLAG(std::vector<Operation>, operations);
 
 // These functions don't return a flat-hash-set since the sort order will be
 // correlated and make the flat hash set look much faster than it is.  The
@@ -34,7 +37,10 @@ void GetSomeNumbers(size_t size, std::vector<uint64_t>& result);
 std::vector<uint64_t> GetSomeOtherNumbers(
     const std::vector<uint64_t>& other_numbers);
 
-absl::flat_hash_set<std::string>& GetOperations();
+absl::flat_hash_set<Operation>& GetOperations();
+absl::string_view ToString(Operation operation);
+
+std::string FileNameForHashSetBenchmark(Operation operation, absl::string_view implementation);
 
 template <class HashSet>
 void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
@@ -53,12 +59,13 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
   std::vector<uint64_t> values;
   LOG(INFO) << implementation;
   // TODO: Make "insert" contant into kConstant.
-  if (GetOperations().contains("insert")) {
-    std::ofstream insert_output(
-        absl::StrCat("data/insert_", implementation, ".data"), std::ios::out);
-    CHECK(insert_output.is_open());
+  if (Operation op = Operation::kInsert;
+      GetOperations().contains(op)) {
+    std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
+                                std::ios::out);
+    CHECK(output.is_open());
     Benchmark(
-        insert_output,
+        output,
         [&](size_t size, size_t trial) {
           if (trial == 0) {
             GetSomeNumbers(size, values);
@@ -73,13 +80,13 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
         },
         sizes);
   }
-  if (GetOperations().contains("reserved-insert")) {
-    std::ofstream reserved_insert_output(
-        absl::StrCat("data/reserved-insert_", implementation, ".data"),
-        std::ios::out);
-    CHECK(reserved_insert_output.is_open());
+  if (Operation op = Operation::kReservedInsert;
+      GetOperations().contains(op)) {
+    std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
+                                std::ios::out);
+    CHECK(output.is_open());
     Benchmark(
-        reserved_insert_output,
+        output,
         [&](size_t size, size_t trial) {
           if (trial == 0) {
             GetSomeNumbers(size, values);
@@ -97,12 +104,13 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
         sizes);
   }
 
-  if (GetOperations().contains("found")) {
-    std::ofstream found_output(
-        absl::StrCat("data/found_", implementation, ".data"), std::ios::out);
-    CHECK(found_output.is_open());
+  if (Operation op = Operation::kFound;
+      GetOperations().contains(op)) {
+    std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
+                                std::ios::out);
+    CHECK(output.is_open());
     Benchmark(
-        found_output,
+        output,
         [&](size_t size, size_t trial) {
           if (trial == 0) {
             set = HashSet();
@@ -122,13 +130,14 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
         },
         sizes);
   }
-  if (GetOperations().contains("notfound")) {
-    std::ofstream notfound_output(
-        absl::StrCat("data/notfound_", implementation, ".data"), std::ios::out);
-    CHECK(notfound_output.is_open());
+  if (Operation op = Operation::kNotFound;
+      GetOperations().contains(op)) {
+    std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
+                                std::ios::out);
+    CHECK(output.is_open());
     std::vector<uint64_t> other_numbers;
     Benchmark(
-        notfound_output,
+        output,
         [&](size_t size, size_t trial) {
           if (trial == 0) {
             set = HashSet();

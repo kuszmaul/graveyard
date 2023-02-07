@@ -3,7 +3,7 @@ set terminal svg
 set key top left reverse
 set xlabel "Final size"
 set ylabel "Time per operation (ns)"
-set yrange [0:300]
+set yrange [0:600]
 
 FBcolor = "#4267B2"
 Gcolor = "#0F9D58"
@@ -11,16 +11,18 @@ Kcolor = "#800080"
 
 set output "plots/insert-time.svg"
 set title "Insertion (from empty, no reserve)"
-plot "data/insert_google.data"         using 1:($2/$1)                     with lines       linecolor rgb Gcolor dt 1 title "Google",\
-     "data/insert_google-idhash.data"  using 1:($2/$1)                     with lines       linecolor rgb Gcolor dt 2 title "Google-idhash",\
-     "data/insert_OLP.data"            using 1:($2/$1)                     with lines       linecolor rgb Kcolor dt 1 title "OLP",\
-     "data/insert_OLP-idhash.data"     using 1:($2/$1)                     with lines       linecolor rgb Kcolor dt 2 title "OLP-idhash",\
-     "data/insert_facebook.data"       using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 1 title "Facebook",\
-     "data/insert_google.data"         using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor fs transparent solid 0.1 notitle,\
-     "data/insert_google-idhash.data"  using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor fs transparent solid 0.1 notitle,\
-     "data/insert_OLP.data"            using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Kcolor fs transparent solid 0.1 notitle,\
-     "data/insert_OLP-idhash.data"     using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Kcolor fs transparent solid 0.1 notitle,\
-     "data/insert_facebook.data"       using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
+plot "data/insert_google.data"          using 1:($2/$1)                     with lines       linecolor rgb Gcolor dt 1 title "Google",\
+     "data/insert_google-idhash.data"   using 1:($2/$1)                     with lines       linecolor rgb Gcolor dt 2 title "Google-idhash",\
+     "data/insert_OLP.data"             using 1:($2/$1)                     with lines       linecolor rgb Kcolor dt 1 title "OLP",\
+     "data/insert_OLP-idhash.data"      using 1:($2/$1)                     with lines       linecolor rgb Kcolor dt 2 title "OLP-idhash",\
+     "data/insert_facebook.data"        using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 1 title "Facebook",\
+     "data/insert_facebook-idhash.data" using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 2 title "Facebook-idhash",\
+     "data/insert_google.data"          using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor fs transparent solid 0.1 notitle,\
+     "data/insert_google-idhash.data"   using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor fs transparent solid 0.1 notitle,\
+     "data/insert_OLP.data"             using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Kcolor fs transparent solid 0.1 notitle,\
+     "data/insert_OLP-idhash.data"      using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Kcolor fs transparent solid 0.1 notitle,\
+     "data/insert_facebook.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
+     "data/insert_facebook-idhash.data" using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
 
 set output "plots/reserved-insert-time.svg"
 set title "Insertion with Reserve"

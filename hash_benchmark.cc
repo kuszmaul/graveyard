@@ -11,6 +11,16 @@
 ABSL_FLAG(size_t, size_growth, 100,
           "For benchmarking tables of various sizes, increase the size by "
           "size/size_growth");
+// TODO: Validate this
+ABSL_FLAG(std::vector<std::string>, operations,
+          std::vector<std::string>({"insert", "reserved-insert" "found", "notfound"}),
+          "comma-separated list of operatinos to benchmark");
+
+absl::flat_hash_set<std::string>& GetOperations() {
+  std::vector<std::string> operations_vector = absl::GetFlag(FLAGS_operations);
+  static absl::flat_hash_set<std::string> operations(operations_vector.begin(), operations_vector.end());
+  return operations;
+}
 
 namespace {
 std::random_device r;

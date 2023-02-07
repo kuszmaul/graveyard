@@ -19,7 +19,8 @@ inline __attribute__((always_inline)) void DoNotOptimize(Tp& value) {
 #endif
 }
 
-void Benchmark(std::ofstream& output, std::function<void(size_t count)> setup,
+void Benchmark(std::ofstream& output,
+               std::function<void(size_t count, size_t trial)> setup,
                std::function<size_t()> fun,  // returns memory size
                const std::vector<size_t>& counts);
 

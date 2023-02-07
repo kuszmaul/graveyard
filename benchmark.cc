@@ -17,28 +17,31 @@ inline uint64_t operator-(struct timespec a, struct timespec b) {
 }
 }  // namespace
 
-void Benchmark(std::ofstream& output, std::function<void(size_t count)> setup,
+void Benchmark(std::ofstream& output,
+               std::function<void(size_t count, size_t trial)> setup,
                std::function<size_t()> fun, const std::vector<size_t>& counts) {
   const size_t kNumberOfTrials = absl::GetFlag(FLAGS_number_of_trials);
   const double kNInverse = 1.0 / kNumberOfTrials;
   for (size_t count : counts) {
-    setup(count);
     uint64_t x_sum = 0;
     uint64_t x_squared_sum = 0;
-    // Throw away the time of the first call to fun(), but keep the memory_size.
-    size_t memory_size = fun();
+    size_t memory_size = 0;
     for (size_t trial = 0; trial < kNumberOfTrials; ++trial) {
+      setup(count, trial);
       struct timespec start;
       clock_gettime(CLOCK_MONOTONIC, &start);
-      auto x = fun();
-      DoNotOptimize(x);
+      memory_size = fun();
+      DoNotOptimize(memory_size);
       struct timespec end;
       clock_gettime(CLOCK_MONOTONIC, &end);
       uint64_t elapsed = end - start;
       x_sum += elapsed;
       x_squared_sum += elapsed * elapsed;
-      output << "#" << count << "," << elapsed << "," << memory_size
-             << std::endl;
+      //if (trial > 0) {
+        // Throw away the time of the first call to fun(), but keep the memory_size.
+        output << "#" << count << "," << elapsed << "," << memory_size
+               << std::endl;
+        //}
     }
     // These variables are named as if in Reverse Polish Notation.
     double x_expected = x_sum * kNInverse;

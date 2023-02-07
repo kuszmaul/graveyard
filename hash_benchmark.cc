@@ -6,7 +6,7 @@
 
 #include "absl/container/flat_hash_set.h"  // for flat_hash_set, BitMask
 #include "absl/hash/hash.h"                // for Hash
-#include "absl/strings/str_append.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"      // for string_view
@@ -59,11 +59,14 @@ bool AbslParseFlag(absl::string_view text, std::vector<Operation> *operations, s
     std::optional<Operation> op = OperationFromString(op_string);
     if (!op) {
       *error = absl::StrCat(op_string, " is not one of");
-      for (size_t i : kAllOperations) {
+      for (size_t i = 0; i < kAllOperations.size(); ++i) {
         if (i > 0) {
-          absl::StrAppend(*error, ", ");
+          absl::StrAppend(error, ", ");
         }
-        absl::StrAppend(*error, " '", ToString(kAllOperations[i]), "'");
+        if (i + 1 == kAllOperations.size()) {
+          absl::StrAppend(error, " or ");
+        }
+        absl::StrAppend(error, " '", ToString(kAllOperations[i]), "'");
       }
       return false;
     }

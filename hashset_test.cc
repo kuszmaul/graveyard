@@ -8,4 +8,5 @@ int main() {
   CHECK_EQ(uset.size(), 0ul);
   auto [it, inserted] = uset.insert(1);
   CHECK(inserted);
+  CHECK(it != uset.end());
 }

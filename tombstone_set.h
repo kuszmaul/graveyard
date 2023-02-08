@@ -68,6 +68,9 @@ class TombstoneSet {
     T value;
   };
   struct Bucket {
+    Bucket() {
+      for (size_t i = 0; i < kSlotsPerBucket; ++i) h2[i] = kEmpty;
+    }
     std::array<uint8_t, kSlotsPerBucket> h2;
     // The number of buckets we must search in an unsuccessful lookup that
     // starts here.
@@ -104,20 +107,25 @@ void TombstoneSet<T, Hash, Eq>::reserve(size_t count) {
 template <class T, class Hash, class Eq>
 bool TombstoneSet<T, Hash, Eq>::insert(T value) {
   // If (size_ + 1) > 7*8 slot_count_ then rehash.
+  LOG(INFO) << "Insert " << value;
   if (NeedsRehash(size_ + 1)) {
+    LOG(INFO) << "Needs rehash";
     // rehash to be 3/4 full
     rehash(ceil((size_ + 1) * 4, 3));
+    LOG(INFO) << "rehashed to bucket_count_=" << bucket_count_;
   }
   // TODO: Use the Hash here and in OLP.
   const size_t preferred_bucket = H1(value);
   const size_t h2 = H2(value);
   const size_t distance = buckets_[preferred_bucket].search_distance;
+  LOG(INFO) << "h2=" << h2 << " distance=" << distance;
   for (size_t i = 0; i <= distance; ++i) {
     assert(preferred_bucket + i < buckets_.size());
     const Bucket& bucket = buckets_[preferred_bucket + i];
     // TODO: Use vector instructions to replace this loop.
     for (size_t j = 0; j < kSlotsPerBucket; ++j) {
       if (bucket.h2[j] == h2 && bucket.slots[j].value == value) {
+        LOG(INFO) << " Already there";
         return false;
       }
     }
@@ -143,13 +151,16 @@ bool TombstoneSet<T, Hash, Eq>::insert(T value) {
 
 template <class T, class Hash, class Eq>
 void TombstoneSet<T, Hash, Eq>::rehash(size_t slot_count) {
-  std::vector<Bucket> buckets(ceil(slot_count, kSlotsPerBucket));
-  bucket_count_ = slot_count;
+  bucket_count_ = ceil(slot_count, kSlotsPerBucket);
+  assert(bucket_count_ > 0);
+  std::vector<Bucket> buckets(bucket_count_ + std::min(4ul, bucket_count_ - 1ul));
+  LOG(INFO) << " rehashed: new slot_count=" << slot_count << " bucket_count_=" << bucket_count_;
   std::swap(buckets_, buckets);
   size_ = 0;
   for (Bucket& bucket : buckets) {
     for (size_t j = 0; j < kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != kEmpty) {
+        LOG(INFO) << "Moving " << bucket.slots[j].value;
         insert(std::move(bucket.slots[j].value));
         // TODO: Destruct bucket.slots[j].
       }

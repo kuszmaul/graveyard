@@ -25,6 +25,12 @@ class TombstoneSet {
   static constexpr uint8_t kEmpty = 255;
  public:
   using value_type = T;
+
+  class iterator;
+
+  iterator begin();
+  iterator end();
+
   void reserve(size_t count);
   bool insert(T value);
   bool contains(const T& value) const;
@@ -190,6 +196,10 @@ template <class T, class Hash, class Eq>
 size_t TombstoneSet<T, Hash, Eq>::size() const {
   return size_;
 }
+
+template <class T, class Hash, class Eq>
+class TombstoneSet<T, Hash, Eq>::iterator {
+};
 
 }  // namespace yobiduck
 

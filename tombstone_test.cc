@@ -16,6 +16,11 @@ TEST(TombstoneSet, Basic) {
   CHECK(!set.contains(1l));
 }
 
+TEST(TombstoneSet, EmptyIterator) {
+  yobiduck::TombstoneSet<uint64_t> set;
+  CHECK(set.begin() == set.end());
+}
+
 TEST(TombstoneSet, RandomInserts) {
   absl::BitGen bitgen;
   yobiduck::TombstoneSet<uint64_t> set;

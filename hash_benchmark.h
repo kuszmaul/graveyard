@@ -37,8 +37,7 @@ void GetSomeNumbers(size_t size, std::vector<uint64_t>& result);
 std::vector<uint64_t> GetSomeOtherNumbers(
     const std::vector<uint64_t>& other_numbers);
 
-absl::flat_hash_set<Operation>& GetOperations();
-absl::string_view ToString(Operation operation);
+bool OperationIsFlagged(Operation operation);
 
 std::string FileNameForHashSetBenchmark(Operation operation, absl::string_view implementation);
 
@@ -60,7 +59,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
   LOG(INFO) << implementation;
   // TODO: Make "insert" contant into kConstant.
   if (Operation op = Operation::kInsert;
-      GetOperations().contains(op)) {
+      OperationIsFlagged(op)) {
     std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
                                 std::ios::out);
     CHECK(output.is_open());
@@ -81,7 +80,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
         sizes);
   }
   if (Operation op = Operation::kReservedInsert;
-      GetOperations().contains(op)) {
+      OperationIsFlagged(op)) {
     std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
                                 std::ios::out);
     CHECK(output.is_open());
@@ -105,7 +104,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
   }
 
   if (Operation op = Operation::kFound;
-      GetOperations().contains(op)) {
+      OperationIsFlagged(op)) {
     std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
                                 std::ios::out);
     CHECK(output.is_open());
@@ -131,7 +130,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
         sizes);
   }
   if (Operation op = Operation::kNotFound;
-      GetOperations().contains(op)) {
+      OperationIsFlagged(op)) {
     std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
                                 std::ios::out);
     CHECK(output.is_open());

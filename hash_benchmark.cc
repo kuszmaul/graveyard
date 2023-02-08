@@ -10,80 +10,38 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"      // for string_view
+#include "enum_print.h"
+#include "enums_flag.h"
+
+namespace {
+const auto* operation_enum_and_strings = EnumsAndStrings<Operation>::Create({{Operation::kInsert, "insert"},
+     {Operation::kReservedInsert, "reserved-insert"},
+     {Operation::kFound, "found"},
+     {Operation::kNotFound, "notfound"}});
+}  // namespace
 
 ABSL_FLAG(size_t, size_growth, 100,
           "For benchmarking tables of various sizes, increase the size by "
           "size/size_growth");
-namespace {
-const std::array kAllOperations{Operation::kInsert, Operation::kReservedInsert, Operation::kFound, Operation::kNotFound};
-}  // namespace
 ABSL_FLAG(std::vector<Operation>, operations,
-          std::vector<Operation>(kAllOperations.begin(), kAllOperations.end()),
+          operation_enum_and_strings->Enums(),
           "comma-separated list of operations to benchmark");
 
-absl::string_view ToString(Operation operation) {
-  switch (operation) {
-    case Operation::kInsert: return "insert";
-    case Operation::kReservedInsert: return "reserved-insert";
-    case Operation::kFound: return "found";
-    case Operation::kNotFound: return "notfound";
-  }
-  CHECK(false) << "This shouldn't happen";
-}
-
-namespace{
-std::optional<Operation> OperationFromString(absl::string_view operation) {
-  for (Operation op : kAllOperations) {
-    if (ToString(op) == operation) {
-      return op;
-    }
-  }
-  return std::nullopt;
-}
-
-struct OperationFormatter {
-  void operator()(std::string*out, Operation operation) {
-    out->append(ToString(operation));
-  }
-};
-}  // namespace
-
 std::string AbslUnparseFlag(std::vector<Operation> operations) {
-  return absl::StrJoin(operations, ",", OperationFormatter());
+  return AbslUnparseVectorEnumFlag(*operation_enum_and_strings, operations);
 }
 
 bool AbslParseFlag(absl::string_view text, std::vector<Operation> *operations, std::string* error) {
-  std::vector<absl::string_view> op_strings = absl::StrSplit(text, ",");
-  std::vector<Operation> result;
-  for (absl::string_view op_string : op_strings) {
-    std::optional<Operation> op = OperationFromString(op_string);
-    if (!op) {
-      *error = absl::StrCat(op_string, " is not one of");
-      for (size_t i = 0; i < kAllOperations.size(); ++i) {
-        if (i > 0) {
-          absl::StrAppend(error, ", ");
-        }
-        if (i + 1 == kAllOperations.size()) {
-          absl::StrAppend(error, " or ");
-        }
-        absl::StrAppend(error, " '", ToString(kAllOperations[i]), "'");
-      }
-      return false;
-    }
-    result.push_back(*op);
-  }
-  *operations = std::move(result);
-  return true;
+  return AbslParseVectorEnumFlag(*operation_enum_and_strings, text, operations, error);
 }
 
-absl::flat_hash_set<Operation>& GetOperations() {
+bool OperationIsFlagged(Operation operation) {
   std::vector<Operation> operations_vector = absl::GetFlag(FLAGS_operations);
-  static absl::flat_hash_set<Operation> operations(operations_vector.begin(), operations_vector.end());
-  return operations;
+  return absl::c_find(operations_vector, operation) != operations_vector.end();
 }
 
 std::string FileNameForHashSetBenchmark(Operation operation, absl::string_view implementation) {
-  return absl::StrCat("data/", ToString(operation), "_", implementation, ".data");
+  return absl::StrCat("data/", operation_enum_and_strings->ToString(operation), "_", implementation, ".data");
 }
 
 namespace {

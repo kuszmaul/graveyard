@@ -101,6 +101,15 @@ cc_library(
 )
 
 cc_binary(
+    name = "tombstone_test",
+    srcs = ["tombstone_test.cc"],
+    deps = [
+        ":tombstone_set",
+        "@com_google_absl//absl/log:check",
+    ]
+)
+
+cc_binary(
     name = "folly_test",
     srcs = ["folly_test.cc"],
     deps = ["@folly//folly/container:F14Set"],

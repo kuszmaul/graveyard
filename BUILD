@@ -44,11 +44,17 @@ cc_library(
     hdrs = ["hash_benchmark.h"],
     deps = [
         ":benchmark",
+        ":enum_flag",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",
     ],
+)
+
+cc_library(
+    name = "enum_flag",
+    hdrs = ["enum_flag.h",],
 )
 
 cc_library(

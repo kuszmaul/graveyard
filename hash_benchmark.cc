@@ -10,15 +10,21 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"      // for string_view
+#include "enum_flag.h"
 
 ABSL_FLAG(size_t, size_growth, 100,
           "For benchmarking tables of various sizes, increase the size by "
           "size/size_growth");
+
+namespace {
+using OpFlag = EnumFlag<Operation, Operation::kNotFound>;
+}  // namespace
+
 namespace {
 const std::array kAllOperations{Operation::kInsert, Operation::kReservedInsert, Operation::kFound, Operation::kNotFound};
 }  // namespace
 ABSL_FLAG(std::vector<Operation>, operations,
-          std::vector<Operation>(kAllOperations.begin(), kAllOperations.end()),
+          OpFlag.All(),
           "comma-separated list of operations to benchmark");
 
 absl::string_view ToString(Operation operation) {

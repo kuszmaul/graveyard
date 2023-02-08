@@ -16,10 +16,13 @@
 #include "folly/lang/Bits.h"  // for findLastSet
 #include "hash_benchmark.h"   // for IntHashSetBenchmark
 #include "ordered_linear_probing_set.h"
+#include "tombstone_set.h"
 
 enum class Implementation {
   kOLP,
   kOLPIdentityHash,
+  kTombstone,
+  kTombstoneIdentityHash,
   kGoogle,
   kGoogleIdentityHash,
   kFacebook,
@@ -29,7 +32,9 @@ enum class Implementation {
 namespace {
 const auto* implementation_enum_and_strings =
     EnumsAndStrings<Implementation>::Create(
-        {{Implementation::kOLP, "OLP"},
+        {{Implementation::kTombstone, "tombstone"},
+         {Implementation::kTombstoneIdentityHash, "tombstone-idhash"},
+         {Implementation::kOLP, "OLP"},
          {Implementation::kOLPIdentityHash, "OLP-idhash"},
          {Implementation::kGoogle, "google"},
          {Implementation::kGoogleIdentityHash, "google-idhash"},
@@ -66,6 +71,21 @@ struct IdentityHash {
 
 int main(int argc, char* argv[]) {
   absl::ParseCommandLine(argc, argv);
+  if (const auto implementation = Implementation::kTombstone;
+      ImplementationIsFlagged(implementation)) {
+    using Tombstone = yobiduck::TombstoneSet<uint64_t>;
+    IntHashSetBenchmark<Tombstone>(
+        [](const Tombstone& table) { return table.memory_estimate(); },
+        implementation_enum_and_strings->ToString(implementation));
+  }
+  if (const auto implementation = Implementation::kTombstoneIdentityHash;
+      ImplementationIsFlagged(implementation)) {
+    using TombstoneNoHash = yobiduck::TombstoneSet<uint64_t, IdentityHash>;
+    IntHashSetBenchmark<TombstoneNoHash>(
+        // TODO: Use the facebook name for `memory_estimate()`.
+        [](const TombstoneNoHash& table) { return table.memory_estimate(); },
+        implementation_enum_and_strings->ToString(implementation));
+  }
   if (const auto implementation = Implementation::kOLP;
       ImplementationIsFlagged(implementation)) {
     using OLP = OrderedLinearProbingSet<uint64_t>;

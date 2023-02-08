@@ -1,5 +1,5 @@
-#ifndef _ORDERED_LINEAR_PROBING_H_
-#define _ORDERED_LINEAR_PROBING_H_
+#ifndef _ORDERED_LINEAR_PROBING_SET_H_
+#define _ORDERED_LINEAR_PROBING_SET_H_
 
 #include <cassert>
 #include <cstddef>  // for size_t
@@ -52,7 +52,7 @@ void OrderedLinearProbingSet<T, Hash, Eq>::reserve(size_t count) {
   }
 }
 
-static constexpr bool DEBUG = true;
+static constexpr bool kDebugOLP = true;
 inline size_t PreferredSlot(size_t value, size_t slot_count) {
   return size_t((__int128(value) * __int128(slot_count)) >> 64);
 }
@@ -77,7 +77,7 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
   }
   const size_t preferred_slot = PreferredSlot(value, slot_count_);
   size_t slot = preferred_slot;
-  CHECK(!DEBUG || slot < slots_.size())
+  CHECK(!kDebugOLP || slot < slots_.size())
       << "Overflow: slot_count_=" << slot_count_ << " slot=" << slot
       << " value=" << value;
   for (; slots_[slot] <= value; ++slot) {
@@ -85,7 +85,7 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
     if (slots_[slot] == value) {
       return false;  // already there.
     }
-    CHECK(!DEBUG || slot + 1 < slots_.size())
+    CHECK(!kDebugOLP || slot + 1 < slots_.size())
         << "Overflow: slot_count_=" << slot_count_ << " slot=" << slot
         << " value=" << value;
   }
@@ -98,7 +98,7 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
     }
     // Make sure that we don't overflow and also that there is one more slot
     // left over at the end (to serve as a sentinal to stop lookup).
-    if (!(!DEBUG || slot + 1 < slots_.size())) {
+    if (!(!kDebugOLP || slot + 1 < slots_.size())) {
       for (size_t i = preferred_slot; i < slots_.size(); ++i) {
         LOG(INFO) << "slots_[" << i << "]=" << slots_[i];
       }
@@ -108,7 +108,7 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
         }
       }
     }
-    CHECK(!DEBUG || slot + 1 < slots_.size())
+    CHECK(!kDebugOLP || slot + 1 < slots_.size())
         << "Overflow slot=" << slot << " slots_.size()=" << slots_.size()
         << " slot_count_=" << slot_count_
         << " original preferred_slot=" << preferred_slot << " this item is "
@@ -146,13 +146,13 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::contains(uint64_t value) const {
     return max_is_present_;
   }
   size_t slot = size_t((__int128(value) * __int128(slot_count_)) >> 64);
-  CHECK(!DEBUG || slot < slots_.size()) << "contains overflow";
+  CHECK(!kDebugOLP || slot < slots_.size()) << "contains overflow";
   for (; slots_[slot] <= value; ++slot) {
     assert(slot < slots_.size());
     if (slots_[slot] == value) {
       return true;  // already there.
     }
-    CHECK(!DEBUG || slot + 1 < slots_.size()) << "contains overflow";
+    CHECK(!kDebugOLP || slot + 1 < slots_.size()) << "contains overflow";
   }
   return false;
 }
@@ -162,4 +162,4 @@ size_t OrderedLinearProbingSet<T, Hash, Eq>::size() const {
   return max_is_present_ + occupied_slot_count_;
 }
 
-#endif  // _ORDERED_LINEAR_PROBING_H_
+#endif  // _ORDERED_LINEAR_PROBING_SET_H_

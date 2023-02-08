@@ -3,13 +3,13 @@
 
 // Support for absl flag of a vector of enums.
 
-#include <cstddef>                    // for size_t
-#include <optional>                    // for optional
-#include <string>                      // for string
+#include <cstddef>   // for size_t
+#include <optional>  // for optional
+#include <string>    // for string
 #include <string_view>
-#include <vector>                      // for vector
+#include <vector>  // for vector
 
-#include "absl/strings/str_cat.h"      // for StrAppend, StrCat
+#include "absl/strings/str_cat.h"  // for StrAppend, StrCat
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "enum_print.h"

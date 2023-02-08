@@ -90,16 +90,3 @@ cc_binary(
     srcs = ["folly_test.cc"],
     deps = ["@folly//folly/container:F14Set"],
 )
-
-cc_binary(
-    name = "hashset_test",
-    srcs = ["hashset_test.cc",],
-    deps = [":hash_span",
-            "@com_google_absl//absl/log:check",
-    ],
-)
-
-cc_library(
-    name = "hash_span",
-    hdrs = ["hash_span.h"],
-)

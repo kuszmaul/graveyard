@@ -3,17 +3,26 @@
 
 // Support for absl flag of a vector of enums.
 
+#include <cstddef>                    // for size_t
+#include <optional>                    // for optional
+#include <string>                      // for string
+#include <string_view>
+#include <vector>                      // for vector
+
+#include "absl/strings/str_cat.h"      // for StrAppend, StrCat
+#include "absl/strings/str_join.h"
+#include "absl/strings/str_split.h"
 #include "enum_print.h"
 
 template <class EnumType>
 bool AbslParseVectorEnumFlag(const EnumsAndStrings<EnumType>& enums_and_strings,
-                             absl::string_view text,
+                             std::string_view text,
                              std::vector<EnumType>* parsed,
                              std::string* error) {
-  std::vector<absl::string_view> op_strings = absl::StrSplit(text, ",");
+  std::vector<std::string_view> op_strings = absl::StrSplit(text, ",");
   std::vector<EnumType> result;
   const size_t number_of_enums = enums_and_strings.Pairs().size();
-  for (absl::string_view op_string : op_strings) {
+  for (std::string_view op_string : op_strings) {
     std::optional<EnumType> op = enums_and_strings.ToEnum(op_string);
     if (!op) {
       *error = absl::StrCat(op_string, " is not one of");

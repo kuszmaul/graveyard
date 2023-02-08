@@ -4,6 +4,7 @@
 // Support for parsing and printing an enum
 
 #include <optional>
+#include <string>                      // for string
 #include <utility>
 #include <vector>
 

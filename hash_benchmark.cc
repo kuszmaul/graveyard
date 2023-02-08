@@ -2,13 +2,14 @@
 
 #include <cstdlib>  // for abort
 #include <random>
+#include <string_view>
+#include <utility>                         // for pair, move
 #include <vector>
 
+#include "absl/algorithm/container.h"      // for c_find, ContainerIter
 #include "absl/container/flat_hash_set.h"  // for flat_hash_set, BitMask
 #include "absl/hash/hash.h"                // for Hash
 #include "absl/strings/str_cat.h"
-#include "absl/strings/str_join.h"
-#include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"  // for string_view
 #include "enum_print.h"
 #include "enums_flag.h"
@@ -32,7 +33,7 @@ std::string AbslUnparseFlag(std::vector<Operation> operations) {
   return AbslUnparseVectorEnumFlag(*operation_enum_and_strings, operations);
 }
 
-bool AbslParseFlag(absl::string_view text, std::vector<Operation>* operations,
+bool AbslParseFlag(std::string_view text, std::vector<Operation>* operations,
                    std::string* error) {
   return AbslParseVectorEnumFlag(*operation_enum_and_strings, text, operations,
                                  error);
@@ -44,7 +45,7 @@ bool OperationIsFlagged(Operation operation) {
 }
 
 std::string FileNameForHashSetBenchmark(Operation operation,
-                                        absl::string_view implementation) {
+                                        std::string_view implementation) {
   return absl::StrCat("data/", operation_enum_and_strings->ToString(operation),
                       "_", implementation, ".data");
 }

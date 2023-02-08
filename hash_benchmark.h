@@ -6,15 +6,14 @@
 #include <cstdint>
 #include <functional>
 #include <iostream>     // for operator<<, basic_ostream, basic_ostream<>...
+#include <string>
 #include <string_view>  // for string_view
 #include <vector>
 
-#include "absl/container/flat_hash_set.h"
 #include "absl/flags/declare.h"
 #include "absl/flags/flag.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
-#include "absl/strings/str_cat.h"  // for StrCat
 #include "benchmark.h"
 
 ABSL_DECLARE_FLAG(size_t, size_growth);
@@ -38,7 +37,7 @@ std::vector<uint64_t> GetSomeOtherNumbers(
 bool OperationIsFlagged(Operation operation);
 
 std::string FileNameForHashSetBenchmark(Operation operation,
-                                        absl::string_view implementation);
+                                        std::string_view implementation);
 
 template <class HashSet>
 void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,

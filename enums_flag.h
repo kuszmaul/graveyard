@@ -8,7 +8,7 @@
 template <class EnumType>
 bool AbslParseVectorEnumFlag(const EnumsAndStrings<EnumType>& enums_and_strings,
                              absl::string_view text,
-                             std::vector<EnumType> *parsed,
+                             std::vector<EnumType>* parsed,
                              std::string* error) {
   std::vector<absl::string_view> op_strings = absl::StrSplit(text, ",");
   std::vector<EnumType> result;
@@ -35,9 +35,10 @@ bool AbslParseVectorEnumFlag(const EnumsAndStrings<EnumType>& enums_and_strings,
 }
 
 template <class EnumType>
-    std::string AbslUnparseVectorEnumFlag(const EnumsAndStrings<EnumType>& enums_and_strings, std::vector<EnumType> operations) {
+std::string AbslUnparseVectorEnumFlag(
+    const EnumsAndStrings<EnumType>& enums_and_strings,
+    std::vector<EnumType> operations) {
   return absl::StrJoin(operations, ",", enums_and_strings.Formatter());
 }
-
 
 #endif  // ENUMS_FLAG_H_

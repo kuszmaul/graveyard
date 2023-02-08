@@ -32,38 +32,32 @@ int main(int argc, char* argv[]) {
     tables = absl::flat_hash_set<std::string>(tables_vector.begin(),
                                               tables_vector.end());
   }
-  if (constexpr absl::string_view name = "OLP";
-      tables.contains(name)) {
+  if (constexpr absl::string_view name = "OLP"; tables.contains(name)) {
     using OLP = OrderedLinearProbingSet<uint64_t>;
     IntHashSetBenchmark<OLP>(
         [](const OLP& table) { return table.memory_estimate(); }, name);
   }
-  if (constexpr absl::string_view name = "OLP-idhash";
-      tables.contains(name)) {
+  if (constexpr absl::string_view name = "OLP-idhash"; tables.contains(name)) {
     using OLPNoHash = OrderedLinearProbingSet<uint64_t, IdentityHash>;
     IntHashSetBenchmark<OLPNoHash>(
         // TODO: Use the facebook name for `memory_estimate()`.
-        [](const OLPNoHash& table) { return table.memory_estimate(); },
-        name);
+        [](const OLPNoHash& table) { return table.memory_estimate(); }, name);
   }
-  if (constexpr absl::string_view name = "google";
-      tables.contains(name)) {
+  if (constexpr absl::string_view name = "google"; tables.contains(name)) {
     IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
         SwissMemoryEstimator<absl::flat_hash_set<uint64_t>>, name);
   }
   if (constexpr absl::string_view name = "google-idhash";
       tables.contains(name)) {
     using FlatNoHash = absl::flat_hash_set<uint64_t, IdentityHash>;
-    IntHashSetBenchmark<FlatNoHash>(SwissMemoryEstimator<FlatNoHash>,
-                                    name);
+    IntHashSetBenchmark<FlatNoHash>(SwissMemoryEstimator<FlatNoHash>, name);
   }
   if (constexpr absl::string_view name = "facebook-idhash";
       tables.contains(name)) {
     using F14 = folly::F14FastSet<uint64_t>;
     IntHashSetBenchmark<F14>(F14MemoryEstimator<F14>, name);
   }
-  if (constexpr absl::string_view name = "facebook";
-      tables.contains(name)) {
+  if (constexpr absl::string_view name = "facebook"; tables.contains(name)) {
     using F14NoHash = folly::F14FastSet<uint64_t, IdentityHash>;
     IntHashSetBenchmark<F14NoHash>(F14MemoryEstimator<F14NoHash>, name);
   }

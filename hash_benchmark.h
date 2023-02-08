@@ -18,9 +18,7 @@
 #include "benchmark.h"
 
 ABSL_DECLARE_FLAG(size_t, size_growth);
-enum class Operation {
-  kInsert, kReservedInsert, kFound, kNotFound
-};
+enum class Operation { kInsert, kReservedInsert, kFound, kNotFound };
 ABSL_DECLARE_FLAG(std::vector<Operation>, operations);
 
 // These functions don't return a flat-hash-set since the sort order will be
@@ -39,7 +37,8 @@ std::vector<uint64_t> GetSomeOtherNumbers(
 
 bool OperationIsFlagged(Operation operation);
 
-std::string FileNameForHashSetBenchmark(Operation operation, absl::string_view implementation);
+std::string FileNameForHashSetBenchmark(Operation operation,
+                                        absl::string_view implementation);
 
 template <class HashSet>
 void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
@@ -58,10 +57,9 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
   std::vector<uint64_t> values;
   LOG(INFO) << implementation;
   // TODO: Make "insert" contant into kConstant.
-  if (Operation op = Operation::kInsert;
-      OperationIsFlagged(op)) {
+  if (Operation op = Operation::kInsert; OperationIsFlagged(op)) {
     std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
-                                std::ios::out);
+                         std::ios::out);
     CHECK(output.is_open());
     Benchmark(
         output,
@@ -79,10 +77,9 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
         },
         sizes);
   }
-  if (Operation op = Operation::kReservedInsert;
-      OperationIsFlagged(op)) {
+  if (Operation op = Operation::kReservedInsert; OperationIsFlagged(op)) {
     std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
-                                std::ios::out);
+                         std::ios::out);
     CHECK(output.is_open());
     Benchmark(
         output,
@@ -103,10 +100,9 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
         sizes);
   }
 
-  if (Operation op = Operation::kFound;
-      OperationIsFlagged(op)) {
+  if (Operation op = Operation::kFound; OperationIsFlagged(op)) {
     std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
-                                std::ios::out);
+                         std::ios::out);
     CHECK(output.is_open());
     Benchmark(
         output,
@@ -129,10 +125,9 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
         },
         sizes);
   }
-  if (Operation op = Operation::kNotFound;
-      OperationIsFlagged(op)) {
+  if (Operation op = Operation::kNotFound; OperationIsFlagged(op)) {
     std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
-                                std::ios::out);
+                         std::ios::out);
     CHECK(output.is_open());
     std::vector<uint64_t> other_numbers;
     Benchmark(

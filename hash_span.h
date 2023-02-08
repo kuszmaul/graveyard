@@ -12,7 +12,8 @@ class Iterator {
  public:
   template <class IteratorT>
   Iterator(IteratorT&& iterator)
-      : iterator_(std::make_shared<Model<IteratorT>>(std::forward<IteratorT>(iterator))) {}
+      : iterator_(std::make_shared<Model<IteratorT>>(
+            std::forward<IteratorT>(iterator))) {}
   // The treatment of operator== is not optimal.  I really want to use friend
   // functions.
   bool operator==(const Iterator& other) {
@@ -21,8 +22,8 @@ class Iterator {
   bool operator!=(const Iterator& other) {
     return iterator_->operator!=(*other.iterator_);
   }
- private:
 
+ private:
   class Concept {
    public:
     virtual bool operator==(const Concept& other) const = 0;
@@ -33,15 +34,16 @@ class Iterator {
    public:
     Model(const IteratorT& iterator) : iterator_(iterator) {}
     bool operator==(const Concept& other) const {
-      const Model *other_m = dynamic_cast<const Model*>(&other);
+      const Model* other_m = dynamic_cast<const Model*>(&other);
       CHECK(other_m != nullptr);
       return iterator_ == other_m->iterator_;
     }
     bool operator!=(const Concept& other) const {
-      const Model *other_m = dynamic_cast<const Model*>(&other);
+      const Model* other_m = dynamic_cast<const Model*>(&other);
       CHECK(other_m != nullptr);
       return iterator_ != other_m->iterator_;
     }
+
    private:
 #if 0
     friend bool operator==(const Model& a, const Model& b) {
@@ -69,9 +71,7 @@ class SetSpan {
 
   size_t size() const { return table_->size(); }
 
-  Iterator<Key> end() {
-    return table_->end();
-  }
+  Iterator<Key> end() { return table_->end(); }
 
  private:
   class Concept {
@@ -89,9 +89,7 @@ class SetSpan {
       auto [it, inserted] = table_.insert(key);
       return {Iterator<Key>(it), inserted};
     }
-    Iterator<Key> end() {
-      return Iterator<Key>(table_.end());
-    }
+    Iterator<Key> end() { return Iterator<Key>(table_.end()); }
 
    private:
     Table table_;

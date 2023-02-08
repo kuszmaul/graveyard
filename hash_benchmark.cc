@@ -9,12 +9,13 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
-#include "absl/strings/string_view.h"      // for string_view
+#include "absl/strings/string_view.h"  // for string_view
 #include "enum_print.h"
 #include "enums_flag.h"
 
 namespace {
-const auto* operation_enum_and_strings = EnumsAndStrings<Operation>::Create({{Operation::kInsert, "insert"},
+const auto* operation_enum_and_strings = EnumsAndStrings<Operation>::Create(
+    {{Operation::kInsert, "insert"},
      {Operation::kReservedInsert, "reserved-insert"},
      {Operation::kFound, "found"},
      {Operation::kNotFound, "notfound"}});
@@ -31,8 +32,10 @@ std::string AbslUnparseFlag(std::vector<Operation> operations) {
   return AbslUnparseVectorEnumFlag(*operation_enum_and_strings, operations);
 }
 
-bool AbslParseFlag(absl::string_view text, std::vector<Operation> *operations, std::string* error) {
-  return AbslParseVectorEnumFlag(*operation_enum_and_strings, text, operations, error);
+bool AbslParseFlag(absl::string_view text, std::vector<Operation>* operations,
+                   std::string* error) {
+  return AbslParseVectorEnumFlag(*operation_enum_and_strings, text, operations,
+                                 error);
 }
 
 bool OperationIsFlagged(Operation operation) {
@@ -40,8 +43,10 @@ bool OperationIsFlagged(Operation operation) {
   return absl::c_find(operations_vector, operation) != operations_vector.end();
 }
 
-std::string FileNameForHashSetBenchmark(Operation operation, absl::string_view implementation) {
-  return absl::StrCat("data/", operation_enum_and_strings->ToString(operation), "_", implementation, ".data");
+std::string FileNameForHashSetBenchmark(Operation operation,
+                                        absl::string_view implementation) {
+  return absl::StrCat("data/", operation_enum_and_strings->ToString(operation),
+                      "_", implementation, ".data");
 }
 
 namespace {

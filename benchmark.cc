@@ -37,11 +37,12 @@ void Benchmark(std::ofstream& output,
       uint64_t elapsed = end - start;
       x_sum += elapsed;
       x_squared_sum += elapsed * elapsed;
-      //if (trial > 0) {
-        // Throw away the time of the first call to fun(), but keep the memory_size.
-        output << "#" << count << "," << elapsed << "," << memory_size
-               << std::endl;
-        //}
+      // if (trial > 0) {
+      //  Throw away the time of the first call to fun(), but keep the
+      //  memory_size.
+      output << "#" << count << "," << elapsed << "," << memory_size
+             << std::endl;
+      //}
     }
     // These variables are named as if in Reverse Polish Notation.
     double x_expected = x_sum * kNInverse;

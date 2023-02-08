@@ -20,9 +20,13 @@ cc_binary(
     name = "hash_tables_benchmark",
     srcs = ["hash_tables_benchmark.cc"],
     deps = [
+        ":enum_print",
+        ":enums_flag",
         ":hash_benchmark",
         ":ordered_linear_probing_set",
+        "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         "@folly//folly/container:F14Set",
     ],

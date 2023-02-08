@@ -89,7 +89,7 @@ absl::flat_hash_set<Operation>& GetOperations() {
 }
 
 std::string FileNameForHashSetBenchmark(Operation operation, absl::string_view implementation) {
-  return absl::StrCat("data/", ToString(operation), "_", implementation);
+  return absl::StrCat("data/", ToString(operation), "_", implementation, ".data");
 }
 
 namespace {

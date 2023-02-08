@@ -53,16 +53,18 @@ plot "data/found_google.data"         using 1:($2/$1)                     with l
 
 set output "plots/notfound-time.svg"
 set title "Unsuccessful find"
-plot "data/notfound_google.data"         using 1:($2/$1)                     with lines       linecolor rgb Gcolor dt 1 title "Google",\
-     "data/notfound_google-idhash.data"  using 1:($2/$1)                     with lines       linecolor rgb Gcolor dt 2 title "Google-idhash",\
-     "data/notfound_OLP.data"            using 1:($2/$1)                     with lines       linecolor rgb Kcolor dt 1 title "OLP",\
-     "data/notfound_OLP-idhash.data"     using 1:($2/$1)                     with lines       linecolor rgb Kcolor dt 2 title "OLP-idhash",\
-     "data/notfound_facebook.data"       using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 1 title "Facebook",\
-     "data/notfound_google.data"         using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor fs transparent solid 0.1 notitle,\
-     "data/notfound_google-idhash.data"  using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Kcolor fs transparent solid 0.1 notitle,\
-     "data/notfound_OLP.data"            using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 3 fs transparent solid 0.1 notitle,\
-     "data/notfound_OLP-idhash.data"     using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor 4 fs transparent solid 0.1 notitle,\
-     "data/notfound_facebook.data"       using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
+plot "data/notfound_google.data"          using 1:($2/$1)                     with lines       linecolor rgb Gcolor dt 1 title "Google",\
+     "data/notfound_google-idhash.data"   using 1:($2/$1)                     with lines       linecolor rgb Gcolor dt 2 title "Google-idhash",\
+     "data/notfound_OLP.data"             using 1:($2/$1)                     with lines       linecolor rgb Kcolor dt 1 title "OLP",\
+     "data/notfound_OLP-idhash.data"      using 1:($2/$1)                     with lines       linecolor rgb Kcolor dt 2 title "OLP-idhash",\
+     "data/notfound_facebook.data"        using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 1 title "Facebook",\
+     "data/notfound_facebook-idhash.data" using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 2 title "Facebook-idhash",\
+     "data/notfound_google.data"          using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor  fs transparent solid 0.1 notitle,\
+     "data/notfound_google-idhash.data"   using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor  fs transparent solid 0.1 notitle,\
+     "data/notfound_OLP.data"             using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Kcolor  fs transparent solid 0.1 notitle,\
+     "data/notfound_OLP-idhash.data"      using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Kcolor  fs transparent solid 0.1 notitle,\
+     "data/notfound_facebook.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
+     "data/notfound_facebook-idhash.data" using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
 
 
 set output "plots/memory.svg"

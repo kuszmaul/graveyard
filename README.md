@@ -85,5 +85,10 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 
 ## TODO
 
-* Why is the gap between `Google` and `Google-idhash` larger when doing reserve?
-  Plot them together on one plot to see what's going on.
+*   Why are the idhash versions slower (e.g., for OLP)  Is it a bad random number generator?
+
+*   Where is that jitter comming from  in facebook?
+
+*   For Tombstone:
+    *   Change from std::vector to a malloced, aligned memory allocation.
+    *   Vectorize

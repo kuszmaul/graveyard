@@ -41,7 +41,7 @@ class TombstoneSet {
   bool insert(T value);
   bool contains(const T& value) const;
   size_t size() const;
-  // Returns the actual size of the table which is at least NominalSlotCount().
+  // Returns the actual size of the table which is at least LogicalSlotCount().
   size_t capacity() const { return buckets_.size() * kSlotsPerBucket; }
   size_t memory_estimate() const {
     return sizeof(*this) + buckets_.size() * sizeof(buckets_[0]);
@@ -52,13 +52,13 @@ class TombstoneSet {
 
   // The number of slots that we are aiming for, not counting the overflow slots
   // at the end.  This value is used to compute the H1 hash (which maps from T
-  // to Z/NominalSlotCount().)
-  size_t NominalSlotCount() const { return bucket_count_ * kSlotsPerBucket; }
+  // to Z/LogicalSlotCount().)
+  size_t LogicalSlotCount() const { return logical_bucket_count_ * kSlotsPerBucket; }
 
   // Preferred bucket number
   size_t H1(size_t hash) const {
     // TODO: Use the absl version.
-    return size_t((__int128(hash) * __int128(bucket_count_)) >> 64);
+    return size_t((__int128(hash) * __int128(logical_bucket_count_)) >> 64);
   }
 
   size_t H2(size_t hash) const { return hash % 255; }
@@ -70,7 +70,7 @@ class TombstoneSet {
   // Rehashes the table so that we can hold at least count.
   void rehash(size_t count);
 
-  // TODO: Make the vector be a pointer and move everything except bucket_count_
+  // TODO: Make the vector be a pointer and move everything except logical_bucket_count_
   // into the memory array.
 
   union Item {
@@ -91,29 +91,29 @@ class TombstoneSet {
 
   // The number of present items in all the buckets combined.
   size_t size_ = 0;
-  size_t bucket_count_ = 0;  // For computing the hash.  The actual buckets_
-                             // vector is longer so that we can overflow simply
-                             // by going off the end.
-  // buckets_.size() is bigger than slot_count_ (except for the case where
-  // buckets_.size() == 0).
-  //
+  size_t logical_bucket_count_ = 0;  // For computing the hash.  The actual
+                                     // buckets vector is longer
+                                     // (`physical_bucket_count_`) so that we
+                                     // can overflow simply by going off the
+                                     // end.
+  size_t physical_bucket_count_ = 0; // How much memory is allocated in `buckets_`.
   // If buckets_ is not empty then the last bucket contains
   // search_distance==kSearchDistanceEndSentinal, which is helpfor for
   // iterator++ to know when to stop scanning.
-  std::vector<Bucket> buckets_;
+  Bucket *buckets_;
 };
 
 template <class T, class Hash, class Eq>
 bool TombstoneSet<T, Hash, Eq>::NeedsRehash(size_t target_size) const {
-  return NominalSlotCount() * 7 < target_size * 8;
+  return LogicalSlotCount() * 7 < target_size * 8;
 }
 
 template <class T, class Hash, class Eq>
 void TombstoneSet<T, Hash, Eq>::reserve(size_t count) {
-  // If the nominal capacity * 7 /8 < count  then rehash
+  // If the logical capacity * 7 /8 < count  then rehash
   if (NeedsRehash(count)) {
-    // Set the NominalSlotCount to at least count.  Don't grow by less than 1/7.
-    rehash(std::min(count, NominalSlotCount() * 8 / 7));
+    // Set the LogicalSlotCount to at least count.  Don't grow by less than 1/7.
+    rehash(std::min(count, LogicalSlotCount() * 8 / 7));
   }
 }
 
@@ -133,7 +133,7 @@ bool TombstoneSet<T, Hash, Eq>::insert(T value) {
   const size_t h2 = H2(value);
   const size_t distance = buckets_[preferred_bucket].search_distance;
   for (size_t i = 0; i <= distance; ++i) {
-    assert(preferred_bucket + i < buckets_.size());
+    assert(preferred_bucket + i < physical_bucket_count_);
     const Bucket& bucket = buckets_[preferred_bucket + i];
     // TODO: Use vector instructions to replace this loop.
     for (size_t j = 0; j < kSlotsPerBucket; ++j) {
@@ -144,7 +144,7 @@ bool TombstoneSet<T, Hash, Eq>::insert(T value) {
     }
   }
   for (size_t i = 0; true; ++i) {
-    assert(preferred_bucket + i < buckets_.size());
+    assert(preferred_bucket + i < physical_bucket_count_);
     Bucket& bucket = buckets_[preferred_bucket + i];
     // TODO: Use vector instructions to replace this loop.
     for (uint8_t j = 0; j < kSlotsPerBucket; ++j) {
@@ -165,19 +165,25 @@ bool TombstoneSet<T, Hash, Eq>::insert(T value) {
 
 template <class T, class Hash, class Eq>
 void TombstoneSet<T, Hash, Eq>::rehash(size_t slot_count) {
-  bucket_count_ = ceil(slot_count, kSlotsPerBucket);
-  assert(bucket_count_ > 0);
-  // Add 4 buckets if bucket_count > 4.
-  // Add 3 buckets if bucket_count == 4.
-  // Add 2 buckets if bucket_count == 3.
-  // Add 1 bucket if bucket_count <= 2.
-  size_t extra_buckets = (bucket_count_ > 4)    ? 4
-                         : (bucket_count_ <= 2) ? 1
-                                                : bucket_count_ - 1;
-  std::vector<Bucket> buckets(bucket_count_ + extra_buckets);
-  buckets.back().search_distance = Bucket::kSearchDistanceEndSentinal;
+  logical_bucket_count_ = ceil(slot_count, kSlotsPerBucket);
+  assert(logical_bucket_count_ > 0);
+  // Add 4 buckets if logical_bucket_count_ > 4.
+  // Add 3 buckets if logical_bucket_count_ == 4.
+  // Add 2 buckets if logical_bucket_count_ == 3.
+  // Add 1 bucket if logical_bucket_count_ <= 2.
+  size_t extra_buckets = (logical_bucket_count_ > 4)    ? 4
+                         : (logical_bucket_count_ <= 2) ? 1
+                                                : logical_bucket_count_ - 1;
+  size_t physical_bucket_count = logical_bucket_count_ + extra_buckets;
+  Bucket* buckets = aligned_alloc(kCacheLineSize, physical_bucket_count * sizeof(*buckets));
+  assert(buckets != nullptr);
+  assert(physical_bucket_count > 0);
+  buckets[physical_bucket_count - 1] = Bucket::kSearchDistanceEndSentinal;
   std::swap(buckets_, buckets);
+  std::swap(physical_bucket_count_, physical_bucket_count);
   size_ = 0;
+  Bucket* end = buckets + physical_bucket_count;
+  for (Bucket* bucket = buckets; size_t bucket_number = 0;
   for (Bucket& bucket : buckets) {
     for (size_t j = 0; j < kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != kEmpty) {
@@ -197,7 +203,7 @@ bool TombstoneSet<T, Hash, Eq>::contains(const T& value) const {
   const size_t h2 = H2(value);
   const size_t distance = buckets_[preferred_bucket].search_distance;
   for (size_t i = 0; i <= distance; ++i) {
-    assert(preferred_bucket + i < buckets_.size());
+    assert(preferred_bucket + i < physical_bucket_count_);
     const Bucket& bucket = buckets_[preferred_bucket + i];
     // TODO: Use vector instructions to replace this loop.
     for (size_t j = 0; j < kSlotsPerBucket; ++j) {
@@ -217,7 +223,7 @@ size_t TombstoneSet<T, Hash, Eq>::size() const {
 template <class T, class Hash, class Eq>
 typename TombstoneSet<T, Hash, Eq>::iterator
 TombstoneSet<T, Hash, Eq>::begin() {
-  auto it = iterator(buckets_.begin(), 0);
+  auto it = iterator(buckets_, 0);
   if (!buckets_.empty()) {
     it.SkipEmpty();
   }

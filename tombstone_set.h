@@ -1,6 +1,8 @@
 #ifndef _TOMBSTONE_SET_H_
 #define _TOMBSTONE_SET_H_
 
+#include <malloc.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cstddef>  // for size_t
@@ -123,7 +125,16 @@ class TombstoneSet {
       // Set the end-of-search sentinal.
       buckets_[physical_size_ - 1].search_distance =
           Bucket::kSearchDistanceEndSentinal;
-      LOG(INFO) << "logical_size=" << logical_size_ << " physical_size=" << physical_size_;
+      if (0) {
+        // It turns out that for libc malloc, the extra usable size usually just
+        // 8 extra bytes.
+        size_t allocated = malloc_usable_size(buckets_);
+        LOG(INFO) << "logical_size=" << logical_size_
+                  << " physical_size=" << physical_size_
+                  << " allocated bytes=" << allocated
+                  << " size=" << allocated / sizeof(*buckets_) << " %"
+                  << sizeof(*buckets_) << "=" << allocated % sizeof(*buckets_);
+      }
     }
     size_t logical_size() const { return logical_size_; }
     size_t physical_size() const { return physical_size_; }
@@ -338,8 +349,7 @@ class TombstoneSet<T, Hash, Eq>::iterator {
       }
     }
   }
-  iterator(Bucket* bucket, size_t index)
-      : bucket_(bucket), index_(index) {}
+  iterator(Bucket* bucket, size_t index) : bucket_(bucket), index_(index) {}
   // The end iterator is represented with bucket_ == buckets_.end()
   // and index_ == kSlotsPerBucket.
   Bucket* bucket_;
@@ -393,8 +403,7 @@ class TombstoneSet<T, Hash, Eq>::const_iterator {
       }
     }
   }
-  const_iterator(const Bucket* bucket,
-                 size_t index)
+  const_iterator(const Bucket* bucket, size_t index)
       : bucket_(bucket), index_(index) {}
   // The end const_iterator is represented with bucket_ == buckets_.end()
   // and index_ == kSlotsPerBucket.

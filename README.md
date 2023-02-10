@@ -95,3 +95,5 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
     *   Put as much metadata as possible into the malloced part (but not the
         `logical_bucket_count_` which is in the critical path for `find`.
     *   Increase the size of `buckets_` to match the actual allocated memory.
+        This doesn't seem to make any difference for libc malloc, but it
+        probably makes a difference for a bucketed malloc such as tcmalloc.

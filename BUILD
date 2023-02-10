@@ -1,22 +1,4 @@
 cc_binary(
-    name = "simple_integer_linear_probing_benchmark",
-    srcs = ["simple_integer_linear_probing_benchmark.cc"],
-    deps = [
-        ":hash_benchmark",
-        ":simple_integer_linear_probing",
-    ],
-)
-
-cc_binary(
-    name = "flat_hash_set_benchmark",
-    srcs = ["flat_hash_set_benchmark.cc"],
-    deps = [
-        ":hash_benchmark",
-        "@com_google_absl//absl/container:flat_hash_set",
-    ],
-)
-
-cc_binary(
     name = "hash_tables_benchmark",
     srcs = ["hash_tables_benchmark.cc"],
     deps = [
@@ -100,7 +82,7 @@ cc_library(
     ],
 )
 
-cc_binary(
+cc_test(
     name = "tombstone_test",
     srcs = ["tombstone_test.cc"],
     deps = [

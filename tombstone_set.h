@@ -10,6 +10,7 @@
 #include <iostream>
 #include <limits>
 #include <vector>
+#include <utility>
 
 #include "absl/container/flat_hash_set.h"  // For hash_default_hash
 #include "absl/log/check.h"
@@ -136,6 +137,19 @@ class TombstoneSet {
                   << sizeof(*buckets_) << "=" << allocated % sizeof(*buckets_);
       }
     }
+    ~Buckets() {
+      assert((physical_size_ == 0) == (buckets_ == nullptr));
+      if (buckets_ != nullptr) {
+        // TODO: Destruct the nonempty slots
+        free(buckets_);
+      }
+    }
+    void swap(Buckets& other) {
+      using std::swap;
+      swap(logical_size_, other.logical_size_);
+      swap(physical_size_, other.physical_size_);
+      swap(buckets_, other.buckets_);
+    }
     size_t logical_size() const { return logical_size_; }
     size_t physical_size() const { return physical_size_; }
     bool empty() const { return physical_size_ == 0; }
@@ -235,7 +249,7 @@ bool TombstoneSet<T, Hash, Eq>::insert(T value) {
 template <class T, class Hash, class Eq>
 void TombstoneSet<T, Hash, Eq>::rehash(size_t slot_count) {
   Buckets buckets(ceil(slot_count, kSlotsPerBucket));
-  std::swap(buckets_, buckets);
+  buckets.swap(buckets_);
   size_ = 0;
   for (Bucket& bucket : buckets) {
     for (size_t j = 0; j < kSlotsPerBucket; ++j) {

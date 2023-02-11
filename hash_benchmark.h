@@ -47,7 +47,7 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
   for (size_t size = 1; size < size_growth; ++size) {
     sizes.push_back(size);
   }
-  for (size_t size = size_growth; size < 10'000'000;
+  for (size_t size = size_growth; size < 1'0'000;
        size += size / size_growth) {
     sizes.push_back(size);
   }

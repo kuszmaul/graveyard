@@ -31,6 +31,46 @@ class TombstoneSet {
  public:
   using value_type = T;
 
+  TombstoneSet() = default;
+
+  // Copy constructor
+  TombstoneSet(const TombstoneSet &set) {
+    reserve(set.size());
+    for (const T& value: set) {
+      insert(value);  // TODO: Optimize this given that we know `value` is not in `*this`.
+    }
+  }
+
+  // Copy assignment
+  TombstoneSet& operator=(const TombstoneSet& other) {
+    clear();
+    reserve(other.size());
+    for (const T& value: other) {
+      insert(value);  // TODO: Optimize this given that we know `value` is not in `*this`.
+    }
+  }
+
+  // Move constructor
+  TombstoneSet(TombstoneSet&& other) :TombstoneSet() {
+    swap(other);
+  }
+
+  // Move assignment
+  TombstoneSet& operator=(TombstoneSet&& other) {
+    swap(other);
+    return *this;
+  }
+
+  void clear() {
+    size_ = 0;
+    buckets_.Clear();
+  }
+
+  void swap(TombstoneSet& other) {
+    std::swap(size_, other.size_);
+    buckets_.swap(other.buckets_);
+  }
+
   class iterator;
   class const_iterator;
 
@@ -82,9 +122,22 @@ class TombstoneSet {
   };
   struct Bucket {
     static constexpr uint8_t kSearchDistanceEndSentinal = 255;
+
     // Buckets aren't constructed, since the values inside are constructed in
     // place.
     Bucket() = delete;
+    // Copy constructor
+    Bucket(const Bucket&) = delete;
+    // Copy assignment
+    Bucket& operator=(Bucket other) = delete;
+    // Move constructor
+    Bucket(Bucket&& other) = delete;
+    // Move assignment
+    Bucket& operator=(Bucket&& other) = delete;
+    // Destructor
+    ~Bucket() = delete;
+
+
     void Init() {
       for (size_t i = 0; i < kSlotsPerBucket; ++i) h2[i] = kEmpty;
       search_distance = 0;
@@ -99,6 +152,22 @@ class TombstoneSet {
    public:
     // Constructs a `Buckets` with size 0 and no allocated memory.
     Buckets() = default;
+    // Copy constructor
+    Buckets(const Buckets&) = delete;
+    // Copy assignment
+    Buckets& operator=(Buckets other) = delete;
+    // Move constructor
+    Buckets(Buckets&& other) = delete;
+    // Move assignment
+    Buckets& operator=(Buckets&& other) = delete;
+
+    void Clear() {
+      logical_size_ = 0;
+      physical_size_ = 0;
+      free(buckets_);
+      buckets_ = 0;
+    }
+
     // Constructs a `Buckets` that has the given logical bucket size (which must
     // be positive).
     explicit Buckets(size_t logical_size) : logical_size_(logical_size) {
@@ -142,6 +211,7 @@ class TombstoneSet {
       if (buckets_ != nullptr) {
         // TODO: Destruct the nonempty slots
         free(buckets_);
+        buckets_ = nullptr;
       }
     }
     void swap(Buckets& other) {
@@ -195,7 +265,7 @@ void TombstoneSet<T, Hash, Eq>::reserve(size_t count) {
   // If the logical capacity * 7 /8 < count  then rehash
   if (NeedsRehash(count)) {
     // Set the LogicalSlotCount to at least count.  Don't grow by less than 1/7.
-    rehash(std::min(count, LogicalSlotCount() * 8 / 7));
+    rehash(std::max(count, LogicalSlotCount() * 8 / 7));
   }
 }
 

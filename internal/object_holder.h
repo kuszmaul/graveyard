@@ -13,7 +13,9 @@ namespace yobiduck::internal {
 template <char Tag, class T>
 class ObjectHolder {
  public:
-  ObjectHolder() = default;
+  template <typename... Args>
+  ObjectHolder(Args&&... args) : value_{std::forward<Args>(args)...} {}
+
   T& operator*() { return value_; };
   const T& operator*() const { return value_; }
  private:

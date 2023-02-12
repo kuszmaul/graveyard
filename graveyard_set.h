@@ -22,8 +22,13 @@ namespace yobiduck {
 // Hash Set with Graveyard hashing.  Type `T` must have a default constructor.
 // (TODO: Remove that restrictionon the default constructor).
 template <class T, class Hash = absl::container_internal::hash_default_hash<T>,
-          class Eq = absl::container_internal::hash_default_eq<T>>
-class GraveyardSet {
+          class KeyEqual = absl::container_internal::hash_default_eq<T>,
+          class Allocator = std::allocator<T>>
+class GraveyardSet : 
+    private yobiduck::internal::HashTable<T, void, Hash, KeyEqual, Allocator>
+{
+  using Base = typename yobiduck::internal::HashTable<T, void, Hash, KeyEqual, Allocator>;
+
   // Ranges from 3/4 full to 7/8 full.
   static constexpr size_t kSlotsPerBucket = 14;
   static constexpr uint8_t kEmpty = 255;
@@ -256,13 +261,13 @@ class GraveyardSet {
   Buckets buckets_;
 };
 
-template <class T, class Hash, class Eq>
-bool GraveyardSet<T, Hash, Eq>::NeedsRehash(size_t target_size) const {
+template <class T, class Hash, class Eq, class Allocator>
+bool GraveyardSet<T, Hash, Eq, Allocator>::NeedsRehash(size_t target_size) const {
   return LogicalSlotCount() * 7 < target_size * 8;
 }
 
-template <class T, class Hash, class Eq>
-void GraveyardSet<T, Hash, Eq>::reserve(size_t count) {
+template <class T, class Hash, class Eq, class Allocator>
+void GraveyardSet<T, Hash, Eq, Allocator>::reserve(size_t count) {
   // If the logical capacity * 7 /8 < count  then rehash
   if (NeedsRehash(count)) {
     // Set the LogicalSlotCount to at least count.  Don't grow by less than 1/7.
@@ -274,8 +279,8 @@ void GraveyardSet<T, Hash, Eq>::reserve(size_t count) {
 // preferred bucket.  Then during insert we can avoid computing most of the
 // hashes.
 
-template <class T, class Hash, class Eq>
-bool GraveyardSet<T, Hash, Eq>::insert(T value) {
+template <class T, class Hash, class Eq, class Allocator>
+bool GraveyardSet<T, Hash, Eq, Allocator>::insert(T value) {
   // If (size_ + 1) > 7*8 slot_count_ then rehash.
   if (NeedsRehash(size_ + 1)) {
     // rehash to be 3/4 full
@@ -317,8 +322,8 @@ bool GraveyardSet<T, Hash, Eq>::insert(T value) {
   }
 }
 
-template <class T, class Hash, class Eq>
-void GraveyardSet<T, Hash, Eq>::rehash(size_t slot_count) {
+template <class T, class Hash, class Eq, class Allocator>
+void GraveyardSet<T, Hash, Eq, Allocator>::rehash(size_t slot_count) {
   Buckets buckets(ceil(slot_count, kSlotsPerBucket));
   buckets.swap(buckets_);
   size_ = 0;
@@ -332,8 +337,8 @@ void GraveyardSet<T, Hash, Eq>::rehash(size_t slot_count) {
   }
 }
 
-template <class T, class Hash, class Eq>
-bool GraveyardSet<T, Hash, Eq>::contains(const T& value) const {
+template <class T, class Hash, class Eq, class Allocator>
+bool GraveyardSet<T, Hash, Eq, Allocator>::contains(const T& value) const {
   if (size_ == 0) {
     return false;
   }
@@ -353,14 +358,14 @@ bool GraveyardSet<T, Hash, Eq>::contains(const T& value) const {
   return false;
 }
 
-template <class T, class Hash, class Eq>
-size_t GraveyardSet<T, Hash, Eq>::size() const {
+template <class T, class Hash, class Eq, class Allocator>
+size_t GraveyardSet<T, Hash, Eq, Allocator>::size() const {
   return size_;
 }
 
-template <class T, class Hash, class Eq>
-typename GraveyardSet<T, Hash, Eq>::iterator
-GraveyardSet<T, Hash, Eq>::begin() {
+template <class T, class Hash, class Eq, class Allocator>
+typename GraveyardSet<T, Hash, Eq, Allocator>::iterator
+GraveyardSet<T, Hash, Eq, Allocator>::begin() {
   auto it = iterator(buckets_.begin(), 0);
   if (!buckets_.empty()) {
     it.SkipEmpty();
@@ -368,9 +373,9 @@ GraveyardSet<T, Hash, Eq>::begin() {
   return it;
 }
 
-template <class T, class Hash, class Eq>
-typename GraveyardSet<T, Hash, Eq>::const_iterator
-GraveyardSet<T, Hash, Eq>::cbegin() const {
+template <class T, class Hash, class Eq, class Allocator>
+typename GraveyardSet<T, Hash, Eq, Allocator>::const_iterator
+GraveyardSet<T, Hash, Eq, Allocator>::cbegin() const {
   auto it = const_iterator(buckets_.cbegin(), 0);
   if (!buckets_.empty()) {
     it.SkipEmpty();
@@ -378,19 +383,19 @@ GraveyardSet<T, Hash, Eq>::cbegin() const {
   return it;
 }
 
-template <class T, class Hash, class Eq>
-typename GraveyardSet<T, Hash, Eq>::iterator GraveyardSet<T, Hash, Eq>::end() {
+template <class T, class Hash, class Eq, class Allocator>
+typename GraveyardSet<T, Hash, Eq, Allocator>::iterator GraveyardSet<T, Hash, Eq, Allocator>::end() {
   return iterator(buckets_.end(), 0);
 }
 
-template <class T, class Hash, class Eq>
-typename GraveyardSet<T, Hash, Eq>::const_iterator
-GraveyardSet<T, Hash, Eq>::cend() const {
+template <class T, class Hash, class Eq, class Allocator>
+typename GraveyardSet<T, Hash, Eq, Allocator>::const_iterator
+GraveyardSet<T, Hash, Eq, Allocator>::cend() const {
   return const_iterator(buckets_.cend(), 0);
 }
 
-template <class T, class Hash, class Eq>
-class GraveyardSet<T, Hash, Eq>::iterator {
+template <class T, class Hash, class Eq, class Allocator>
+class GraveyardSet<T, Hash, Eq, Allocator>::iterator {
  public:
   using difference_type = ptrdiff_t;
   using value_type = GraveyardSet::value_type;
@@ -442,8 +447,8 @@ class GraveyardSet<T, Hash, Eq>::iterator {
 };
 
 // TODO: Reduce the boilerplate
-template <class T, class Hash, class Eq>
-class GraveyardSet<T, Hash, Eq>::const_iterator {
+template <class T, class Hash, class Eq, class Allocator>
+class GraveyardSet<T, Hash, Eq, Allocator>::const_iterator {
  public:
   using difference_type = ptrdiff_t;
   using value_type = GraveyardSet::value_type;

@@ -32,6 +32,7 @@ class HashTable :
   using const_reference = const value_type&;
   using pointer = typename std::allocator_traits<Allocator>::pointer;
   using const_pointer = typename std::allocator_traits<Allocator>::const_pointer;
+  HashTable() :HashTable(hasher(), key_equal(), allocator_type()) {}
   // iterator not here
   // const_iterator not here
   // node_type not here

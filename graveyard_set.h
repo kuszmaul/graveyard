@@ -35,7 +35,17 @@ class GraveyardSet :
   static constexpr size_t kCacheLineSize = 64;
 
  public:
-  using value_type = T;
+  using typename Base::key_type;
+  using typename Base::value_type;
+  using typename Base::size_type;
+  using typename Base::difference_type;
+  using typename Base::hasher;
+  using typename Base::key_equal;
+  using typename Base::allocator_type;
+  using typename Base::reference;
+  using typename Base::const_reference;
+  using typename Base::pointer;
+  using typename Base::const_pointer;
 
   GraveyardSet() = default;
 

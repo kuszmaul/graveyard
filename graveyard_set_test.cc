@@ -7,6 +7,21 @@
 using testing::UnorderedElementsAre;
 using testing::UnorderedElementsAreArray;
 
+TEST(GraveyardSet, Types) {
+  using IntSet = yobiduck::GraveyardSet<uint64_t>;
+  static_assert(std::is_same_v<IntSet::key_type, uint64_t>);
+  static_assert(std::is_same_v<IntSet::value_type, uint64_t>);
+  static_assert(std::is_same_v<IntSet::size_type, size_t>);
+  static_assert(std::is_same_v<IntSet::difference_type, ptrdiff_t>);
+  static_assert(std::is_same_v<IntSet::hasher, absl::Hash<uint64_t>>);
+  static_assert(std::is_same_v<IntSet::key_equal, std::equal_to<uint64_t>>);
+  static_assert(std::is_same_v<IntSet::allocator_type, std::allocator<uint64_t>>);
+  static_assert(std::is_same_v<IntSet::reference, uint64_t&>);
+  static_assert(std::is_same_v<IntSet::const_reference, const uint64_t&>);
+  static_assert(std::is_same_v<IntSet::pointer, uint64_t*>);
+  static_assert(std::is_same_v<IntSet::const_pointer, const uint64_t*>);
+}
+
 TEST(GraveyardSet, Basic) {
   yobiduck::GraveyardSet<uint64_t> set;
   CHECK_EQ(set.size(), 0ul);

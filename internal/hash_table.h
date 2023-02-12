@@ -17,9 +17,9 @@ class HashTable :
 
  public:
   using key_type = KeyType;
-  using value_type = std::conditional_t<std::is_same<MappedTypeOrVoid, void>::value,
-                                       KeyType,
-                                       std::pair<const KeyType, MappedTypeOrVoid>>;
+  using value_type = typename std::conditional<std::is_same<MappedTypeOrVoid, void>::value,
+                                     KeyType,
+                                     std::pair<const KeyType, MappedTypeOrVoid>>::type;
   // This won't be exported by sets, but will be exported by maps.
   using mapped_type = MappedTypeOrVoid;
   using size_type = std::size_t;

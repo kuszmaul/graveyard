@@ -1,5 +1,5 @@
-#ifndef GRAVEYARD_INTERNAL_OBJECT_HOLDER_H_
-#define GRAVEYARD_INTERNAL_OBJECT_HOLDER_H_
+#ifndef _GRAVEYARD_INTERNAL_OBJECT_HOLDER_H_
+#define _GRAVEYARD_INTERNAL_OBJECT_HOLDER_H_
 
 // Implement an object holder which is intended to be used as a base class.
 // This allows us to avoid allocating space for an empty object (such as Hash
@@ -15,11 +15,11 @@ class ObjectHolder {
  public:
   ObjectHolder() = default;
   T& operator*() { return value_; };
-  const T& operator*() { return value_; }
+  const T& operator*() const { return value_; }
  private:
   T value_;
 };
 
 }  // namespace yobiduck::internal
 
-#endif  // GRAVEYARD_INTERNAL_OBJECT_HOLDER_H_
+#endif  // _GRAVEYARD_INTERNAL_OBJECT_HOLDER_H_

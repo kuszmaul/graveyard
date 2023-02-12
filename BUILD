@@ -98,3 +98,38 @@ cc_binary(
     srcs = ["folly_test.cc"],
     deps = ["@folly//folly/container:F14Set"],
 )
+
+cc_library(
+    name = "graveyard_set",
+    hdrs = ["graveyard_set.h"],
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        ":hash_table",
+    ],
+)
+
+cc_test(
+    name = "graveyard_set_test",
+    srcs = ["graveyard_set_test.cc"],
+    deps = [
+        ":graveyard_set",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/random",
+        "@com_google_googletest//:gtest_main",
+    ]
+)
+
+cc_library(
+    name = "object_holder",
+    visibility = ["//visibility:private"],
+    hdrs = ["internal/object_holder.h"],
+)
+
+cc_library(
+    name = "hash_table",
+    hdrs = ["internal/hash_table.h"],
+    visibility = ["//visibility:private"],
+    deps = [":object_holder",],
+)

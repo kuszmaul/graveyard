@@ -1,34 +1,37 @@
-#ifndef GRAVEYARD_INTERNAL_POLICY_H
-#define  GRAVEYARD_INTERNAL_POLICY_H
+#ifndef _GRAVEYARD_INTERNAL_HASH_TABLE_H
+#define _GRAVEYARD_INTERNAL_HASH_TABLE_H
 
 #include "internal/object_holder.h"
 
 namespace yobiduck::internal {
 
 template <class KeyType, class MappedTypeOrVoid, class Hash, class KeyEqual, class Allocator>
-class HashPolicy :
+class HashTable :
     private ObjectHolder<'H', Hash>,
-    private ObjectHolder<'E', KeyEqual>
-    private ObjectHOlder<'A', Allocator> {
+    private ObjectHolder<'E', KeyEqual>,
+    private ObjectHolder<'A', Allocator> {
  private:
   using HasherHolder = ObjectHolder<'H', Hash>;
   using KeyEqHolder = ObjectHolder<'E', KeyEqual>;
   using AllocatorHolder = ObjectHolder<'A', Allocator>;
 
  public:
-  HashPolicy(Hash const& hash, KeyEqual const& key_equal, Allocator const& allocator) 
-      :HasherHolder(hash), KeyEqHolder(key_equal), AllocatorHolder(allocator) {}
   using key_type = KeyType;
-  using value_type = std::conditional_t<std::is_same<MappedTypeOrVoid, void>::value<Key, std::pair<const KeyType, MappedValueType>;
-  using mapped_type = MappedType; // This won't be exported by sets, but will be exported by maps
+  using value_type = std::conditional_t<std::is_same<MappedTypeOrVoid, void>::value,
+                                       KeyType,
+                                       std::pair<const KeyType, MappedTypeOrVoid>>;
+  // This won't be exported by sets, but will be exported by maps.
+  using mapped_type = MappedTypeOrVoid;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
   using hasher = Hash;
   using key_equal = KeyEqual;
+  using allocator_type = Allocator;
+
   using reference = value_type&;
   using const_reference = const value_type&;
-  using pointer = std::allocator_traits<Allocator>::pointer;
-  using const_pointer = std::allocator_traits<Allocator>::const_pointer;
+  using pointer = typename std::allocator_traits<Allocator>::pointer;
+  using const_pointer = typename std::allocator_traits<Allocator>::const_pointer;
   // iterator not here
   // const_iterator not here
   // node_type not here
@@ -40,10 +43,14 @@ class HashPolicy :
   hasher& get_hasher_ref() { return *static_cast<HasherHolder&>(*this); }
   const hasher& get_hasher_ref() const { return *static_cast<HasherHolder&>(*this); }
   key_equal key_eq() const { return get_key_eq_ref(); }
-  key_eq& get_key_eq_ref() { return *static_cast<KeyEqHolder&>(*this); }
-  const key_eq& get_key_eq_ref() const { return *static_cast<KeyEqHolder&>(*this); }
+  key_equal& get_key_eq_ref() { return *static_cast<KeyEqHolder&>(*this); }
+  const key_equal& get_key_eq_ref() const { return *static_cast<KeyEqHolder&>(*this); }
+ private:
+  HashTable(Hash const& hash, KeyEqual const& key_equal, Allocator const& allocator) 
+      :HasherHolder(hash), KeyEqHolder(key_equal), AllocatorHolder(allocator) {}
+
 };
 
 }  // namespace yobiduck::internal
 
-#endif  //  GRAVEYARD_INTERNAL_POLICY_H
+#endif  // _GRAVEYARD_INTERNAL_HASH_TABLE_H

@@ -97,3 +97,33 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
     *   Increase the size of `buckets_` to match the actual allocated memory.
         This doesn't seem to make any difference for libc malloc, but it
         probably makes a difference for a bucketed malloc such as tcmalloc.
+
+*   Change "Tombstone" to "Graveyard"
+
+*   Change the search_distance to the number of slots instead of the number of buckets.
+
+*   Implement stability
+    *   Need a reservation_count to tell us whether the current insertion must maintain stability.
+    *   Possibly specially handle the case where we do `reserve(size()+k)` for
+        small `k`.  In this case we might maintain a set of `k` offsets to
+        values that are out of place so that on the next insert or reserve we
+        can go fix those particular ones up.
+
+*   Move implementation details into a separate file.
+
+*   Implement maps.  One issue is how to deal with the `value_type =
+    std::pair<const key_type, mapped_type>`.  The F14 comment (F14Policy.h at
+    `moveValue`. outlines three possibilities:
+
+    1    Proxy iterator
+    2    Pointless key copy when moving items during rehash
+    3    Undefined-behavior hack.
+
+    F14 uses the undefined-behavior hack.
+    
+    Abseil does the pointless key copy unless `std::pair<key_type, mapped_type`
+    is layout compatible to `std::pair<const key_type, mapped_type>` in which
+    case it can use `std::move` on the key type.  Question: What conditions is
+    the pointless key copy actually happening?  For example, does it use
+    std::move when doing something like a `flat_hash_map<std::string,
+    SomeMappedType>`?

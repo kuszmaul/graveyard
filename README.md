@@ -115,9 +115,9 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
     std::pair<const key_type, mapped_type>`.  The F14 comment (F14Policy.h at
     `moveValue`. outlines three possibilities:
 
-    1    Proxy iterator
-    2    Pointless key copy when moving items during rehash
-    3    Undefined-behavior hack.
+    1.   Proxy iterator
+    2.   Pointless key copy when moving items during rehash
+    3.   Undefined-behavior hack.
 
     F14 uses the undefined-behavior hack.
     

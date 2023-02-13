@@ -18,6 +18,7 @@ class ObjectHolder {
 
   T& operator*() { return value_; };
   const T& operator*() const { return value_; }
+
  private:
   T value_;
 };

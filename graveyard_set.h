@@ -9,8 +9,8 @@
 #include <cstdint>  // for uint64_t
 #include <iostream>
 #include <limits>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "absl/container/flat_hash_set.h"  // For hash_default_hash
 #include "absl/log/check.h"
@@ -24,13 +24,15 @@ namespace yobiduck {
 template <class T, class Hash = absl::container_internal::hash_default_hash<T>,
           class KeyEqual = absl::container_internal::hash_default_eq<T>,
           class Allocator = std::allocator<T>>
-class GraveyardSet : 
-    private yobiduck::internal::HashTable<yobiduck::internal::HashTableTraits<T, void, Hash, KeyEqual, Allocator>>
-{
-  using Traits = yobiduck::internal::HashTableTraits<T, void, Hash, KeyEqual, Allocator>;
+class GraveyardSet
+    : private yobiduck::internal::HashTable<yobiduck::internal::HashTableTraits<
+          T, void, Hash, KeyEqual, Allocator>> {
+  using Traits =
+      yobiduck::internal::HashTableTraits<T, void, Hash, KeyEqual, Allocator>;
   using Base = yobiduck::internal::HashTable<Traits>;
 
  public:
+  // The order as found in https://en.cppreference.com/w/cpp/container/unordered_set
   using typename Base::key_type;
   using typename Base::value_type;
   using typename Base::size_type;
@@ -53,15 +55,14 @@ class GraveyardSet :
   GraveyardSet& operator=(const GraveyardSet& other) {
     clear();
     reserve(other.size());
-    for (const T& value: other) {
-      insert(value);  // TODO: Optimize this given that we know `value` is not in `*this`.
+    for (const T& value : other) {
+      insert(value);  // TODO: Optimize this given that we know `value` is not
+                      // in `*this`.
     }
   }
 
   // Move constructor
-  GraveyardSet(GraveyardSet&& other) :GraveyardSet() {
-    swap(other);
-  }
+  GraveyardSet(GraveyardSet&& other) : GraveyardSet() { swap(other); }
 
   // Move assignment
   GraveyardSet& operator=(GraveyardSet&& other) {
@@ -106,9 +107,6 @@ class GraveyardSet :
   //
   // Note: Not part of the `stl::unordered_set` API.
   using Base::GetAllocatedMemorySize;
-
- private:
-
 };
 
 // TODO: Idea, keep a bit that says whether a particular slot is out of its

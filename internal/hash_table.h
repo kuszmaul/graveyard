@@ -3,6 +3,25 @@
 
 #include "internal/object_holder.h"
 
+#include <malloc.h>
+
+// IWYU has some strange behavior around around std::swap.  It wants to get rid
+// of utility and add vector. Then it wants to get rid of vector and add
+// unordered_map.
+
+#include <array>
+#include <cassert>
+#include <cstddef>  // for size_t
+#include <cstdint>  // for uint64_t
+#include <cstdlib>  // for free, aligned_alloc
+#include <iterator>                  // for forward_iterator_tag, pair
+#include <memory>                    // for allocator_traits
+#include <type_traits>               // for conditional, is_same
+#include <utility>       // IWYU pragma: keep
+// IWYU pragma: no_include <vector>
+
+#include "absl/log/log.h"
+
 namespace yobiduck::internal {
 
 // Returns the ceiling of (a/b).
@@ -355,7 +374,7 @@ class HashTable<Traits>::iterator {
     return SkipEmpty();
   }
 
-  reference operator*() { return bucket_->slots[index].value; }
+  reference operator*() { return bucket_->slots[index_].value; }
 
  private:
   friend const_iterator;
@@ -565,5 +584,6 @@ size_t HashTable<Traits>::LogicalSlotCount() const {
 }
 
 }  // namespace yobiduck::internal
+
 
 #endif  // _GRAVEYARD_INTERNAL_HASH_TABLE_H

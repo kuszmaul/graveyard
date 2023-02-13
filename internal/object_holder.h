@@ -8,6 +8,8 @@
 // This idea comes from F14.  In contrast, Abseil uses a fancy templated
 // `Layout` class to store the empty objects.  The F14 scheme seems simpler.
 
+#include <utility>
+
 namespace yobiduck::internal {
 
 template <char Tag, class T>

@@ -242,12 +242,11 @@ class HashTable :
   size_t bucket_count() const { return buckets_.physical_size() * Traits::kSlotsPerBucket; }
   size_t capacity() const { return bucket_count(); }
   
-  // size_t GetMemorySize() const;
+  // size_t GetAllocatedMemorySize() const;
   //
-  // Effect: Returns the memory consumed by *this, including the memory in *this
-  // itself, plus any allocated memory.
-  size_t GetMemorySize() const {
-    return sizeof(*this) + buckets_.physical_size() * sizeof(*buckets_.begin());
+  // Effect: Returns the memory allocated in this table (not including `*this`).
+  size_t GetAllocatedMemorySize() const {
+    return buckets_.physical_size() * sizeof(*buckets_.begin());
   }
 
 

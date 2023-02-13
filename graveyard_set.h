@@ -99,13 +99,13 @@ class GraveyardSet :
   using Base::rehash;
   using Base::reserve;
 
-  // size_t GetMemorySize() const;
+  // size_t GetAllocatedMemorySize() const;
   //
-  // Effect: Returns the memory consumed by *this, including the memory in *this
-  // itself, plus any allocated memory.
+  // Effect: Returns the amount of memory allocated in *this.  Doesn't include
+  // the `*this`.
   //
   // Note: Not part of the `stl::unordered_set` API.
-  using Base::GetMemorySize;
+  using Base::GetAllocatedMemorySize;
 
  private:
 

@@ -16,7 +16,7 @@
 #include "folly/lang/Bits.h"  // for findLastSet
 #include "hash_benchmark.h"   // for IntHashSetBenchmark
 #include "ordered_linear_probing_set.h"
-#include "tombstone_set.h"
+#include "graveyard_set.h"
 
 enum class Implementation {
   kOLP,
@@ -71,19 +71,27 @@ struct IdentityHash {
 
 int main(int argc, char* argv[]) {
   absl::ParseCommandLine(argc, argv);
+  // The difference between these two is the 'g' vs. the 'G'.  The lower-case
+  // 'g' is for F14. The upper-case 'G' is for google-style naming used in
+  // `GraveyardSet`.
+  auto Get_allocated_memory_size = [](const auto& table) { return table.GetAllocatedMemorySize(); };
+  auto get_allocated_memory_size = [](const auto& table) { return table.getAllocatedMemorySize(); };
+  auto swiss_memory_estimator = [](const auto& table) {
+    using table_type = std::remove_reference_t<decltype(table)>;
+    return table.capacity() + (1 + sizeof(typename table_type::value_type));
+  };
   if (const auto implementation = Implementation::kTombstone;
       ImplementationIsFlagged(implementation)) {
-    using Tombstone = yobiduck::TombstoneSet<uint64_t>;
+    using Tombstone = yobiduck::GraveyardSet<uint64_t>;
     IntHashSetBenchmark<Tombstone>(
-        [](const Tombstone& table) { return table.memory_estimate(); },
+        Get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }
   if (const auto implementation = Implementation::kTombstoneIdentityHash;
       ImplementationIsFlagged(implementation)) {
-    using TombstoneNoHash = yobiduck::TombstoneSet<uint64_t, IdentityHash>;
+    using TombstoneNoHash = yobiduck::GraveyardSet<uint64_t, IdentityHash>;
     IntHashSetBenchmark<TombstoneNoHash>(
-        // TODO: Use the facebook name for `memory_estimate()`.
-        [](const TombstoneNoHash& table) { return table.memory_estimate(); },
+        Get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }
   if (const auto implementation = Implementation::kOLP;
@@ -104,28 +112,28 @@ int main(int argc, char* argv[]) {
   if (const auto implementation = Implementation::kGoogle;
       ImplementationIsFlagged(implementation)) {
     IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
-        SwissMemoryEstimator<absl::flat_hash_set<uint64_t>>,
+        swiss_memory_estimator,
         implementation_enum_and_strings->ToString(implementation));
   }
   if (const auto implementation = Implementation::kGoogleIdentityHash;
       ImplementationIsFlagged(implementation)) {
     using FlatNoHash = absl::flat_hash_set<uint64_t, IdentityHash>;
     IntHashSetBenchmark<FlatNoHash>(
-        SwissMemoryEstimator<FlatNoHash>,
+        swiss_memory_estimator,
         implementation_enum_and_strings->ToString(implementation));
   }
   if (const auto implementation = Implementation::kFacebook;
       ImplementationIsFlagged(implementation)) {
     using F14 = folly::F14FastSet<uint64_t>;
     IntHashSetBenchmark<F14>(
-        F14MemoryEstimator<F14>,
+        get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }
   if (const auto implementation = Implementation::kFacebookIdentityHash;
       ImplementationIsFlagged(implementation)) {
     using F14NoHash = folly::F14FastSet<uint64_t, IdentityHash>;
     IntHashSetBenchmark<F14NoHash>(
-        F14MemoryEstimator<F14NoHash>,
+        get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }
 }

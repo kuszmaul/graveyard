@@ -5,7 +5,7 @@ cc_binary(
         ":enum_print",
         ":enums_flag",
         ":hash_benchmark",
-        ":tombstone_set",
+        ":graveyard_set",
         ":ordered_linear_probing_set",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -70,27 +70,6 @@ cc_library(
 cc_library(
     name = "contains",
     hdrs = ["contains.h"],
-)
-
-cc_library(
-    name = "tombstone_set",
-    hdrs = ["tombstone_set.h"],
-    deps = [
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-    ],
-)
-
-cc_test(
-    name = "tombstone_test",
-    srcs = ["tombstone_test.cc"],
-    deps = [
-        ":tombstone_set",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/random",
-        "@com_google_googletest//:gtest_main",
-    ]
 )
 
 cc_binary(

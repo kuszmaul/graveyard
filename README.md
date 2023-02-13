@@ -43,16 +43,19 @@ be repeatable.
 
 ![Insertion With Reserve time](plots/reserved-insert-time.svg)
 
-Find is about the same.  It's surprising that the vector instructions in
-`Google` don't seem to matter much.  `Facebook` is the fasted for large tables,
-likely because of its strategy to have only one cache miss in most cases.
+Here we've vectorized the ``find` peration: `graveyard` (written as `tombstone`)
+and `Facebook` are fast at successful find (probably because of a single cache
+miss in most cases).  Surprisingly the non-vectorized `OLP` is about the same
+speed as `Google`.  The non-vectorized `graveyard` was slower, so the
+vectorization makes a difference.
 
 ![Successful find time](plots/found-time.svg)
 
-For unsucessful find, here the `Google` vector instructions seem to help.
-`Facebook` is slow in this case: probably because it needs one cache miss to
-process 14 elements, whereas `Google` can process an average of 32 elements in
-the first cache miss.
+For unsucessful find, here the `Google` organization seems to help.
+ * `OLP` is slow (probably because it's not vectorized).
+ * `Facebook` and `graveyard` are slower than `Google`, probably because they
+    need one cache miss to process 14 elements, whereas `Google` can process an
+    average of 32 elements in the first cache miss.
 
 ![Unsuccessful find time](plots/notfound-time.svg)
 
@@ -89,6 +92,7 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Change from std::vector to a malloced, aligned memory allocation. (2023-02-13)
 - [x] Change "Tombstone" to "Graveyard". (2023-02-13)
 - [x] Vectorize `contains`
+- [ ] Change "tombstone" to "graveyard" in plots.
 - [ ] Does H2 computing %255 vs %128 make any difference?
 - [ ] Does prefetching make any difference?
 - [ ] Vectorize other operations

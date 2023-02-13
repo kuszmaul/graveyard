@@ -110,5 +110,6 @@ cc_library(
     name = "hash_table",
     hdrs = ["internal/hash_table.h"],
     visibility = ["//visibility:private"],
-    deps = [":object_holder",],
+    deps = [":object_holder",
+    ],
 )

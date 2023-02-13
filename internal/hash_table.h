@@ -22,7 +22,18 @@
 
 #include "absl/log/log.h"
 
+#if defined(__SSE2__) ||  \
+    (defined(_MSC_VER) && \
+     (defined(_M_X64) || (defined(_M_IX86) && _M_IX86_FP >= 2)))
+#define YOBIDUCK_HAVE_SSE2 1
+#include <emmintrin.h>
+#else
+#define YOBIDUCK_HAVE_SSE2 0
+#endif
+
 namespace yobiduck::internal {
+
+static constexpr bool kHaveSse2 = (YOBIDUCK_HAVE_SSE2 != 0);
 
 // Returns the ceiling of (a/b).
 inline constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }
@@ -69,6 +80,41 @@ struct Bucket {
   void Init() {
     search_distance = 0;
     for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) h2[i] = Traits::kEmpty;
+  }
+
+  size_t PortableMatchingElements(uint8_t value) const {
+    int result = 0;
+    for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {
+      if (h2[i] == value) {
+        result |= (1 << i);
+      }
+    }
+    return result;
+  }
+
+  size_t MatchingElementsMask(uint8_t needle) const {
+    //size_t matching = PortableMatchingElements(needle);
+    if constexpr (kHaveSse2) {
+      __m128i haystack = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&h2[0]));
+      __m128i needles = _mm_set1_epi8(needle);
+      int mask = _mm_movemask_epi8(_mm_cmpeq_epi8(needles, haystack));
+      mask &= (1 << Traits::kSlotsPerBucket) - 1;
+      //assert(static_cast<size_t>(mask) == matching);
+      return mask;
+    }
+    return PortableMatchingElements(needle);
+  }
+
+  size_t FindElement(uint8_t needle, const typename Traits::value_type& value) const {
+    size_t matches = MatchingElementsMask(needle);
+    while (matches) {
+      int idx = absl::container_internal::TrailingZeros(matches);
+      if (slots[idx].value == value) {
+        return idx;
+      }
+      matches &= (matches - 1);
+    }
+    return 16;
   }
 
   std::array<uint8_t, Traits::kSlotsPerBucket> h2;
@@ -538,12 +584,21 @@ bool HashTable<Traits>::contains(const key_type& value) const {
   for (size_t i = 0; i <= distance; ++i) {
     assert(preferred_bucket + i < buckets_.physical_size());
     const Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
+    size_t idx = bucket.FindElement(h2, value);
+#if 1
+    if (idx < 14) {
+      return true;
+    }
+#else
     // TODO: Use vector instructions to replace this loop.
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] == h2 && bucket.slots[j].value == value) {
+        assert(j == idx);
         return true;
       }
     }
+    assert(idx == 16);
+#endif
   }
   return false;
 }

@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_set.h"  // For hash_default_hash
+#include "absl/container/flat_hash_set.h"  // For hash_default_hash (TODO: use internal/hash_function_defaults.h
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "internal/hash_table.h"

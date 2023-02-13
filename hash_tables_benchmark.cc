@@ -14,9 +14,9 @@
 #include "enums_flag.h"
 #include "folly/container/F14Set.h"
 #include "folly/lang/Bits.h"  // for findLastSet
-#include "hash_benchmark.h"   // for IntHashSetBenchmark
-#include "ordered_linear_probing_set.h"
 #include "graveyard_set.h"
+#include "hash_benchmark.h"  // for IntHashSetBenchmark
+#include "ordered_linear_probing_set.h"
 
 enum class Implementation {
   kOLP,
@@ -74,8 +74,12 @@ int main(int argc, char* argv[]) {
   // The difference between these two is the 'g' vs. the 'G'.  The lower-case
   // 'g' is for F14. The upper-case 'G' is for google-style naming used in
   // `GraveyardSet`.
-  auto Get_allocated_memory_size = [](const auto& table) { return table.GetAllocatedMemorySize(); };
-  auto get_allocated_memory_size = [](const auto& table) { return table.getAllocatedMemorySize(); };
+  auto Get_allocated_memory_size = [](const auto& table) {
+    return table.GetAllocatedMemorySize();
+  };
+  auto get_allocated_memory_size = [](const auto& table) {
+    return table.getAllocatedMemorySize();
+  };
   auto swiss_memory_estimator = [](const auto& table) {
     using table_type = std::remove_reference_t<decltype(table)>;
     return table.capacity() + (1 + sizeof(typename table_type::value_type));

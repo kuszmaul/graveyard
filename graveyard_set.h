@@ -25,9 +25,10 @@ template <class T, class Hash = absl::container_internal::hash_default_hash<T>,
           class KeyEqual = absl::container_internal::hash_default_eq<T>,
           class Allocator = std::allocator<T>>
 class GraveyardSet : 
-    private yobiduck::internal::HashTable<T, void, Hash, KeyEqual, Allocator>
+    private yobiduck::internal::HashTable<yobiduck::internal::HashTableTraits<T, void, Hash, KeyEqual, Allocator>>
 {
-  using Base = typename yobiduck::internal::HashTable<T, void, Hash, KeyEqual, Allocator>;
+  using Traits = yobiduck::internal::HashTableTraits<T, void, Hash, KeyEqual, Allocator>;
+  using Base = yobiduck::internal::HashTable<Traits>;
 
   // Ranges from 3/4 full to 7/8 full.
   static constexpr size_t kSlotsPerBucket = 14;

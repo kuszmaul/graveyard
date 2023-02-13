@@ -1,8 +1,9 @@
+#include "graveyard_set.h"
+
 #include "absl/log/check.h"
 #include "absl/random/random.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "graveyard_set.h"
 
 using testing::UnorderedElementsAre;
 using testing::UnorderedElementsAreArray;
@@ -15,7 +16,8 @@ TEST(GraveyardSet, Types) {
   static_assert(std::is_same_v<IntSet::difference_type, ptrdiff_t>);
   static_assert(std::is_same_v<IntSet::hasher, absl::Hash<uint64_t>>);
   static_assert(std::is_same_v<IntSet::key_equal, std::equal_to<uint64_t>>);
-  static_assert(std::is_same_v<IntSet::allocator_type, std::allocator<uint64_t>>);
+  static_assert(
+      std::is_same_v<IntSet::allocator_type, std::allocator<uint64_t>>);
   static_assert(std::is_same_v<IntSet::reference, uint64_t&>);
   static_assert(std::is_same_v<IntSet::const_reference, const uint64_t&>);
   static_assert(std::is_same_v<IntSet::pointer, uint64_t*>);
@@ -63,7 +65,7 @@ TEST(GraveyardSet, IteratorOneElement) {
 TEST(GraveyardSet, RandomInserts) {
   return;
   absl::BitGen bitgen;
-  const size_t j  = 1000;
+  const size_t j = 1000;
   yobiduck::GraveyardSet<uint64_t> set;
   absl::flat_hash_set<uint64_t> fset;
   for (size_t i = 0; i < j; ++i) {
@@ -91,7 +93,6 @@ TEST(GraveyardSet, Reserve) {
     set.reserve(1000);
     set.insert(100u);
   }
-
 }
 
 TEST(GraveyardSet, AssignAndReserve) {

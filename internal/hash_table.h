@@ -8,13 +8,14 @@ namespace yobiduck::internal {
 // Returns the ceiling of (a/b).
 inline constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }
 
-template <class KeyType, class MappedTypeOrVoid, class Hash, class KeyEqual, class Allocator>
+template <class KeyType, class MappedTypeOrVoid, class Hash, class KeyEqual,
+          class Allocator>
 struct HashTableTraits {
   using key_type = KeyType;
   using mapped_type_or_void = MappedTypeOrVoid;
-  using value_type = typename std::conditional<std::is_same<mapped_type_or_void, void>::value,
-                                               key_type,
-                                               std::pair<const key_type, mapped_type_or_void>>::type;
+  using value_type = typename std::conditional<
+      std::is_same<mapped_type_or_void, void>::value, key_type,
+      std::pair<const key_type, mapped_type_or_void>>::type;
   using hasher = Hash;
   using key_equal = KeyEqual;
   using allocator = Allocator;
@@ -50,7 +51,6 @@ struct Bucket {
     search_distance = 0;
     for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) h2[i] = Traits::kEmpty;
   }
-
 
   std::array<uint8_t, Traits::kSlotsPerBucket> h2;
   // The number of buckets we must search in an unsuccessful lookup that starts
@@ -92,7 +92,7 @@ class Buckets {
     // Add 1 bucket if logical_bucket_count_ <= 2.
     size_t extra_buckets = (logical_size_ > 4)    ? 4
                            : (logical_size_ <= 2) ? 1
-                           : logical_size_ - 1;
+                                                  : logical_size_ - 1;
     physical_size_ = logical_size_ + extra_buckets;
     assert(physical_size_ > 0);
     // TODO: Round up the physical_bucket_size_ to the actual size allocated.
@@ -100,8 +100,8 @@ class Buckets {
     // is.  But we aren't supposed to modify those bytes (it will mess up
     // tools such as address sanitizer or valgrind).  So we realloc the
     // pointer to the actual size.
-    buckets_ = static_cast<Bucket<Traits>*>(
-        aligned_alloc(Traits::kCacheLineSize, physical_size_ * sizeof(*buckets_)));
+    buckets_ = static_cast<Bucket<Traits>*>(aligned_alloc(
+        Traits::kCacheLineSize, physical_size_ * sizeof(*buckets_)));
     assert(buckets_ != nullptr);
     for (Bucket<Traits>& bucket : *this) {
       bucket.Init();
@@ -177,10 +177,9 @@ class Buckets {
 };
 
 template <class Traits>
-class HashTable :
-    private ObjectHolder<'H', typename Traits::hasher>,
-    private ObjectHolder<'E', typename Traits::key_equal>,
-    private ObjectHolder<'A', typename Traits::allocator> {
+class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
+                  private ObjectHolder<'E', typename Traits::key_equal>,
+                  private ObjectHolder<'A', typename Traits::allocator> {
  private:
   using HasherHolder = ObjectHolder<'H', typename Traits::hasher>;
   using KeyEqualHolder = ObjectHolder<'E', typename Traits::key_equal>;
@@ -200,9 +199,12 @@ class HashTable :
   using reference = value_type&;
   using const_reference = const value_type&;
   using pointer = typename std::allocator_traits<allocator_type>::pointer;
-  using const_pointer = typename std::allocator_traits<allocator_type>::const_pointer;
+  using const_pointer =
+      typename std::allocator_traits<allocator_type>::const_pointer;
   HashTable();
-  explicit HashTable(size_t initial_capacity, hasher const& hash = hasher(), key_equal const& key_eq = key_equal(), allocator_type const& allocator = allocator_type());
+  explicit HashTable(size_t initial_capacity, hasher const& hash = hasher(),
+                     key_equal const& key_eq = key_equal(),
+                     allocator_type const& allocator = allocator_type());
   // Copy constructor
   explicit HashTable(const HashTable& other);
   HashTable(const HashTable& other, const allocator_type& a);
@@ -229,26 +231,35 @@ class HashTable :
   bool contains(const key_type& value) const;
 
   allocator_type get_allocator() const { return get_allocator_ref(); }
-  allocator_type& get_allocator_ref() { return *static_cast<AllocatorHolder&>(*this); }
-  const allocator_type& get_allocator_ref() const { return *static_cast<AllocatorHolder&>(*this); }
+  allocator_type& get_allocator_ref() {
+    return *static_cast<AllocatorHolder&>(*this);
+  }
+  const allocator_type& get_allocator_ref() const {
+    return *static_cast<AllocatorHolder&>(*this);
+  }
   hasher hash_function() const { return get_hasher_ref(); }
   hasher& get_hasher_ref() { return *static_cast<HasherHolder&>(*this); }
-  const hasher& get_hasher_ref() const { return *static_cast<HasherHolder&>(*this); }
+  const hasher& get_hasher_ref() const {
+    return *static_cast<HasherHolder&>(*this);
+  }
   key_equal key_eq() const { return get_key_eq_ref(); }
   key_equal& get_key_eq_ref() { return *static_cast<KeyEqualHolder&>(*this); }
-  const key_equal& get_key_eq_ref() const { return *static_cast<KeyEqualHolder&>(*this); }
+  const key_equal& get_key_eq_ref() const {
+    return *static_cast<KeyEqualHolder&>(*this);
+  }
 
   // Returns the actual size of the buckets including the overflow buckets.
-  size_t bucket_count() const { return buckets_.physical_size() * Traits::kSlotsPerBucket; }
+  size_t bucket_count() const {
+    return buckets_.physical_size() * Traits::kSlotsPerBucket;
+  }
   size_t capacity() const { return bucket_count(); }
-  
+
   // size_t GetAllocatedMemorySize() const;
   //
   // Effect: Returns the memory allocated in this table (not including `*this`).
   size_t GetAllocatedMemorySize() const {
     return buckets_.physical_size() * sizeof(*buckets_.begin());
   }
-
 
   // Rehashes the table so that we can hold at least count.
   void rehash(size_t count);
@@ -274,21 +285,30 @@ class HashTable :
 };
 
 template <class Traits>
-HashTable<Traits>::HashTable() :HashTable(0, hasher(), key_equal(), allocator_type()) {}
+HashTable<Traits>::HashTable()
+    : HashTable(0, hasher(), key_equal(), allocator_type()) {}
 
 template <class Traits>
-HashTable<Traits>::HashTable(size_t initial_capacity, hasher const& hash, key_equal const& key_eq, allocator_type const& allocator) 
-      :HasherHolder(hash), KeyEqualHolder(key_eq), AllocatorHolder(allocator) {
+HashTable<Traits>::HashTable(size_t initial_capacity, hasher const& hash,
+                             key_equal const& key_eq,
+                             allocator_type const& allocator)
+    : HasherHolder(hash), KeyEqualHolder(key_eq), AllocatorHolder(allocator) {
   reserve(initial_capacity);
 }
 
 template <class Traits>
-HashTable<Traits>::HashTable(const HashTable& other) :HashTable(other, std::allocator_traits<allocator_type>::select_on_container_copy_construction(get_allocator_ref())) {}
+HashTable<Traits>::HashTable(const HashTable& other)
+    : HashTable(other, std::allocator_traits<allocator_type>::
+                           select_on_container_copy_construction(
+                               get_allocator_ref())) {}
 
 template <class Traits>
-HashTable<Traits>::HashTable(const HashTable& other, const allocator_type& a) :HashTable(other.size(), other.get_hasher_ref(), other.get_key_eq_ref(), a) {
-  for (const auto& v: other) {
-    insert(v); // TODO: Take advantage of the fact that we know `v` isn't in `*this`.
+HashTable<Traits>::HashTable(const HashTable& other, const allocator_type& a)
+    : HashTable(other.size(), other.get_hasher_ref(), other.get_key_eq_ref(),
+                a) {
+  for (const auto& v : other) {
+    insert(v);  // TODO: Take advantage of the fact that we know `v` isn't in
+                // `*this`.
   }
 }
 
@@ -365,7 +385,8 @@ class HashTable<Traits>::iterator {
       }
     }
   }
-  iterator(Bucket<Traits>* bucket, size_t index) : bucket_(bucket), index_(index) {}
+  iterator(Bucket<Traits>* bucket, size_t index)
+      : bucket_(bucket), index_(index) {}
   // The end iterator is represented with bucket_ == buckets_.end()
   // and index_ == kSlotsPerBucket.
   Bucket<Traits>* bucket_;

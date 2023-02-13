@@ -85,16 +85,17 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 
 ## TODO
 
+- [x] Move implementation details into a separate file.  (2023-02-13)
+- [x] Change from std::vector to a malloced, aligned memory allocation. (2023-02-13)
+- [x] Change "Tombstone" to "Graveyard". (2023-02-13)
 - [ ] Why are the idhash versions slower (e.g., for OLP)  Is it a bad random number generator?
 - [ ] Where is that jitter comming from  in facebook?
-- [ ] Change from std::vector to a malloced, aligned memory allocation.
 - [ ] Vectorize
 - [ ] Put as much metadata as possible into the malloced part (but not the
       `logical_bucket_count_` which is in the critical path for `find`.
 - [ ] Increase the size of `buckets_` to match the actual allocated memory.
       This doesn't seem to make any difference for libc malloc, but it probably
       makes a difference for a bucketed malloc such as tcmalloc.
-- [ ] Change "Tombstone" to "Graveyard"
 - [ ] Change the search_distance to the number of slots instead of the number of buckets.
 - [ ] Implement stability
     *   Need a reservation_count to tell us whether the current insertion must maintain stability.
@@ -102,7 +103,6 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
         small `k`.  In this case we might maintain a set of `k` offsets to
         values that are out of place so that on the next insert or reserve we
         can go fix those particular ones up.
-- [ ] Move implementation details into a separate file.
 - [ ] Implement maps.  One issue is how to deal with the `value_type =
      std::pair<const key_type, mapped_type>`.  The F14 comment (F14Policy.h at
       `moveValue`. outlines three possibilities:

@@ -32,7 +32,19 @@ class HashTable :
   using const_reference = const value_type&;
   using pointer = typename std::allocator_traits<Allocator>::pointer;
   using const_pointer = typename std::allocator_traits<Allocator>::const_pointer;
-  HashTable() :HashTable(hasher(), key_equal(), allocator_type()) {}
+  HashTable() :HashTable(0, hasher(), key_equal(), allocator_type()) {}
+  explicit HashTable(size_t initial_capacity, Hash const& hash = hasher(), KeyEqual const& key_eq = key_equal(), Allocator const& allocator = allocator_type()) 
+      :HasherHolder(hash), KeyEqHolder(key_eq), AllocatorHolder(allocator) {
+    reserve(initial_capacity);
+  }
+  // Copy constructor
+  explicit HashTable(const HashTable& other) :HashTable(other, std::allocator_traits<allocator_type>::select_on_container_copy_construction(get_allocator_ref())) {}
+  HashTable(const HashTable& other, const allocator_type& a) :HashTable(other.size(), other.get_hasher_ref(), other.get_key_eq_ref(), a) {
+    for (const auto& v: other) {
+      insert(v); // TODO: Take advantage of the fact that we know `v` isn't in `*this`.
+    }
+  }
+
   // iterator not here
   // const_iterator not here
   // node_type not here
@@ -46,10 +58,8 @@ class HashTable :
   key_equal key_eq() const { return get_key_eq_ref(); }
   key_equal& get_key_eq_ref() { return *static_cast<KeyEqHolder&>(*this); }
   const key_equal& get_key_eq_ref() const { return *static_cast<KeyEqHolder&>(*this); }
- private:
-  HashTable(Hash const& hash, KeyEqual const& key_equal, Allocator const& allocator) 
-      :HasherHolder(hash), KeyEqHolder(key_equal), AllocatorHolder(allocator) {}
 
+  void reserve(size_t count);
 };
 
 }  // namespace yobiduck::internal

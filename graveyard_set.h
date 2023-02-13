@@ -50,12 +50,8 @@ class GraveyardSet :
   GraveyardSet() = default;
 
   // Copy constructor
-  GraveyardSet(const GraveyardSet &set) {
-    reserve(set.size());
-    for (const T& value: set) {
-      insert(value);  // TODO: Optimize this given that we know `value` is not in `*this`.
-    }
-  }
+  //  GraveyardSet(const GraveyardSet &set);
+  using Base::Base;
 
   // Copy assignment
   GraveyardSet& operator=(const GraveyardSet& other) {

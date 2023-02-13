@@ -32,17 +32,30 @@ class GraveyardSet
   using Base = yobiduck::internal::HashTable<Traits>;
 
  public:
-  // The order as found in https://en.cppreference.com/w/cpp/container/unordered_set
+  // The order as found in
+  // https://en.cppreference.com/w/cpp/container/unordered_set.  Put blank lines
+  // between items to prevent clang_format from reordering them.
+
   using typename Base::key_type;
+
   using typename Base::value_type;
+
   using typename Base::size_type;
+
   using typename Base::difference_type;
+
   using typename Base::hasher;
+
   using typename Base::key_equal;
+
   using typename Base::allocator_type;
+
   using typename Base::reference;
+
   using typename Base::const_reference;
+
   using typename Base::pointer;
+
   using typename Base::const_pointer;
 
   GraveyardSet() = default;
@@ -71,18 +84,25 @@ class GraveyardSet
   }
 
   using Base::clear;
+
   using Base::swap;
 
   using Base::iterator;
+
   using Base::const_iterator;
 
   using Base::begin;
+
   using Base::cbegin;
+
   using Base::end;
+
   using Base::cend;
 
   using Base::insert;
+
   using Base::contains;
+
   using Base::size;
 
   // size_t capacity() const;
@@ -98,6 +118,7 @@ class GraveyardSet
   using Base::bucket_count;
 
   using Base::rehash;
+
   using Base::reserve;
 
   // size_t GetAllocatedMemorySize() const;

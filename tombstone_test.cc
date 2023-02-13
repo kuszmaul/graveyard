@@ -48,7 +48,7 @@ TEST(TombstoneSet, IteratorOneElement) {
 TEST(TombstoneSet, RandomInserts) {
   return;
   absl::BitGen bitgen;
-  const size_t j  = 1000;
+  const size_t j = 1000;
   yobiduck::TombstoneSet<uint64_t> set;
   absl::flat_hash_set<uint64_t> fset;
   for (size_t i = 0; i < j; ++i) {
@@ -76,7 +76,6 @@ TEST(TombstoneSet, Reserve) {
     set.reserve(1000);
     set.insert(100u);
   }
-
 }
 
 TEST(TombstoneSet, AssignAndReserve) {

@@ -88,9 +88,12 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Move implementation details into a separate file.  (2023-02-13)
 - [x] Change from std::vector to a malloced, aligned memory allocation. (2023-02-13)
 - [x] Change "Tombstone" to "Graveyard". (2023-02-13)
+- [x] Vectorize `contains`
+- [ ] Does H2 computing %255 vs %128 make any difference?
+- [ ] Does prefetching make any difference?
+- [ ] Vectorize other operations
 - [ ] Why are the idhash versions slower (e.g., for OLP)  Is it a bad random number generator?
 - [ ] Where is that jitter comming from  in facebook?
-- [ ] Vectorize
 - [ ] Put as much metadata as possible into the malloced part (but not the
       `logical_bucket_count_` which is in the critical path for `find`.
 - [ ] Increase the size of `buckets_` to match the actual allocated memory.

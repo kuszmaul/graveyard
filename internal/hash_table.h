@@ -114,7 +114,12 @@ struct Bucket {
       }
       matches &= (matches - 1);
     }
-    return 16;
+    return Traits::kSlotsPerBucket;
+  }
+
+  size_t FindEmpty() const {
+    size_t matches = MatchingElementsMask(Traits::kEmpty);
+    return matches ? absl::container_internal::TrailingZeros(matches) : Traits::kSlotsPerBucket;
   }
 
   std::array<uint8_t, Traits::kSlotsPerBucket> h2;
@@ -544,22 +549,20 @@ bool HashTable<Traits>::insert(value_type value) {
     }
   }
   for (size_t i = 0; true; ++i) {
+    assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
-    // TODO: Use vector instructions to replace this loop.
-    for (uint8_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      if (bucket.h2[j] == Traits::kEmpty) {
-        bucket.h2[j] = h2;
-        // TODO: Construct in place
-        bucket.slots[j].value = value;
-        assert(i < Traits::kSearchDistanceEndSentinal);
-        if (i > buckets_[preferred_bucket].search_distance)
-          buckets_[preferred_bucket].search_distance = i;
-        ++size_;
-        // TODO: Keep track if we are allowed to destabilize pointers, and if we
-        // are, move things around to be sorted.
-        return true;
-      }
+    size_t idx = bucket.FindEmpty();
+    if (idx < Traits::kSlotsPerBucket) {
+      bucket.h2[idx] = h2;
+      // TODO: Construct in place
+      bucket.slots[idx].value = value;
+      if (i > buckets_[preferred_bucket].search_distance)
+        buckets_[preferred_bucket].search_distance = i;
+      ++size_;
+      // TODO: Keep track if we are allowed to destabilize pointers, and if we
+      // are, move things around to be sorted.
+      return true;
     }
   }
 }

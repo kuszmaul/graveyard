@@ -102,3 +102,40 @@ TEST(GraveyardSet, AssignAndReserve) {
     set.reserve(1000);
   }
 }
+
+struct UnhashableInt {
+  int x;
+};
+struct UnhashableIntHasher {
+  size_t operator()(const UnhashableInt &h) const { return absl::Hash<int>()(h.x); }
+};
+struct UnhashableIntEqual {
+  size_t operator()(const UnhashableInt &a, const UnhashableInt &b) const { return a.x == b.x; }
+};
+
+TEST(GraveyardSet, UserDefinedHashAndEq) {
+  {
+    absl::flat_hash_set<UnhashableInt, UnhashableIntHasher, UnhashableIntEqual> set;
+    CHECK(!set.contains(UnhashableInt{0}));
+    set.insert(UnhashableInt{0});
+    CHECK(set.contains(UnhashableInt{0}));
+    for (int i = 0; i < 1000; i++) {
+      set.insert(UnhashableInt{i});
+    }
+    for (int i = 0; i < 1000; i++) {
+      CHECK(set.contains(UnhashableInt{i}));
+    }
+  }
+  {
+    yobiduck::GraveyardSet<UnhashableInt, UnhashableIntHasher, UnhashableIntEqual> set;
+    CHECK(!set.contains(UnhashableInt{0}));
+    set.insert(UnhashableInt{0});
+    CHECK(set.contains(UnhashableInt{0}));
+    for (int i = 0; i < 10000; i++) {
+      set.insert(UnhashableInt{i});
+    }
+    for (int i = 0; i < 10000; i++) {
+      CHECK(set.contains(UnhashableInt{i}));
+    }
+  }
+}

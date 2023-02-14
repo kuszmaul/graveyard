@@ -105,11 +105,11 @@ struct Bucket {
     return PortableMatchingElements(needle);
   }
 
-  size_t FindElement(uint8_t needle, const typename Traits::value_type& value) const {
+  size_t FindElement(uint8_t needle, const typename Traits::value_type& value, const typename Traits::key_equal& key_eq) const {
     size_t matches = MatchingElementsMask(needle);
     while (matches) {
       int idx = absl::container_internal::TrailingZeros(matches);
-      if (slots[idx].value == value) {
+      if (key_eq(slots[idx].value, value)) {
         return idx;
       }
       matches &= (matches - 1);
@@ -310,12 +310,12 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   hasher hash_function() const { return get_hasher_ref(); }
   hasher& get_hasher_ref() { return *static_cast<HasherHolder&>(*this); }
   const hasher& get_hasher_ref() const {
-    return *static_cast<HasherHolder&>(*this);
+    return *static_cast<const HasherHolder&>(*this);
   }
   key_equal key_eq() const { return get_key_eq_ref(); }
   key_equal& get_key_eq_ref() { return *static_cast<KeyEqualHolder&>(*this); }
   const key_equal& get_key_eq_ref() const {
-    return *static_cast<KeyEqualHolder&>(*this);
+    return *static_cast<const KeyEqualHolder&>(*this);
   }
 
   // Returns the actual size of the buckets including the overflow buckets.
@@ -546,14 +546,15 @@ bool HashTable<Traits>::insert(value_type value) {
     // rehash to be 3/4 full
     rehash(ceil((size_ + 1) * 4, 3));
   }
-  // TODO: Use the Hash here and in OLP.
-  const size_t preferred_bucket = buckets_.H1(value);
-  const size_t h2 = buckets_.H2(value);
+  // TODO: Use the Hash in OLP.
+  const size_t hash = get_hasher_ref()(value);
+  const size_t preferred_bucket = buckets_.H1(hash);
+  const size_t h2 = buckets_.H2(hash);
   const size_t distance = buckets_[preferred_bucket].search_distance;
   for (size_t i = 0; i <= distance; ++i) {
     assert(preferred_bucket + i < buckets_.physical_size());
     const Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
-    size_t idx = bucket.FindElement(h2, value);
+    size_t idx = bucket.FindElement(h2, value, get_key_eq_ref());
     if (idx < Traits::kSlotsPerBucket) {
       return false;
     }
@@ -564,8 +565,9 @@ bool HashTable<Traits>::insert(value_type value) {
 
 template <class Traits>
 void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value) {
-  const size_t preferred_bucket = buckets_.H1(value);
-  const size_t h2 = buckets_.H2(value);
+  const size_t hash = get_hasher_ref()(value);
+  const size_t preferred_bucket = buckets_.H1(hash);
+  const size_t h2 = buckets_.H2(hash);
   InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket, h2);
 }
 
@@ -602,13 +604,14 @@ bool HashTable<Traits>::contains(const key_type& value) const {
   if (size_ == 0) {
     return false;
   }
-  const size_t preferred_bucket = buckets_.H1(value);
-  const size_t h2 = buckets_.H2(value);
+  const size_t hash = get_hasher_ref()(value);
+  const size_t preferred_bucket = buckets_.H1(hash);
+  const size_t h2 = buckets_.H2(hash);
   const size_t distance = buckets_[preferred_bucket].search_distance;
   for (size_t i = 0; i <= distance; ++i) {
     assert(preferred_bucket + i < buckets_.physical_size());
     const Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
-    size_t idx = bucket.FindElement(h2, value);
+    size_t idx = bucket.FindElement(h2, value, get_key_eq_ref());
     if (idx < Traits::kSlotsPerBucket) {
       return true;
     }

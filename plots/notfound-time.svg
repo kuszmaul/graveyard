@@ -418,10 +418,10 @@
 		L342.73,278.08 L356.24,266.37 L370.42,244.88 L385.32,210.84 L400.96,306.95 L417.38,305.55 L434.62,305.05 L452.73,303.69
 		L471.73,302.50 L491.70,299.99 L512.65,297.41 L534.66,293.48 L557.77,288.56  '/></g>
 	</g>
-	<g id="gnuplot_plot_7" ><title>Tombstone</title>
+	<g id="gnuplot_plot_7" ><title>Graveyard</title>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
 	<g transform="translate(274.50,183.91)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="end">
-		<text><tspan font-family="Arial" >Tombstone</tspan></text>
+		<text><tspan font-family="Arial" >Graveyard</tspan></text>
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
@@ -464,10 +464,10 @@
 		L342.73,304.16 L356.24,291.13 L370.42,267.73 L385.32,294.46 L400.96,281.50 L417.38,260.32 L434.62,289.61 L452.73,275.00
 		L471.73,257.39 L491.70,294.04 L512.65,283.35 L534.66,265.92 L557.77,288.15  '/></g>
 	</g>
-	<g id="gnuplot_plot_8" ><title>Tombstone-idhash</title>
+	<g id="gnuplot_plot_8" ><title>Graveyard-idhash</title>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
 	<g transform="translate(274.50,201.91)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="end">
-		<text><tspan font-family="Arial" >Tombstone-idhash</tspan></text>
+		<text><tspan font-family="Arial" >Graveyard-idhash</tspan></text>
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">

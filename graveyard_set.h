@@ -136,4 +136,4 @@ class GraveyardSet
 
 }  // namespace yobiduck
 
-#endif  // _TOMBSTONE_SET_H_
+#endif  // _GRAVEYARD_SET_H_

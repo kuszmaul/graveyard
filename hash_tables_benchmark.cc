@@ -21,8 +21,8 @@
 enum class Implementation {
   kOLP,
   kOLPIdentityHash,
-  kTombstone,
-  kTombstoneIdentityHash,
+  kGraveyard,
+  kGraveyardIdentityHash,
   kGoogle,
   kGoogleIdentityHash,
   kFacebook,
@@ -32,8 +32,8 @@ enum class Implementation {
 namespace {
 const auto* implementation_enum_and_strings =
     EnumsAndStrings<Implementation>::Create(
-        {{Implementation::kTombstone, "tombstone"},
-         {Implementation::kTombstoneIdentityHash, "tombstone-idhash"},
+        {{Implementation::kGraveyard, "graveyard"},
+         {Implementation::kGraveyardIdentityHash, "graveyard-idhash"},
          {Implementation::kOLP, "OLP"},
          {Implementation::kOLPIdentityHash, "OLP-idhash"},
          {Implementation::kGoogle, "google"},
@@ -84,17 +84,17 @@ int main(int argc, char* argv[]) {
     using table_type = std::remove_reference_t<decltype(table)>;
     return table.capacity() + (1 + sizeof(typename table_type::value_type));
   };
-  if (const auto implementation = Implementation::kTombstone;
+  if (const auto implementation = Implementation::kGraveyard;
       ImplementationIsFlagged(implementation)) {
-    using Tombstone = yobiduck::GraveyardSet<uint64_t>;
-    IntHashSetBenchmark<Tombstone>(
+    using Graveyard = yobiduck::GraveyardSet<uint64_t>;
+    IntHashSetBenchmark<Graveyard>(
         Get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }
-  if (const auto implementation = Implementation::kTombstoneIdentityHash;
+  if (const auto implementation = Implementation::kGraveyardIdentityHash;
       ImplementationIsFlagged(implementation)) {
-    using TombstoneNoHash = yobiduck::GraveyardSet<uint64_t, IdentityHash>;
-    IntHashSetBenchmark<TombstoneNoHash>(
+    using GraveyardNoHash = yobiduck::GraveyardSet<uint64_t, IdentityHash>;
+    IntHashSetBenchmark<GraveyardNoHash>(
         Get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }

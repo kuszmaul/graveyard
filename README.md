@@ -43,11 +43,10 @@ be repeatable.
 
 ![Insertion With Reserve time](plots/reserved-insert-time.svg)
 
-Here we've vectorized the ``find` peration: `graveyard` (written as `tombstone`)
-and `Facebook` are fast at successful find (probably because of a single cache
-miss in most cases).  Surprisingly the non-vectorized `OLP` is about the same
-speed as `Google`.  The non-vectorized `graveyard` was slower, so the
-vectorization makes a difference.
+Here we've vectorized the ``find` operation: `graveyard` and `Facebook` are fast
+at successful find (probably because of a single cache miss in most cases).
+Surprisingly the non-vectorized `OLP` is about the same speed as `Google`.  The
+non-vectorized `graveyard` was slower, so the vectorization makes a difference.
 
 ![Successful find time](plots/found-time.svg)
 
@@ -92,7 +91,7 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Change from std::vector to a malloced, aligned memory allocation. (2023-02-13)
 - [x] Change "Tombstone" to "Graveyard". (2023-02-13)
 - [x] Vectorize `contains`
-- [ ] Change "tombstone" to "graveyard" in plots.
+- [x] Change "tombstone" to "graveyard" in plots and the few other remaining places.
 - [ ] Keep track of whether we must maintain reference stability.  If not, then inserts should reorder (which will make the unsuccessful-find faster).
 - [ ] Does H2 computing %255 vs %128 make any difference?
 - [ ] Does prefetching make any difference?

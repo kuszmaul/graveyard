@@ -552,8 +552,9 @@ bool HashTable<Traits>::insert(value_type value) {
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
-    size_t idx = bucket.FindEmpty();
-    if (idx < Traits::kSlotsPerBucket) {
+    size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
+    if (matches != 0) {
+      size_t idx = absl::container_internal::TrailingZeros(matches);
       bucket.h2[idx] = h2;
       // TODO: Construct in place
       bucket.slots[idx].value = value;

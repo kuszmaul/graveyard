@@ -103,9 +103,11 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Move implementation details into a separate file.  (2023-02-13)
 - [x] Change from std::vector to a malloced, aligned memory allocation. (2023-02-13)
 - [x] Change "Tombstone" to "Graveyard". (2023-02-13)
-- [x] Vectorize `contains`
-- [x] Change "tombstone" to "graveyard" in plots and the few other remaining places.
-- [x] Vectorize the first part of `insert`.  (The case where we are inserting an item that's already present.)
+- [x] Vectorize `contains` (2023-02-13)
+- [x] Change "tombstone" to "graveyard" in plots and the few other remaining places. (2023-02-14)
+- [x] Vectorize the first part of `insert`.  (The case where we are inserting an item that's already present.) (2023-02-14)
+- [x] Optimize the insert for the case where we know the key is not already present.  (2023-02-14)
+- [ ] Use the hash and equals functors.
 - [ ] Keep track of whether we must maintain reference stability.  If not, then inserts should reorder (which will make the unsuccessful-find faster).
 - [ ] Does H2 computing %255 vs %128 make any difference?
 - [ ] Does prefetching make any difference?

@@ -348,6 +348,16 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   // to Z/LogicalSlotCount().)
   size_t LogicalSlotCount() const;
 
+  // Insert `value` into `*this`.  Requires that `value` is not already in
+  // `*this` and that the table does not need rehashing.
+  //
+  // TODO: We can probably save the recompution of h2 if we are careful.
+  void InsertNoRehashNeededAndValueNotPresent(value_type value);
+
+  // An overload of `InsertNoRehashNeededAndValueNotPresent` that has already
+  // computed the preferred bucket and h2.
+  void InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2);
+
   // The number of present items in all the buckets combined.
   // Todo: Put `size_` into buckets_ (in the memory).
   size_t size_ = 0;
@@ -377,8 +387,8 @@ HashTable<Traits>::HashTable(const HashTable& other, const allocator_type& a)
     : HashTable(other.size(), other.get_hasher_ref(), other.get_key_eq_ref(),
                 a) {
   for (const auto& v : other) {
-    insert(v);  // TODO: Take advantage of the fact that we know `v` isn't in
-                // `*this`.
+    // TODO: We could save recomputing h2 possibly.
+    InsertNoRehashNeededAndValueNotPresent(v);
   }
 }
 
@@ -548,6 +558,19 @@ bool HashTable<Traits>::insert(value_type value) {
       return false;
     }
   }
+  InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket, h2);
+  return true;
+}
+
+template <class Traits>
+void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value) {
+  const size_t preferred_bucket = buckets_.H1(value);
+  const size_t h2 = buckets_.H2(value);
+  InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket, h2);
+}
+
+template <class Traits>
+void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2) {
   for (size_t i = 0; true; ++i) {
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
@@ -563,7 +586,7 @@ bool HashTable<Traits>::insert(value_type value) {
       ++size_;
       // TODO: Keep track if we are allowed to destabilize pointers, and if we
       // are, move things around to be sorted.
-      return true;
+      return;
     }
   }
 }
@@ -601,8 +624,8 @@ void HashTable<Traits>::rehash(size_t slot_count) {
   for (Bucket<Traits>& bucket : buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
-        // TODO: Take advantage of the fact that the value isn't in the table.
-        insert(std::move(bucket.slots[j].value));
+        // TODO: We could save recomputing h2 possibly.
+        InsertNoRehashNeededAndValueNotPresent(std::move(bucket.slots[j].value));
         // TODO: Destruct bucket.slots[j].
       }
     }

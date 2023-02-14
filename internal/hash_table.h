@@ -610,7 +610,9 @@ bool HashTable<Traits>::contains(const key_type& value) const {
   const size_t h2 = buckets_.H2(hash);
   const size_t distance = buckets_[preferred_bucket].search_distance;
   for (size_t i = 0; i <= distance; ++i) {
-    __builtin_prefetch(&buckets_[preferred_bucket + i + 1].h2[0]);
+    // Prefetch seems to hurt lookup.  Note that F14 prefetches the entire
+    // bucket up to a certain number of cache lines.
+    //   __builtin_prefetch(&buckets_[preferred_bucket + i + 1].h2[0]);
     assert(preferred_bucket + i < buckets_.physical_size());
     const Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
     size_t idx = bucket.FindElement(h2, value, get_key_eq_ref());

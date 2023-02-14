@@ -108,9 +108,9 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Vectorize the first part of `insert`.  (The case where we are inserting an item that's already present.) (2023-02-14)
 - [x] Optimize the insert for the case where we know the key is not already present.  (2023-02-14)
 - [x] Use the hash and equals functors.  (2023-02-14)
+- [x] Does prefetching make any difference?  Maybe on insert. (2023-02-14)
 - [ ] Keep track of whether we must maintain reference stability.  If not, then inserts should reorder (which will make the unsuccessful-find faster).
 - [ ] Does H2 computing %255 vs %128 make any difference?
-- [ ] Does prefetching make any difference?
 - [ ] Vectorize other operations
 - [ ] Why are the idhash versions slower (e.g., for OLP)  Is it a bad random number generator?
 - [ ] Where is that jitter comming from  in facebook?
@@ -142,3 +142,4 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
       Question: What conditions is the pointless key copy actually happening?
       For example, does it use std::move when doing something like a
       `flat_hash_map<std::string, SomeMappedType>`?
+- [ ] Implement prehash and a two-argument find for bulk lookup.

@@ -93,6 +93,7 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Change "Tombstone" to "Graveyard". (2023-02-13)
 - [x] Vectorize `contains`
 - [ ] Change "tombstone" to "graveyard" in plots.
+- [ ] Keep track of whether we must maintain reference stability.  If not, then inserts should reorder (which will make the unsuccessful-find faster).
 - [ ] Does H2 computing %255 vs %128 make any difference?
 - [ ] Does prefetching make any difference?
 - [ ] Vectorize other operations

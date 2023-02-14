@@ -538,12 +538,9 @@ bool HashTable<Traits>::insert(value_type value) {
   for (size_t i = 0; i <= distance; ++i) {
     assert(preferred_bucket + i < buckets_.physical_size());
     const Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
-    // TODO: Use vector instructions to replace this loop.
-    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      if (bucket.h2[j] == h2 && bucket.slots[j].value == value) {
-        LOG(INFO) << " Already there in bucket " << preferred_bucket + i;
-        return false;
-      }
+    size_t idx = bucket.FindElement(h2, value);
+    if (idx < Traits::kSlotsPerBucket) {
+      return false;
     }
   }
   for (size_t i = 0; true; ++i) {
@@ -585,7 +582,7 @@ bool HashTable<Traits>::contains(const key_type& value) const {
     assert(preferred_bucket + i < buckets_.physical_size());
     const Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
     size_t idx = bucket.FindElement(h2, value);
-    if (idx < 14) {
+    if (idx < Traits::kSlotsPerBucket) {
       return true;
     }
   }

@@ -22,7 +22,7 @@ const auto* operation_enum_and_strings = EnumsAndStrings<Operation>::Create(
      {Operation::kNotFound, "notfound"}});
 }  // namespace
 
-ABSL_FLAG(size_t, size_growth, 100,
+ABSL_FLAG(size_t, size_growth, 20,
           "For benchmarking tables of various sizes, increase the size by "
           "size/size_growth");
 ABSL_FLAG(std::vector<Operation>, operations,

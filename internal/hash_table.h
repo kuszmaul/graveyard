@@ -585,20 +585,9 @@ bool HashTable<Traits>::contains(const key_type& value) const {
     assert(preferred_bucket + i < buckets_.physical_size());
     const Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
     size_t idx = bucket.FindElement(h2, value);
-#if 1
     if (idx < 14) {
       return true;
     }
-#else
-    // TODO: Use vector instructions to replace this loop.
-    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      if (bucket.h2[j] == h2 && bucket.slots[j].value == value) {
-        assert(j == idx);
-        return true;
-      }
-    }
-    assert(idx == 16);
-#endif
   }
   return false;
 }

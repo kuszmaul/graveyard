@@ -78,7 +78,7 @@ struct Bucket {
   ~Bucket() = delete;
 
   void Init() {
-    search_distance = 0;
+    search_distance_in_slots = 0;
     for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) h2[i] = Traits::kEmpty;
   }
 
@@ -123,9 +123,9 @@ struct Bucket {
   }
 
   std::array<uint8_t, Traits::kSlotsPerBucket> h2;
-  // The number of buckets we must search in an unsuccessful lookup that starts
+  // The number of slots we must search in an unsuccessful lookup that starts
   // here.
-  uint8_t search_distance;
+  uint8_t search_distance_in_slots;
   std::array<Item<Traits>, Traits::kSlotsPerBucket> slots;
 };
 
@@ -177,7 +177,7 @@ class Buckets {
       bucket.Init();
     }
     // Set the end-of-search sentinal.
-    buckets_[physical_size_ - 1].search_distance =
+    buckets_[physical_size_ - 1].search_distance_in_slots =
         Traits::kSearchDistanceEndSentinal;
     if (0) {
       // It turns out that for libc malloc, the extra usable size usually just
@@ -464,7 +464,7 @@ class HashTable<Traits>::iterator {
         ++index_;
       }
       bool is_last =
-          bucket_->search_distance == Traits::kSearchDistanceEndSentinal;
+          bucket_->search_distance_in_slots == Traits::kSearchDistanceEndSentinal;
       index_ = 0;
       ++bucket_;
       if (is_last) {
@@ -519,7 +519,7 @@ class HashTable<Traits>::const_iterator {
         ++index_;
       }
       bool is_last =
-          bucket_->search_distance == Traits::kSearchDistanceEndSentinal;
+          bucket_->search_distance_in_slots == Traits::kSearchDistanceEndSentinal;
       index_ = 0;
       ++bucket_;
       if (is_last) {
@@ -558,8 +558,9 @@ bool HashTable<Traits>::insert(value_type value) {
   const size_t hash = get_hasher_ref()(value);
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
-  const size_t distance = buckets_[preferred_bucket].search_distance;
-  for (size_t i = 0; i <= distance; ++i) {
+  const size_t distance_in_slots = buckets_[preferred_bucket].search_distance_in_slots;
+  size_t distance_searched = 0;
+  for (size_t i = 0; distance_searched <= distance_in_slots; ++i, distance_searched += Traits::kSlotsPerBucket) {
     __builtin_prefetch(&buckets_[preferred_bucket + i + 1].h2[0]);
     assert(preferred_bucket + i < buckets_.physical_size());
     const Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
@@ -582,7 +583,8 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value)
 
 template <class Traits>
 void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2) {
-  for (size_t i = 0; true; ++i) {
+  size_t distance_searched = 0;
+  for (size_t i = 0; true; ++i, distance_searched += Traits::kSlotsPerBucket) {
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
@@ -592,8 +594,9 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value,
       bucket.h2[idx] = h2;
       // TODO: Construct in place
       bucket.slots[idx].value = value;
-      if (i > buckets_[preferred_bucket].search_distance)
-        buckets_[preferred_bucket].search_distance = i;
+      const size_t search_distance_in_slots = buckets_[preferred_bucket].search_distance_in_slots;
+      if (distance_searched + idx > search_distance_in_slots)
+        buckets_[preferred_bucket].search_distance_in_slots = distance_searched + idx;
       ++size_;
       // TODO: Keep track if we are allowed to destabilize pointers, and if we
       // are, move things around to be sorted.
@@ -616,8 +619,9 @@ bool HashTable<Traits>::contains(const key_type& value) const {
   const size_t hash = get_hasher_ref()(value);
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
-  const size_t distance = buckets_[preferred_bucket].search_distance;
-  for (size_t i = 0; i <= distance; ++i) {
+  const size_t distance_in_slots = buckets_[preferred_bucket].search_distance_in_slots;
+  size_t distance_searched = 0;
+  for (size_t i = 0; distance_searched <= distance_in_slots; ++i, distance_searched += Traits::kSlotsPerBucket) {
     // Prefetch seems to hurt lookup.  Note that F14 prefetches the entire
     // bucket up to a certain number of cache lines.
     //   __builtin_prefetch(&buckets_[preferred_bucket + i + 1].h2[0]);

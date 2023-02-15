@@ -109,10 +109,11 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Optimize the insert for the case where we know the key is not already present.  (2023-02-14)
 - [x] Use the hash and equals functors.  (2023-02-14)
 - [x] Does prefetching make any difference?  Maybe on insert. (2023-02-14)
+- [x] Vectorize other operations. (2023-02-14)
+- [ ] Try making graveyard keep things in order, tossing reference stability out the window.
 - [ ] Keep track of whether we must maintain reference stability.  If not, then inserts should reorder (which will make the unsuccessful-find faster).
 - [ ] Does H2 computing %255 vs %128 make any difference?
-- [ ] Vectorize other operations
-- [ ] Why are the idhash versions slower (e.g., for OLP)  Is it a bad random number generator?
+- [ ] Why are the idhash versions slower (e.g., for OLP)  It's because OLP isn't actually using the idhash.
 - [ ] Where is that jitter comming from  in facebook?
 - [ ] Put as much metadata as possible into the malloced part (but not the
       `logical_bucket_count_` which is in the critical path for `find`.

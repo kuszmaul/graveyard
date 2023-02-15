@@ -583,6 +583,28 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value)
 
 template <class Traits>
 void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2) {
+  // We don't actually have any deletins yet, so just put it in the right place.
+  const size_t search_distance_in_slots = buckets_[preferred_bucket].search_distance_in_slots;
+  const size_t slot_offset = search_distance_in_slots + 1;
+  size_t destination_bucket = preferred_bucket + slot_offset / Traits::kSlotsPerBucket;
+  size_t destination_offset = slot_offset % Traits::kSlotsPerBucket;
+  Bucket<Traits>& bucket = buckets_[destination_bucket];
+  if (bucket.h2[destination_offset] == Traits::kEmpty) {
+    bucket.h2[destination_offset] = h2;
+    bucket.slots[destination_offset].value = value;
+    buckets_[preferred_bucket].search_distance_in_slots = slot_offset;
+    ++size_;
+    return;
+  } else {
+    value_type next_value = bucket.slots[destination_offset].value;
+    bucket.h2[destination_offset] = h2;
+    bucket.slots[destination_offset].value = value;
+    buckets_[preferred_bucket].search_distance_in_slots = slot_offset;
+    // TODO: Check to see if this tail recursion compiles into a goto.
+    InsertNoRehashNeededAndValueNotPresent(next_value);
+    return;
+  }
+#if 0
   size_t distance_searched = 0;
   for (size_t i = 0; true; ++i, distance_searched += Traits::kSlotsPerBucket) {
     assert(i < Traits::kSearchDistanceEndSentinal);
@@ -603,6 +625,7 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value,
       return;
     }
   }
+#endif
 }
 
 template <class Traits>
@@ -673,7 +696,7 @@ size_t HashTable<Traits>::LogicalSlotCount() const {
 template <class Traits>
 size_t HashTable<Traits>::GetSuccessfulProbeLength(const value_type& value) const {
   const size_t h1 = buckets_.H1(get_hasher_ref()(value));
-  for (size_t i = 0; i <= buckets_[h1].search_distance; ++i) {
+  for (size_t i = 0; i <= buckets_[h1].search_distance_in_slots / Traits::kSlotsPerBucket; ++i) {
     const Bucket<Traits>& bucket = buckets_[h1 + i];
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty && bucket.slots[j].value == value) {
@@ -693,7 +716,7 @@ ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
   }
   double unsuccess_sum = 0;
   for (size_t i = 0; i < buckets_.logical_size(); ++i) {
-    unsuccess_sum += buckets_[i].search_distance + 1;
+    unsuccess_sum += buckets_[i].search_distance_in_slots / Traits::kSlotsPerBucket + 1;
   }
   return {success_sum / size(), unsuccess_sum / buckets_.logical_size()};
 }

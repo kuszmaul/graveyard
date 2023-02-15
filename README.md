@@ -109,7 +109,7 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Optimize the insert for the case where we know the key is not already present.  (2023-02-14)
 - [x] Use the hash and equals functors.  (2023-02-14)
 - [x] Does prefetching make any difference?  Maybe on insert. (2023-02-14)
-- [ ] Vectorize other operations (2023-02-14)
+- [x] Vectorize other operations (2023-02-14)
 - [x] Measure the difference in probe lengths when ordering is maintained.  (2023-02-15)
 
     Conclusion: Ordering reduces the number of cache lines touched on
@@ -134,7 +134,7 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Use the user-provided hasher in OLP.
 - [x] Why are the idhash versions slower (e.g., for OLP, which doesn't even use
       the hash function.)  It turns out that they aren't.  (2023-02-15)
-- [x] Implement graveyard tombstones.
+- [x] Implement graveyard tombstones. (2023-02-15)
 
     During `rehash` we keep one slot empty in every other bucket (the first slot
     in the bucket).  Thus the load factor immediately after rehash is $3/4 *
@@ -142,7 +142,7 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
     before rehash the load factor is $7/8 * 28/27 = 49/54$ (yielding $X=54/5$
     and a probe distance of $5.9$ slots.
 
-    Result: Speeds up no-reserve insert by a few percent.  Doesn't seem to affect the other operations.
+    Result: Speeds up no-reserve insert by a few percent.  Doesn't seem to affect the other operations.a
 
 - [ ] Does H2 computing %255 vs %128 make any difference?
 - [ ] Where is that jitter comming from  in facebook?

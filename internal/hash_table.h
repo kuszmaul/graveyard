@@ -360,10 +360,12 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   // `*this` and that the table does not need rehashing.
   //
   // TODO: We can probably save the recompution of h2 if we are careful.
+  template <bool keep_graveyard_tombstones>
   void InsertNoRehashNeededAndValueNotPresent(value_type value);
 
   // An overload of `InsertNoRehashNeededAndValueNotPresent` that has already
   // computed the preferred bucket and h2.
+  template <bool keep_graveyard_tombstones>
   void InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2);
 
   // The number of present items in all the buckets combined.
@@ -396,7 +398,7 @@ HashTable<Traits>::HashTable(const HashTable& other, const allocator_type& a)
                 a) {
   for (const auto& v : other) {
     // TODO: We could save recomputing h2 possibly.
-    InsertNoRehashNeededAndValueNotPresent(v);
+    InsertNoRehashNeededAndValueNotPresent<true>(v);
   }
 }
 
@@ -568,25 +570,34 @@ bool HashTable<Traits>::insert(value_type value) {
       return false;
     }
   }
-  InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket, h2);
+  InsertNoRehashNeededAndValueNotPresent<false>(value, preferred_bucket, h2);
   return true;
 }
 
 template <class Traits>
+template <bool keep_graveyard_tombstones>
 void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value) {
   const size_t hash = get_hasher_ref()(value);
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
-  InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket, h2);
+  InsertNoRehashNeededAndValueNotPresent<keep_graveyard_tombstones>(value, preferred_bucket, h2);
 }
 
 template <class Traits>
+template <bool keep_graveyard_tombstones>
 void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2) {
   for (size_t i = 0; true; ++i) {
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
     size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
+    if constexpr (keep_graveyard_tombstones) {
+      // Keep the first slot free in all the odd-numbered buckets.
+      if (preferred_bucket + i % 2 == 1) {
+        assert(matches & 1ul);
+        matches &= ~1ul;
+      }
+    }
     if (matches != 0) {
       size_t idx = absl::container_internal::TrailingZeros(matches);
       bucket.h2[idx] = h2;
@@ -640,7 +651,7 @@ void HashTable<Traits>::rehash(size_t slot_count) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
-        InsertNoRehashNeededAndValueNotPresent(std::move(bucket.slots[j].value));
+        InsertNoRehashNeededAndValueNotPresent<true>(std::move(bucket.slots[j].value));
         // TODO: Destruct bucket.slots[j].
       }
     }

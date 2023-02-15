@@ -134,6 +134,16 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Use the user-provided hasher in OLP.
 - [x] Why are the idhash versions slower (e.g., for OLP, which doesn't even use
       the hash function.)  It turns out that they aren't.  (2023-02-15)
+- [x] Implement graveyard tombstones.
+
+    During `rehash` we keep one slot empty in every other bucket (the first slot
+    in the bucket).  Thus the load factor immediately after rehash is $3/4 *
+    28/27 = 7/9$ (yielding $X=9/2$ and a probe distance of $2.75$ slots).  Just
+    before rehash the load factor is $7/8 * 28/27 = 49/54$ (yielding $X=54/5$
+    and a probe distance of $5.9$ slots.
+
+    Result: Speeds up no-reserve insert by a few percent.  Doesn't seem to affect the other operations.
+
 - [ ] Does H2 computing %255 vs %128 make any difference?
 - [ ] Where is that jitter comming from  in facebook?
 - [ ] Put as much metadata as possible into the malloced part (but not the

@@ -128,6 +128,9 @@ class GraveyardSet
   //
   // Note: Not part of the `stl::unordered_set` API.
   using Base::GetAllocatedMemorySize;
+
+  using Base::GetProbeStatistics;
+  using Base::GetSuccessfulProbeLength;
 };
 
 // TODO: Idea, keep a bit that says whether a particular slot is out of its

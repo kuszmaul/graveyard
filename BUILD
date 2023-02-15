@@ -113,3 +113,9 @@ cc_library(
     deps = [":object_holder",
     ],
 )
+
+cc_binary(
+    name = "probe_length_benchmark",
+    srcs = ["internal/probe_length_benchmark.cc"],
+    deps = [":graveyard_set",],
+)

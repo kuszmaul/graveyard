@@ -246,6 +246,11 @@ class Buckets {
   Bucket<Traits>* buckets_ = nullptr;
 };
 
+struct ProbeStatistics {
+  double successful;
+  double unsuccessful;
+};
+
 template <class Traits>
 class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
                   private ObjectHolder<'E', typename Traits::key_equal>,
@@ -335,6 +340,9 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   void rehash(size_t count);
 
   void reserve(size_t count);
+
+  ProbeStatistics GetProbeStatistics() const;
+  size_t GetSuccessfulProbeLength(const value_type& value) const;
 
  private:
   // Ranges from 3/4 full to 7/8 full.
@@ -656,6 +664,34 @@ bool HashTable<Traits>::NeedsRehash(size_t target_size) const {
 template <class Traits>
 size_t HashTable<Traits>::LogicalSlotCount() const {
   return buckets_.logical_size() * Traits::kSlotsPerBucket;
+}
+
+template <class Traits>
+size_t HashTable<Traits>::GetSuccessfulProbeLength(const value_type& value) const {
+  const size_t h1 = buckets_.H1(get_hasher_ref()(value));
+  for (size_t i = 0; i <= buckets_[h1].search_distance; ++i) {
+    const Bucket<Traits>& bucket = buckets_[h1 + i];
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      if (bucket.h2[j] != Traits::kEmpty && bucket.slots[j].value == value) {
+        return i + 1;
+      }
+    }
+  }
+  CHECK(false) << "Invariant failed.   value not found";
+}
+
+template <class Traits>
+ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
+  // Sum up the lengths for successful searches
+  double success_sum = 0;
+  for (const auto& value : *this) {
+    success_sum += GetSuccessfulProbeLength(value);
+  }
+  double unsuccess_sum = 0;
+  for (size_t i = 0; i < buckets_.logical_size(); ++i) {
+    unsuccess_sum += buckets_[i].search_distance + 1;
+  }
+  return {success_sum / size(), unsuccess_sum / buckets_.logical_size()};
 }
 
 }  // namespace yobiduck::internal

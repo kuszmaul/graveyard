@@ -109,6 +109,15 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Optimize the insert for the case where we know the key is not already present.  (2023-02-14)
 - [x] Use the hash and equals functors.  (2023-02-14)
 - [x] Does prefetching make any difference?  Maybe on insert. (2023-02-14)
+- [x] Measure the difference in probe lengths when ordering is maintained:
+
+      Conclusion: Ordering reduces the number of cache lines touched on unsuccessful queries.  Number of cache lines touched for each kind of query as per `bazel run -c opt probe_length_benchmark` on branch `main` vs. on branch `distance_in_slots_rather_than_buckets`:
+
+         | Ordered? | Success | Unsuccess |
+         |----------|---------|-----------|
+         | Without  | 1.161   | 1.958     |
+         | With     | 1.201   | 1.524     |
+
 - [ ] Keep track of whether we must maintain reference stability.  If not, then inserts should reorder (which will make the unsuccessful-find faster).
 - [ ] Does H2 computing %255 vs %128 make any difference?
 - [ ] Vectorize other operations

@@ -11,7 +11,8 @@ Kcolor = "#800080"
 Tcolor = "#00FFFF"
 
 set output "plots/insert-time.svg"
-set title "Insertion (from empty, no reserve)"
+current_time = strftime("%a %b %d %H:%M:%S %Y", time(0))
+set title "Insertion (from empty, no reserve) ".current_time
 plot "data/insert_google.data"           using 1:($2/$1)                     with lines       linecolor rgb Gcolor  dt 1 title "Google",\
      "data/insert_google-idhash.data"    using 1:($2/$1)                     with lines       linecolor rgb Gcolor  dt 2 title "Google-idhash",\
      "data/insert_OLP.data"              using 1:($2/$1)                     with lines       linecolor rgb Kcolor  dt 1 title "OLP",\
@@ -30,7 +31,7 @@ plot "data/insert_google.data"           using 1:($2/$1)                     wit
      "data/insert_graveyard-idhash.data" using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor  fs transparent solid 0.1 notitle,\
 
 set output "plots/reserved-insert-time.svg"
-set title "Insertion with Reserve"
+set title "Insertion with Reserve ".current_time
 plot "data/reserved-insert_google.data"           using 1:($2/$1)                     with lines       linecolor rgb Gcolor dt 1 title "Google",\
      "data/reserved-insert_google-idhash.data"    using 1:($2/$1)                     with lines       linecolor rgb Gcolor dt 2 title "Google-idhash",\
      "data/reserved-insert_OLP.data"              using 1:($2/$1)                     with lines       linecolor rgb Kcolor dt 1 title "OLP",\
@@ -50,7 +51,7 @@ plot "data/reserved-insert_google.data"           using 1:($2/$1)               
 
 set yrange [0:110]
 set output "plots/found-time.svg"
-set title "Successful find"
+set title "Successful find ".current_time
 plot "data/found_google.data"           using 1:($2/$1)                     with lines       linecolor rgb Gcolor  dt 1 title "Google",\
      "data/found_google-idhash.data"    using 1:($2/$1)                     with lines       linecolor rgb Gcolor  dt 2 title "Google-idhash",\
      "data/found_OLP.data"              using 1:($2/$1)                     with lines       linecolor rgb Kcolor  dt 1 title "OLP",\
@@ -65,7 +66,7 @@ plot "data/found_google.data"           using 1:($2/$1)                     with
      "data/found_graveyard.data"      using 1:($2/$1-$4/$1):($2/$1+$4/$1)   with filledcurve linecolor rgb Tcolor fs transparent solid 0.1 notitle,\
 
 set output "plots/notfound-time.svg"
-set title "Unsuccessful find"
+set title "Unsuccessful find ".current_time
 plot "data/notfound_google.data"           using 1:($2/$1)                     with lines       linecolor rgb Gcolor  dt 1 title "Google",\
      "data/notfound_google-idhash.data"    using 1:($2/$1)                     with lines       linecolor rgb Gcolor  dt 2 title "Google-idhash",\
      "data/notfound_OLP.data"              using 1:($2/$1)                     with lines       linecolor rgb Kcolor  dt 1 title "OLP",\
@@ -84,7 +85,7 @@ plot "data/notfound_google.data"           using 1:($2/$1)                     w
 set output "plots/memory.svg"
 unset yrange
 set ylabel "Memory bytes"
-set title "Memory"
+set title "Memory ".current_time
 set key top left Left reverse
 
 f(x) = a * x

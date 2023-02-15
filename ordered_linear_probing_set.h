@@ -20,6 +20,7 @@ class OrderedLinearProbingSet {
   // Ranges from 3/4 full to 7/8 full.
  public:
   using value_type = T;
+  using hasher = Hash;
   void reserve(size_t count);
   bool insert(uint64_t value);
   bool contains(uint64_t value) const;
@@ -75,7 +76,7 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
     // rehash to be 3/4 full
     rehash(ceil((occupied_slot_count_ + 1) * 4, 3));
   }
-  const size_t preferred_slot = PreferredSlot(value, slot_count_);
+  const size_t preferred_slot = PreferredSlot(hasher()(value), slot_count_);
   size_t slot = preferred_slot;
   CHECK(!kDebugOLP || slot < slots_.size())
       << "Overflow: slot_count_=" << slot_count_ << " slot=" << slot
@@ -145,7 +146,7 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::contains(uint64_t value) const {
   if (value == kMax) {
     return max_is_present_;
   }
-  size_t slot = size_t((__int128(value) * __int128(slot_count_)) >> 64);
+  size_t slot = PreferredSlot(hasher()(value), slot_count_);
   CHECK(!kDebugOLP || slot < slots_.size()) << "contains overflow";
   for (; slots_[slot] <= value; ++slot) {
     assert(slot < slots_.size());

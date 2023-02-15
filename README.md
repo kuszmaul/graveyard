@@ -109,7 +109,8 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Optimize the insert for the case where we know the key is not already present.  (2023-02-14)
 - [x] Use the hash and equals functors.  (2023-02-14)
 - [x] Does prefetching make any difference?  Maybe on insert. (2023-02-14)
-- [x] Measure the difference in probe lengths when ordering is maintained.
+- [ ] Vectorize other operations (2023-02-14)
+- [x] Measure the difference in probe lengths when ordering is maintained.  (2023-02-15)
 
     Conclusion: Ordering reduces the number of cache lines touched on
     unsuccessful queries.  Number of cache lines touched for each kind of
@@ -121,10 +122,19 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
     | Unordered | 1.161   | 1.958     |
     | Ordered   | 1.201   | 1.524     |
 
-- [ ] Keep track of whether we must maintain reference stability.  If not, then inserts should reorder (which will make the unsuccessful-find faster).
+- [x] Implement stability after reserve.  Since we aren't doing reordering during insert, this is just about avoiding rehash, so the following doesn't make sense.
+    *   Need a reservation_count to tell us whether the current insertion must maintain stability.
+    *   Possibly specially handle the case where we do `reserve(size()+k)` for
+        small `k`.  In this case we might maintain a set of `k` offsets to
+        values that are out of place so that on the next insert or reserve we
+        can go fix those particular ones up.
+- [x] This also doesn't make sense any more: Keep track of whether we must
+      maintain reference stability.  If not, then inserts should reorder (which
+      will make the unsuccessful-find faster).
+- [x] Use the user-provided hasher in OLP.
+- [x] Why are the idhash versions slower (e.g., for OLP, which doesn't even use
+      the hash function.)  It turns out that they aren't.  (2023-02-15)
 - [ ] Does H2 computing %255 vs %128 make any difference?
-- [ ] Vectorize other operations
-- [ ] Why are the idhash versions slower (e.g., for OLP)  Is it a bad random number generator?
 - [ ] Where is that jitter comming from  in facebook?
 - [ ] Put as much metadata as possible into the malloced part (but not the
       `logical_bucket_count_` which is in the critical path for `find`.
@@ -132,12 +142,6 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
       This doesn't seem to make any difference for libc malloc, but it probably
       makes a difference for a bucketed malloc such as tcmalloc.
 - [ ] Change the search_distance to the number of slots instead of the number of buckets.
-- [ ] Implement stability
-    *   Need a reservation_count to tell us whether the current insertion must maintain stability.
-    *   Possibly specially handle the case where we do `reserve(size()+k)` for
-        small `k`.  In this case we might maintain a set of `k` offsets to
-        values that are out of place so that on the next insert or reserve we
-        can go fix those particular ones up.
 - [ ] Implement maps.  One issue is how to deal with the `value_type =
      std::pair<const key_type, mapped_type>`.  The F14 comment (F14Policy.h at
       `moveValue`. outlines three possibilities:

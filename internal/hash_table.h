@@ -596,17 +596,13 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value,
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
     size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
-    LOG(INFO) << "Matches=" << matches;
     if constexpr (keep_graveyard_tombstones) {
       // Keep the first slot free in all the odd-numbered buckets.
-      LOG(INFO) << " preferred_bucket+i=" << preferred_bucket + i;
       if ((preferred_bucket + i) % 2 == 1) {
-        LOG(INFO) << " clearing matches";
         assert(matches & 1ul);
         matches &= ~1ul;
       }
     }
-    LOG(INFO) << "Matches=" << matches;
     if (matches != 0) {
       size_t idx = absl::container_internal::TrailingZeros(matches);
       bucket.h2[idx] = h2;
@@ -691,6 +687,7 @@ struct HeapElement {
 };
 
 #if 0
+// This version makes a single big heap and then inserts them.
 template <class Traits>
 void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
@@ -727,6 +724,9 @@ void HashTable<Traits>::rehash(size_t slot_count) {
   CheckValidityAfterRehash();
 }
 #else
+
+// Single big heap and then inserts them using a special insertion routine that
+// does the insertion in a single scan.
 template <class Traits>
 void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));

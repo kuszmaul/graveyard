@@ -345,6 +345,11 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   size_t GetSuccessfulProbeLength(const value_type& value) const;
 
  private:
+  // Checks that `*this` is valid.  Requires that a rehash or initial
+  // construction has just occurred.  Specifically checks that the graveyard
+  // tombstones are present.
+  void CheckValidityAfterRehash() const;
+
   // Ranges from 3/4 full to 7/8 full.
 
   // Returns true if the table needs rehashing to be big enough to hold
@@ -593,7 +598,7 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value,
     size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
     if constexpr (keep_graveyard_tombstones) {
       // Keep the first slot free in all the odd-numbered buckets.
-      if (preferred_bucket + i % 2 == 1) {
+      if ((preferred_bucket + i) % 2 == 1) {
         assert(matches & 1ul);
         matches &= ~1ul;
       }
@@ -643,6 +648,16 @@ bool HashTable<Traits>::contains(const key_type& value) const {
 }
 
 template <class Traits>
+void HashTable<Traits>::CheckValidityAfterRehash() const {
+#ifndef NDEBUG
+#error
+  for (size_t i = 1; i < buckets_.physical_size(); i+=2) {
+    CHECK_EQ(buckets_[i].h2[0], Traits::kEmpty);
+  }
+#endif  // NDEBUG
+}
+
+template <class Traits>
 void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
   buckets.swap(buckets_);
@@ -656,6 +671,7 @@ void HashTable<Traits>::rehash(size_t slot_count) {
       }
     }
   }
+ CheckValidityAfterRehash();
 }
 
 template <class Traits>

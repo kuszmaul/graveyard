@@ -212,7 +212,7 @@ class Buckets {
   size_t physical_size() const { return physical_size_; }
   bool empty() const { return physical_size() == 0; }
   Bucket<Traits>& operator[](size_t index) {
-    assert(index < physical_size());
+    assert(index <= physical_size());
     return buckets_[index];
   }
   const Bucket<Traits>& operator[](size_t index) const {
@@ -642,6 +642,7 @@ bool HashTable<Traits>::contains(const key_type& value) const {
   return false;
 }
 
+#if 0
 template <class Traits>
 void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
@@ -657,6 +658,53 @@ void HashTable<Traits>::rehash(size_t slot_count) {
     }
   }
 }
+#else
+
+struct HeapElement {
+  size_t hash;
+  size_t bucket_number : 56;
+  size_t slot_number : 8;
+  // We want a min heap, not a max heap, so operator< is backwards.
+  bool operator<(const HeapElement &other) {
+    return hash > other.hash;
+  }
+};
+
+template <class Traits>
+void HashTable<Traits>::rehash(size_t slot_count) {
+  Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
+  buckets.swap(buckets_);
+  std::vector<HeapElement> heap;
+  size_t bucket_number = 0;
+  std::vector<value_type> values;
+  for (Bucket<Traits>& bucket : buckets) {
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      if (bucket.h2[j] != Traits::kEmpty) {
+        values.push_back(bucket.slots[j].value);
+        const size_t hash = get_hasher_ref()(bucket.slots[j].value);
+        struct HeapElement heap_element = {
+          .hash = hash,
+          .bucket_number = bucket_number,
+          .slot_number = j};
+        heap.push_back(heap_element);
+        std::push_heap(heap.begin(), heap.end());
+      }
+    }
+    ++bucket_number;
+  }
+  size_ = 0;
+  while (!heap.empty()) {
+    std::pop_heap(heap.begin(), heap.end());
+    const HeapElement& back = heap.back();
+    const size_t from_bucket_number = back.bucket_number;
+    const size_t from_slot_number = back.slot_number;
+    Bucket<Traits>& from_bucket = buckets[from_bucket_number];
+    InsertNoRehashNeededAndValueNotPresent<true>(std::move(from_bucket.slots[from_slot_number].value),
+                                                 buckets_.H1(back.hash), buckets_.H2(back.hash));
+    heap.pop_back();
+  }
+}
+#endif
 
 template <class Traits>
 void HashTable<Traits>::reserve(size_t count) {

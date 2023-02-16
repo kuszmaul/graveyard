@@ -105,6 +105,7 @@ TEST(GraveyardSet, AssignAndReserve) {
 
 struct UnhashableInt {
   int x;
+  UnhashableInt(int x) :x(x) {}
 };
 struct UnhashableIntHasher {
   size_t operator()(const UnhashableInt &h) const { return absl::Hash<int>()(h.x); }
@@ -112,6 +113,10 @@ struct UnhashableIntHasher {
 struct UnhashableIntEqual {
   size_t operator()(const UnhashableInt &a, const UnhashableInt &b) const { return a.x == b.x; }
 };
+
+std::ostream& operator<<(std::ostream& stream, const UnhashableInt& unhashable_int) {
+  return stream << unhashable_int.x;
+}
 
 TEST(GraveyardSet, UserDefinedHashAndEq) {
   {

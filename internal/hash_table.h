@@ -345,6 +345,11 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   size_t GetSuccessfulProbeLength(const value_type& value) const;
 
  private:
+  // Checks that `*this` is valid.  Requires that a rehash or initial
+  // construction has just occurred.  Specifically checks that the graveyard
+  // tombstones are present.
+  void CheckValidityAfterRehash() const;
+
   // Ranges from 3/4 full to 7/8 full.
 
   // Returns true if the table needs rehashing to be big enough to hold
@@ -591,13 +596,17 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value,
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
     size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
+    LOG(INFO) << "Matches=" << matches;
     if constexpr (keep_graveyard_tombstones) {
       // Keep the first slot free in all the odd-numbered buckets.
-      if (preferred_bucket + i % 2 == 1) {
+      LOG(INFO) << " preferred_bucket+i=" << preferred_bucket + i;
+      if ((preferred_bucket + i) % 2 == 1) {
+        LOG(INFO) << " clearing matches";
         assert(matches & 1ul);
         matches &= ~1ul;
       }
     }
+    LOG(INFO) << "Matches=" << matches;
     if (matches != 0) {
       size_t idx = absl::container_internal::TrailingZeros(matches);
       bucket.h2[idx] = h2;
@@ -642,7 +651,16 @@ bool HashTable<Traits>::contains(const key_type& value) const {
   return false;
 }
 
-#if 0
+template <class Traits>
+void HashTable<Traits>::CheckValidityAfterRehash() const {
+#ifndef NDEBUG
+  for (size_t i = 1; i < buckets_.physical_size(); i+=2) {
+    CHECK_EQ(buckets_[i].h2[0], Traits::kEmpty);
+  }
+#endif  // NDEBUG
+}
+
+#if 1
 template <class Traits>
 void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
@@ -654,9 +672,11 @@ void HashTable<Traits>::rehash(size_t slot_count) {
         // TODO: We could save recomputing h2 possibly.
         InsertNoRehashNeededAndValueNotPresent<true>(std::move(bucket.slots[j].value));
         // TODO: Destruct bucket.slots[j].
+        CheckValidityAfterRehash();
       }
     }
   }
+  CheckValidityAfterRehash();
 }
 #else
 
@@ -670,6 +690,7 @@ struct HeapElement {
   }
 };
 
+#if 0
 template <class Traits>
 void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
@@ -703,7 +724,64 @@ void HashTable<Traits>::rehash(size_t slot_count) {
                                                  buckets_.H1(back.hash), buckets_.H2(back.hash));
     heap.pop_back();
   }
+  CheckValidityAfterRehash();
 }
+#else
+template <class Traits>
+void HashTable<Traits>::rehash(size_t slot_count) {
+  Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
+  buckets.swap(buckets_);
+  std::vector<HeapElement> heap;
+  heap.reserve(4 * Traits::kSlotsPerBucket);
+  size_t destination_bucket = 0;
+  size_t destination_slot = 0;
+
+  size_t bucket_number = 0;
+  std::vector<value_type> values;
+  for (Bucket<Traits>& bucket : buckets) {
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      if (bucket.h2[j] != Traits::kEmpty) {
+        values.push_back(bucket.slots[j].value);
+        const size_t hash = get_hasher_ref()(bucket.slots[j].value);
+        struct HeapElement heap_element = {
+          .hash = hash,
+          .bucket_number = bucket_number,
+          .slot_number = j};
+        heap.push_back(heap_element);
+        std::push_heap(heap.begin(), heap.end());
+      }
+    }
+    ++bucket_number;
+  }
+  while (!heap.empty()) {
+    std::pop_heap(heap.begin(), heap.end());
+    const HeapElement& back = heap.back();
+    const size_t from_bucket_number = back.bucket_number;
+    const size_t from_slot_number = back.slot_number;
+    Bucket<Traits>& from_bucket = buckets[from_bucket_number];
+    const size_t h1 = buckets_.H1(back.hash);
+    const size_t h2 = buckets_.H2(back.hash);
+    const value_type value = from_bucket.slots[from_slot_number].value;
+    if (h1 > destination_bucket) {
+      destination_bucket = h1;
+      // Skip the graveyard tombstone (which is the first slot in odd-numbered
+      // buckets).
+      destination_slot = (destination_bucket % 2) ? 0 : 1;
+    }
+    buckets_[destination_bucket].h2[destination_slot] = h2;
+    buckets_[destination_bucket].slots[destination_slot].value = std::move(from_bucket.slots[from_slot_number].value);
+    buckets_[h1].search_distance = std::max(size_t{buckets_[h1].search_distance}, destination_bucket - h1);
+    ++destination_slot;
+    if (destination_slot == Traits::kSlotsPerBucket) {
+      ++destination_bucket;
+      destination_slot = (destination_bucket % 2) ? 0 : 1;
+    }
+    CHECK(contains(value));
+    heap.pop_back();
+  }
+  CheckValidityAfterRehash();
+}
+#endif
 #endif
 
 template <class Traits>

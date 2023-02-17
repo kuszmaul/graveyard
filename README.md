@@ -169,3 +169,5 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
       For example, does it use std::move when doing something like a
       `flat_hash_map<std::string, SomeMappedType>`?
 - [ ] Implement prehash and a two-argument find for bulk lookup.
+- [ ] Optimize iteration over sparse tables: Use vector instruction to find next non-empty slot.
+- [ ] Optimize the case for iterating when a prefix of the table has been deleted.  F14 does it.  Why?

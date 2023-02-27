@@ -155,11 +155,17 @@ TEST(GraveyardSet, SortedBucketIterator) {
   yobiduck::GraveyardSet<UnhashableInt, UnhashableIntIdentityHasher, UnhashableIntEqual> graveyard_set;
   std::set<int> std_set;
   absl::BitGen bitgen;
-  int kCount = 10;
+  int kCount = 100;
   for (int i = 0; i < kCount; ++i) {
     int v = absl::Uniform(bitgen, 0, kCount * kCount);
     graveyard_set.insert(UnhashableInt{v});
     std_set.insert(v);
+  }
+  for (auto it = graveyard_set.GetSortedBucketsIterator();
+       it != it.end();
+       ++it) {
+    std::cout << " Found " << *it->value << std::endl;
+    it.Print(std::cout);
   }
   auto std_it = std_set.begin();
   for (auto heap_element : graveyard_set.GetSortedBucketsIterator()) {

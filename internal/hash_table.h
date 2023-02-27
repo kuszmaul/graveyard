@@ -821,13 +821,25 @@ class SortedBucketsIterator {
   friend bool operator!=(const SortedBucketsIterator& a, const EndSentinal& b) {
     return !(a == b);
   }
+  void Print(std::ostream& s) {
+    s << "ib=" << ingested_before_ << " p=" << preferred_ << " le=" << logical_end_ << " heap={";
+    for(size_t i = 0; i < heap_.size(); ++i) {
+      if (i > 0) s << ", ";
+      auto& he = heap_[i];
+      s << "{h=" << he.hash << " fb=" << he.from_bucket << " fs=" << he.from_slot << " v=" << *he.value << "}";
+    }
+    s << " ic=" << ingested_count_ << std::endl;
+  }
  private:
   void Ingest() {
-    while (1) {
+    LOG(INFO) << "Ingesting";
+    for (; preferred_ < logical_end_; ++preferred_) {
+      LOG(INFO) << "Ingest in loop";
       // ingest everything from ingested_before_ to (preferred_ + preferred_->search_distance) (inclusive).
       for (const auto end = preferred_ + preferred_->search_distance + 1;
            ingested_before_ < end;
            ++ingested_before_) {
+        LOG(INFO) << "Ingesting bucket " << ingested_before_;
         for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {
           if (ingested_before_->h2[i] != Traits::kEmpty) {
             size_t hash = hasher_(ingested_before_->slots[i].value);

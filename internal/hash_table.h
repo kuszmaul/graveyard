@@ -720,6 +720,99 @@ ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
   return {success_sum / size(), unsuccess_sum / buckets_.logical_size()};
 }
 
+// Provides an iterator over `Buckets` that emits key-value pairs in sorted
+// order.
+template <class Traits>
+class SortedBucketsIterator {
+ public:
+  using iterator_category = std::forward_iterator_tag;
+  struct HeapElement {
+    size_t hash;
+    Bucket<Traits>* from_bucket;
+    size_t from_slot;
+    typename Traits::value_type* value;
+    // We want a min heap rather than a max heap. So define operator< to be
+    // inverted.
+    bool operator<(const HeapElement &other) {
+      return hash > other.hash;
+    }
+  };
+  using value_type = HeapElement;
+  using difference_type = ptrdiff_t;
+  using reference = value_type&;
+  using pointer = value_type*;
+  struct EndSentinal {
+  };
+  explicit SortedBucketsIterator(HashTable<Traits>& table)
+      :consumed_before_(table.buckets().begin()),
+       preferred_(consumed_before_),
+       logical_end_(table.buckets().begin() + table.buckets.logical_size()),
+       size_(table.size()),
+       hasher_(table.hash_function()) {
+    Ingest();
+  }
+  reference operator*() {
+    assert(!heap_.empty());
+    return heap_.front();
+  }
+  pointer operator->() {
+    assert(!heap_.empty());
+    return &heap_.front();
+  }
+  // Prefix increment
+  SortedBucketsIterator& operator++() {
+    assert(!heap_.empty());
+    std::pop_heap(heap_.begin(), heap_.end());
+    heap_.pop_back();
+    if (heap_.empty() || heap_.front().from_bucket > preferred_) {
+      Ingest();
+    }
+    return *this;
+  }
+  friend bool operator==(const SortedBucketsIterator& a, const EndSentinal &b) {
+    bool is_end = a.heap_.empty() && a.consumed_before_ == a.end_;
+    if (is_end) {
+      assert(a.ingested_count_ == a.size_);
+    }
+    return is_end;
+  }
+  friend bool operator!=(const SortedBucketsIterator& a, const SortedBucketsIterator& b) {
+    return !(a == b);
+  }
+ private:
+  void Ingest() {
+    while (1) {
+      // ingest everything from consumed_before_ to (preferred_ + preferred_->search_distance) (inclusive).
+      for (const auto end = preferred_ + preferred_->search_distance + 1;
+           consumed_before_ < end;
+           ++consumed_before_) {
+        for (size_t i = 0; i < Traits::kSlotsPerElement; ++i) {
+          if (consumed_before_->h2[i] != Traits::kEmpty) {
+            size_t hash = hasher(consumed_before_->slots[i].value);
+            ++ingested_count_;
+            heap_.push_back({.hash = hash,
+                             .from_bucket = consumed_before_,
+                             .from_slot = i,
+                             .value = &consumed_before_->slots[i].value});
+            std::push_heap(heap_.begin(), heap_.end());
+          }
+        }
+      }
+      if (!heap_.empty()) {
+        return;
+      }
+    }
+  }
+
+  Bucket<Traits>* consumed_before_;
+  Bucket<Traits>* preferred_;
+  Bucket<Traits>* logical_end_;
+  size_t size_;
+  std::vector<HeapElement> heap_;
+  size_t ingested_count_ = 0;
+  typename Traits::hasher hasher_;
+};
+
 }  // namespace yobiduck::internal
 
 

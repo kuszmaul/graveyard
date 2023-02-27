@@ -161,16 +161,8 @@ TEST(GraveyardSet, SortedBucketIterator) {
     graveyard_set.insert(UnhashableInt{v});
     std_set.insert(v);
   }
-  for (auto it = graveyard_set.GetSortedBucketsIterator();
-       it != it.end();
-       ++it) {
-    std::cout << " Found " << *it->value << std::endl;
-    it.Print(std::cout);
-  }
   auto std_it = std_set.begin();
   for (auto heap_element : graveyard_set.GetSortedBucketsIterator()) {
-    LOG(INFO) << " expect " << *std_it;
-    LOG(INFO) << " Found " << *heap_element.value;
     CHECK(std_it != std_set.end());
     EXPECT_EQ(heap_element.value->x, *std_it);
     ++std_it;

@@ -832,14 +832,11 @@ class SortedBucketsIterator {
   }
  private:
   void Ingest() {
-    LOG(INFO) << "Ingesting";
     for (; preferred_ < logical_end_; ++preferred_) {
-      LOG(INFO) << "Ingest in loop";
       // ingest everything from ingested_before_ to (preferred_ + preferred_->search_distance) (inclusive).
       for (const auto end = preferred_ + preferred_->search_distance + 1;
            ingested_before_ < end;
            ++ingested_before_) {
-        LOG(INFO) << "Ingesting bucket " << ingested_before_;
         for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {
           if (ingested_before_->h2[i] != Traits::kEmpty) {
             size_t hash = hasher_(ingested_before_->slots[i].value);

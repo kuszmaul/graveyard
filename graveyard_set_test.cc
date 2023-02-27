@@ -105,6 +105,7 @@ TEST(GraveyardSet, AssignAndReserve) {
 
 struct UnhashableInt {
   int x;
+  explicit UnhashableInt(int x) :x(x) {}
 };
 struct UnhashableIntHasher {
   size_t operator()(const UnhashableInt &h) const { return absl::Hash<int>()(h.x); }
@@ -112,6 +113,10 @@ struct UnhashableIntHasher {
 struct UnhashableIntEqual {
   size_t operator()(const UnhashableInt &a, const UnhashableInt &b) const { return a.x == b.x; }
 };
+
+std::ostream& operator<<(std::ostream& stream, const UnhashableInt& unhashable_int) {
+  return stream << unhashable_int.x;
+}
 
 TEST(GraveyardSet, UserDefinedHashAndEq) {
   {
@@ -131,11 +136,14 @@ TEST(GraveyardSet, UserDefinedHashAndEq) {
     CHECK(!set.contains(UnhashableInt{0}));
     set.insert(UnhashableInt{0});
     CHECK(set.contains(UnhashableInt{0}));
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < 10000; ++i) {
       set.insert(UnhashableInt{i});
+      for (int j = 0; j < i; ++j) {
+        EXPECT_TRUE(set.contains(UnhashableInt{j})) << "i=" << i << " j=" << j;
+      }
     }
-    for (int i = 0; i < 10000; i++) {
-      CHECK(set.contains(UnhashableInt{i}));
+    for (int i = 0; i < 10000; ++i) {
+      EXPECT_TRUE(set.contains(UnhashableInt{i})) << "i=" << i;
     }
   }
 }

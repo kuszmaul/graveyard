@@ -650,7 +650,6 @@ bool HashTable<Traits>::contains(const key_type& value) const {
 template <class Traits>
 void HashTable<Traits>::CheckValidityAfterRehash() const {
 #ifndef NDEBUG
-#error
   for (size_t i = 1; i < buckets_.physical_size(); i+=2) {
     CHECK_EQ(buckets_[i].h2[0], Traits::kEmpty);
   }

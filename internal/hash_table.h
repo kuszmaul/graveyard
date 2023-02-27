@@ -63,6 +63,9 @@ union Item {
 };
 
 template <class Traits>
+class SortedBucketsIterator;
+
+template <class Traits>
 struct Bucket {
   // Bucket has no constructor or destructor since by default it's POD.
   Bucket() = delete;
@@ -344,7 +347,14 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   ProbeStatistics GetProbeStatistics() const;
   size_t GetSuccessfulProbeLength(const value_type& value) const;
 
+  using hash_sorted_iterator = SortedBucketsIterator<Traits>;
+  hash_sorted_iterator GetSortedBucketsIterator() {
+    return hash_sorted_iterator(*this);
+  }
+
  private:
+  friend SortedBucketsIterator<Traits>::SortedBucketsIterator(HashTable&);
+
   // Checks that `*this` is valid.  Requires that a rehash or initial
   // construction has just occurred.  Specifically checks that the graveyard
   // tombstones are present.
@@ -721,16 +731,46 @@ ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
 }
 
 // Provides an iterator over `Buckets` that emits key-value pairs in sorted
-// order.
+// order (sorted by the hash.)
+//
+// The `end` iterator is represented by a sentinal.  (Hence it does not require
+// that we can compare two iterators, and in this regard, this is more like a
+// C++20 input iterator than a C++17 LegacyInputIterator).  (See
+// https://en.cppreference.com/w/cpp/iterator/sentinel_for, "It has been
+// permited to use a sentinal type different from the iterator type in the
+// range-based for loop since C++17.")
+//
+// We say that a value has been *produced* if the iterator has been incremented
+// past the value.
+
+// The way this works is that we have two pointers into the buckets.
+//
+//   * Everything in a bucket before `*ingested_before_` has either been
+//     produced by the iterator, or it's in the heap.  That is, it has been
+//     *ingested*.
+//
+//   * Every value whose preferred bucket is <= `preferred_` has been ingested.
+//
+// We have another pointer, `logical_end_` which is the first bucket that no
+// hash prefers.  When `preferred_==logical_end_` tehre is no more to be
+// ingested.
+//
+// We have a heap.  The heap contains all the values that have been ingested but
+// have not yet been produced. The heap is a min heap, sorted so that the first
+// element of the heap has the numerically smallest hash.
+//
+// The value_type is a struct containing the hash of the value stored in the
+// table, a pointer to the `Bucket` containing the value, and a slot number
+// within the bucket.
 template <class Traits>
 class SortedBucketsIterator {
  public:
-  using iterator_category = std::forward_iterator_tag;
+  using iterator_category = std::input_iterator_tag;
   struct HeapElement {
     size_t hash;
     Bucket<Traits>* from_bucket;
     size_t from_slot;
-    typename Traits::value_type* value;
+    typename Traits::value_type *value;
     // We want a min heap rather than a max heap. So define operator< to be
     // inverted.
     bool operator<(const HeapElement &other) {
@@ -744,12 +784,18 @@ class SortedBucketsIterator {
   struct EndSentinal {
   };
   explicit SortedBucketsIterator(HashTable<Traits>& table)
-      :consumed_before_(table.buckets().begin()),
-       preferred_(consumed_before_),
-       logical_end_(table.buckets().begin() + table.buckets.logical_size()),
-       size_(table.size()),
+      :ingested_before_(table.buckets_.begin()),
+       preferred_(ingested_before_),
+       logical_end_(table.buckets_.begin() + table.buckets_.logical_size()),
        hasher_(table.hash_function()) {
     Ingest();
+  }
+  // The iterator is its own container.
+  SortedBucketsIterator& begin() {
+    return *this;
+  }
+  EndSentinal end() {
+    return EndSentinal();
   }
   reference operator*() {
     assert(!heap_.empty());
@@ -770,30 +816,26 @@ class SortedBucketsIterator {
     return *this;
   }
   friend bool operator==(const SortedBucketsIterator& a, const EndSentinal &b) {
-    bool is_end = a.heap_.empty() && a.consumed_before_ == a.end_;
-    if (is_end) {
-      assert(a.ingested_count_ == a.size_);
-    }
-    return is_end;
+    return a.heap_.empty() && a.ingested_before_ == a.logical_end_;
   }
-  friend bool operator!=(const SortedBucketsIterator& a, const SortedBucketsIterator& b) {
+  friend bool operator!=(const SortedBucketsIterator& a, const EndSentinal& b) {
     return !(a == b);
   }
  private:
   void Ingest() {
     while (1) {
-      // ingest everything from consumed_before_ to (preferred_ + preferred_->search_distance) (inclusive).
+      // ingest everything from ingested_before_ to (preferred_ + preferred_->search_distance) (inclusive).
       for (const auto end = preferred_ + preferred_->search_distance + 1;
-           consumed_before_ < end;
-           ++consumed_before_) {
-        for (size_t i = 0; i < Traits::kSlotsPerElement; ++i) {
-          if (consumed_before_->h2[i] != Traits::kEmpty) {
-            size_t hash = hasher(consumed_before_->slots[i].value);
+           ingested_before_ < end;
+           ++ingested_before_) {
+        for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {
+          if (ingested_before_->h2[i] != Traits::kEmpty) {
+            size_t hash = hasher_(ingested_before_->slots[i].value);
             ++ingested_count_;
             heap_.push_back({.hash = hash,
-                             .from_bucket = consumed_before_,
+                             .from_bucket = ingested_before_,
                              .from_slot = i,
-                             .value = &consumed_before_->slots[i].value});
+                             .value = &ingested_before_->slots[i].value});
             std::push_heap(heap_.begin(), heap_.end());
           }
         }
@@ -804,10 +846,9 @@ class SortedBucketsIterator {
     }
   }
 
-  Bucket<Traits>* consumed_before_;
+  Bucket<Traits>* ingested_before_;
   Bucket<Traits>* preferred_;
   Bucket<Traits>* logical_end_;
-  size_t size_;
   std::vector<HeapElement> heap_;
   size_t ingested_count_ = 0;
   typename Traits::hasher hasher_;

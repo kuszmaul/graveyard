@@ -63,7 +63,6 @@ TEST(GraveyardSet, IteratorOneElement) {
 }
 
 TEST(GraveyardSet, RandomInserts) {
-  return;
   absl::BitGen bitgen;
   const size_t j = 1000;
   yobiduck::GraveyardSet<uint64_t> set;
@@ -145,5 +144,29 @@ TEST(GraveyardSet, UserDefinedHashAndEq) {
     for (int i = 0; i < 10000; ++i) {
       EXPECT_TRUE(set.contains(UnhashableInt{i})) << "i=" << i;
     }
+  }
+}
+
+struct UnhashableIntIdentityHasher {
+  size_t operator()(const UnhashableInt &h) const { return h.x; }
+};
+
+TEST(GraveyardSet, SortedBucketIterator) {
+  yobiduck::GraveyardSet<UnhashableInt, UnhashableIntIdentityHasher, UnhashableIntEqual> graveyard_set;
+  std::set<int> std_set;
+  absl::BitGen bitgen;
+  int kCount = 10;
+  for (int i = 0; i < kCount; ++i) {
+    int v = absl::Uniform(bitgen, 0, kCount * kCount);
+    graveyard_set.insert(UnhashableInt{v});
+    std_set.insert(v);
+  }
+  auto std_it = std_set.begin();
+  for (auto heap_element : graveyard_set.GetSortedBucketsIterator()) {
+    LOG(INFO) << " expect " << *std_it;
+    LOG(INFO) << " Found " << *heap_element.value;
+    CHECK(std_it != std_set.end());
+    EXPECT_EQ(heap_element.value->x, *std_it);
+    ++std_it;
   }
 }

@@ -131,6 +131,8 @@ class GraveyardSet
 
   using Base::GetProbeStatistics;
   using Base::GetSuccessfulProbeLength;
+
+  using Base::GetSortedBucketsIterator;
 };
 
 // TODO: Idea, keep a bit that says whether a particular slot is out of its

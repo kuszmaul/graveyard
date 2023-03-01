@@ -162,10 +162,20 @@ TEST(GraveyardSet, SortedBucketIterator) {
     graveyard_set.insert(v);
     std_set.insert(v);
   }
+  if (true) {
+    for (size_t v: std_set) {
+      std::cout << std::hex << std::setw(16) << std::setfill('0') << v << " ";
+    }
+    std::cout << std::endl;
+    for (auto it = graveyard_set.GetSortedBucketsIterator(); it != it.end(); ++it) {
+      it.Print(std::cout);
+    }
+  }
   auto std_it = std_set.begin();
   for (auto heap_element : graveyard_set.GetSortedBucketsIterator()) {
     CHECK(std_it != std_set.end());
-    EXPECT_EQ(*heap_element.value, *std_it);
+    EXPECT_EQ(*heap_element.value, *std_it) << " value=" << std::hex << std::setw(16)  << std::setfill('0') << *heap_element.value << " expected " << *std_it;
+    std::cout << "Found " << std::hex << std::setw(16) << std::setfill('0') << *heap_element.value << std::endl;
     ++std_it;
   }
 }

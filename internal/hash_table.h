@@ -5,6 +5,9 @@
 
 #include <malloc.h>
 
+#include <iomanip>
+
+
 // IWYU has some strange behavior around around std::swap.  It wants to get rid
 // of utility and add vector. Then it wants to get rid of vector and add
 // unordered_map.
@@ -577,7 +580,8 @@ bool HashTable<Traits>::insert(value_type value) {
   const size_t h2 = buckets_.H2(hash);
   const size_t distance = buckets_[preferred_bucket].search_distance;
   for (size_t i = 0; i <= distance; ++i) {
-    __builtin_prefetch(&buckets_[preferred_bucket + i + 1].h2[0]);
+    // Don't use operator[], since that Buckets::operator[] has a bounds check.
+    __builtin_prefetch(&(buckets_.begin() + preferred_bucket + i + 1)->h2[0]);
     assert(preferred_bucket + i < buckets_.physical_size());
     const Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
     size_t idx = bucket.FindElement(h2, value, get_key_eq_ref());
@@ -752,7 +756,7 @@ ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
 //   * Every value whose preferred bucket is <= `preferred_` has been ingested.
 //
 // We have another pointer, `logical_end_` which is the first bucket that no
-// hash prefers.  When `preferred_==logical_end_` tehre is no more to be
+// hash prefers.  When `preferred_==logical_end_` there is no more to be
 // ingested.
 //
 // We have a heap.  The heap contains all the values that have been ingested but
@@ -784,7 +788,8 @@ class SortedBucketsIterator {
   struct EndSentinal {
   };
   explicit SortedBucketsIterator(HashTable<Traits>& table)
-      :ingested_before_(table.buckets_.begin()),
+      :buckets_(&table.buckets_),
+       ingested_before_(table.buckets_.begin()),
        preferred_(ingested_before_),
        logical_end_(table.buckets_.begin() + table.buckets_.logical_size()),
        hasher_(table.hash_function()) {
@@ -798,7 +803,10 @@ class SortedBucketsIterator {
     return EndSentinal();
   }
   reference operator*() {
-    assert(!heap_.empty());
+    Validate();
+    CHECK(!heap_.empty());
+    LOG(INFO) << "* yields h=" << std::hex << std::setw(16) << std::setfill('0') << heap_.front().hash << " which has preferred bucket " << std::dec << buckets_->H1(heap_.front().hash)
+              << " preferred_#=" << (preferred_ - buckets_->begin());
     return heap_.front();
   }
   pointer operator->() {
@@ -810,13 +818,14 @@ class SortedBucketsIterator {
     assert(!heap_.empty());
     std::pop_heap(heap_.begin(), heap_.end());
     heap_.pop_back();
-    if (heap_.empty() || heap_.front().from_bucket > preferred_) {
+    if (heap_.empty() || heap_.front().from_bucket >= preferred_) {
       Ingest();
     }
+    Validate();
     return *this;
   }
   friend bool operator==(const SortedBucketsIterator& a, const EndSentinal &b) {
-    return a.heap_.empty() && a.ingested_before_ == a.logical_end_;
+    return a.heap_.empty() && a.preferred_ == a.logical_end_;
   }
   friend bool operator!=(const SortedBucketsIterator& a, const EndSentinal& b) {
     return !(a == b);
@@ -826,21 +835,32 @@ class SortedBucketsIterator {
     for(size_t i = 0; i < heap_.size(); ++i) {
       if (i > 0) s << ", ";
       auto& he = heap_[i];
-      s << "{h=" << he.hash << " fb=" << he.from_bucket << " fs=" << he.from_slot << " v=" << *he.value << "}";
+      s << "{h=" << std::hex << std::setw(16) << std::setfill('0') << he.hash << std::dec << " fb=" << he.from_bucket << " fs=" << he.from_slot << " v=" << *he.value << "}";
     }
-    s << " ic=" << ingested_count_ << std::endl;
+    s << " ic=" << ingested_count_ << "}" << std::endl;
   }
  private:
+  void Validate() {
+    if (preferred_ == logical_end_) {
+      return;
+    } else {
+      CHECK(!heap_.empty());
+      CHECK_LT(heap_.front().from_bucket, preferred_);
+    }
+  }
   void Ingest() {
     for (; preferred_ < logical_end_; ++preferred_) {
       // ingest everything from ingested_before_ to (preferred_ + preferred_->search_distance) (inclusive).
+      LOG(INFO) << "Dealing with preferred bucket# " << (preferred_  - buckets_->begin()) << " with search_distance=" << size_t{preferred_->search_distance};
       for (const auto end = preferred_ + preferred_->search_distance + 1;
            ingested_before_ < end;
            ++ingested_before_) {
+        LOG(INFO) << "ingesting bucket# " << (ingested_before_ - buckets_->begin());
         for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {
           if (ingested_before_->h2[i] != Traits::kEmpty) {
             size_t hash = hasher_(ingested_before_->slots[i].value);
             ++ingested_count_;
+            LOG(INFO) << "Ingesting h=" << std::hex << std::setw(16) << std::setfill('0') << hash << " which has preferred_bucket#=" << std::dec << buckets_->H1(hash);
             heap_.push_back({.hash = hash,
                              .from_bucket = ingested_before_,
                              .from_slot = i,
@@ -849,11 +869,18 @@ class SortedBucketsIterator {
           }
         }
       }
-      if (!heap_.empty()) {
+      if (!heap_.empty() && heap_.front().from_bucket < preferred_) {
+        LOG(INFO) << "Small enough";
+        Validate();
         return;
       }
     }
+    LOG(INFO) << "End";
+    Validate();
   }
+
+  // TODO: Get rid of this.
+  Buckets<Traits> *buckets_ = nullptr;
 
   Bucket<Traits>* ingested_before_;
   Bucket<Traits>* preferred_;

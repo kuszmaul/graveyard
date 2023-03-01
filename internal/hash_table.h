@@ -803,10 +803,8 @@ class SortedBucketsIterator {
     return EndSentinal();
   }
   reference operator*() {
-    Validate();
+    ValidateUnderDebugging();
     CHECK(!heap_.empty());
-    LOG(INFO) << "* yields h=" << std::hex << std::setw(16) << std::setfill('0') << heap_.front().hash << " which has preferred bucket " << std::dec << buckets_->H1(heap_.front().hash)
-              << " preferred_#=" << (preferred_ - buckets_->begin());
     return heap_.front();
   }
   pointer operator->() {
@@ -821,7 +819,7 @@ class SortedBucketsIterator {
     if (heap_.empty() || heap_.front().from_bucket >= preferred_) {
       Ingest();
     }
-    Validate();
+    ValidateUnderDebugging();
     return *this;
   }
   friend bool operator==(const SortedBucketsIterator& a, const EndSentinal &b) {
@@ -840,27 +838,26 @@ class SortedBucketsIterator {
     s << " ic=" << ingested_count_ << "}" << std::endl;
   }
  private:
-  void Validate() {
+  void ValidateUnderDebugging() {
+#ifndef NDEBUG
     if (preferred_ == logical_end_) {
       return;
     } else {
       CHECK(!heap_.empty());
       CHECK_LT(heap_.front().from_bucket, preferred_);
     }
+#endif
   }
   void Ingest() {
     for (; preferred_ < logical_end_; ++preferred_) {
       // ingest everything from ingested_before_ to (preferred_ + preferred_->search_distance) (inclusive).
-      LOG(INFO) << "Dealing with preferred bucket# " << (preferred_  - buckets_->begin()) << " with search_distance=" << size_t{preferred_->search_distance};
       for (const auto end = preferred_ + preferred_->search_distance + 1;
            ingested_before_ < end;
            ++ingested_before_) {
-        LOG(INFO) << "ingesting bucket# " << (ingested_before_ - buckets_->begin());
         for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {
           if (ingested_before_->h2[i] != Traits::kEmpty) {
             size_t hash = hasher_(ingested_before_->slots[i].value);
             ++ingested_count_;
-            LOG(INFO) << "Ingesting h=" << std::hex << std::setw(16) << std::setfill('0') << hash << " which has preferred_bucket#=" << std::dec << buckets_->H1(hash);
             heap_.push_back({.hash = hash,
                              .from_bucket = ingested_before_,
                              .from_slot = i,
@@ -870,13 +867,11 @@ class SortedBucketsIterator {
         }
       }
       if (!heap_.empty() && heap_.front().from_bucket < preferred_) {
-        LOG(INFO) << "Small enough";
-        Validate();
+        ValidateUnderDebugging();
         return;
       }
     }
-    LOG(INFO) << "End";
-    Validate();
+    ValidateUnderDebugging();
   }
 
   // TODO: Get rid of this.

@@ -93,7 +93,7 @@ fit f(x) "data/insert_google.data" using 1:3 via a
 g(x) = b * x
 fit g(x) "data/insert_OLP.data" using 1:3 via b
 h(x) = c * x
-fit h(x) "data/insert_OLP.data" using 1:3 via c
+fit h(x) "data/insert_facebook.data" using 1:3 via c
 g(x) = d * x
 fit g(x) "data/insert_graveyard.data" using 1:3 via d
 

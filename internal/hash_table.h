@@ -671,32 +671,52 @@ void HashTable<Traits>::CheckValidityAfterRehash() const {
 #endif  // NDEBUG
 }
 
+static constexpr bool kFastRehash = false;
+
 template <class Traits>
-void HashTable<Traits>::rehash(size_t slot_count) {
-  Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
-  size_t bucket = 0;
-  size_t slot = 0;
-  for (auto heap_element : GetSortedBucketsIterator()) {
-    size_t h1 = buckets.H1(heap_element.hash);
-    if (h1 > bucket) {
-      bucket = h1;
-      // Keep the first slot free in all the odd-numbered buckets.
-      slot = bucket % 2;
+    void HashTable<Traits>::rehash(size_t slot_count) {
+  if (kFastRehash) {
+    Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
+    size_t bucket = 0;
+    size_t slot = 0;
+    for (auto heap_element : GetSortedBucketsIterator()) {
+      size_t h1 = buckets.H1(heap_element.hash);
+      if (h1 > bucket) {
+        bucket = h1;
+        // Keep the first slot free in all the odd-numbered buckets.
+        slot = bucket % 2;
+      }
+      assert(buckets[bucket].h2[slot] == Traits::kEmpty);
+      buckets[bucket].h2[slot] = buckets.H2(heap_element.hash);
+      buckets[bucket].slots[slot].value = *heap_element.value;
+      buckets[h1].search_distance = bucket - h1 + 1;
+      ++slot;
+      if (slot >= Traits::kSlotsPerBucket) {
+        ++bucket;
+        // Keep the first slot free in all the odd-numbered buckets.
+        slot = bucket % 2;
+      }
     }
-    assert(buckets[bucket].h2[slot] == Traits::kEmpty);
-    buckets[bucket].h2[slot] = buckets.H2(heap_element.hash);
-    buckets[bucket].slots[slot].value = *heap_element.value;
-    buckets[h1].search_distance = bucket - h1 + 1;
-    ++slot;
-    if (slot >= Traits::kSlotsPerBucket) {
-      ++bucket;
-      // Keep the first slot free in all the odd-numbered buckets.
-      slot = bucket % 2;
+    buckets.swap(buckets_);
+    CheckValidityAfterRehash();
+  } else {
+    Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
+    buckets.swap(buckets_);
+    size_ = 0;
+    for (Bucket<Traits>& bucket : buckets) {
+      for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+        if (bucket.h2[j] != Traits::kEmpty) {
+          // TODO: We could save recomputing h2 possibly.
+          InsertNoRehashNeededAndValueNotPresent<true>(std::move(bucket.slots[j].value));
+          // TODO: Destruct bucket.slots[j].
+        }
+      }
     }
+    CheckValidityAfterRehash();
   }
-  buckets.swap(buckets_);
-  CheckValidityAfterRehash();
 }
+
+
 
 template <class Traits>
 void HashTable<Traits>::reserve(size_t count) {

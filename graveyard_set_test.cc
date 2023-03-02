@@ -170,6 +170,28 @@ TEST(GraveyardSet, SortedBucketIterator) {
   }
 }
 
+namespace {
+inline uint64_t operator-(struct timespec a, struct timespec b) {
+  return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;
+}
+}  // namespace
+
+TEST(GraveyardSet, RehashTime) {
+  yobiduck::GraveyardSet<size_t> set;
+  for (size_t i = 0; i < 1000000; ++i) {
+    set.insert(i);
+  }
+  for (size_t j = 0; j < 3; ++j) {
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    set.rehash((set.size() * 8 + 6) / 7);
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    uint64_t elapsed = end - start;
+    std::cout << "Rehash took " << elapsed / 1'000'000 << "." << std::setw(6) << elapsed % 1'000'000 << "ms" << std::endl;
+  }
+}
+
 
 #if 0
 /// This will overflow the counters:  So we should switch to something like std::unordered_map.

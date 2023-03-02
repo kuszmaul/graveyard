@@ -671,11 +671,10 @@ void HashTable<Traits>::CheckValidityAfterRehash() const {
 #endif  // NDEBUG
 }
 
-static constexpr bool kFastRehash = true;
+static constexpr bool kFastRehash = false;
 
 template <class Traits>
     void HashTable<Traits>::rehash(size_t slot_count) {
-  std::cout << "rehash(" << slot_count << ")" << std::endl;
   if (kFastRehash) {
     Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
     size_t bucket = 0;

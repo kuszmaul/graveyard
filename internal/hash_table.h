@@ -55,7 +55,8 @@ struct HashTableTraits {
   static constexpr size_t kSlotsPerBucket = 14;
   // H2 Value for empty slots
   static constexpr uint8_t kEmpty = 255;
-  static constexpr uint8_t kSearchDistanceEndSentinal = 255;
+  using SearchDistanceType = uint8_t;
+  static constexpr SearchDistanceType kSearchDistanceEndSentinal = std::numeric_limits<SearchDistanceType>::max();
   static constexpr size_t kCacheLineSize = 64;
 };
 
@@ -129,9 +130,14 @@ struct Bucket {
   }
 
   std::array<uint8_t, Traits::kSlotsPerBucket> h2;
-  // The number of buckets we must search in an unsuccessful lookup that starts
+  // The number of slots we must search in an unsuccessful lookup that starts
   // here.
-  uint8_t search_distance;
+  //
+  // In some situations this is the offset (in slots) of the end of the bucket
+  // (and everything up to that point is either in the bucket or in a previous
+  // bucket).  This is true during initial construction and rehash, where we
+  // maintain the invariant that it's ordered linear probing.
+  typename Traits::SearchDistanceType search_distance;
   std::array<Item<Traits>, Traits::kSlotsPerBucket> slots;
 };
 
@@ -578,8 +584,9 @@ bool HashTable<Traits>::insert(value_type value) {
   const size_t hash = get_hasher_ref()(value);
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
-  const size_t distance = buckets_[preferred_bucket].search_distance;
-  for (size_t i = 0; i <= distance; ++i) {
+  const size_t distance_in_slots = buckets_[preferred_bucket].search_distance;
+  size_t slots_searched = 0;
+  for (size_t i = 0; slots_searched < distance_in_slots; ++i, slots_searched += Traits::kSlotsPerBucket) {
     // Don't use operator[], since that Buckets::operator[] has a bounds check.
     __builtin_prefetch(&(buckets_.begin() + preferred_bucket + i + 1)->h2[0]);
     assert(preferred_bucket + i < buckets_.physical_size());
@@ -594,23 +601,28 @@ bool HashTable<Traits>::insert(value_type value) {
 }
 
 template <class Traits>
-template <bool keep_graveyard_tombstones>
+template <bool keep_graveyard_tombstones_and_maintain_order>
 void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value) {
   const size_t hash = get_hasher_ref()(value);
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
-  InsertNoRehashNeededAndValueNotPresent<keep_graveyard_tombstones>(value, preferred_bucket, h2);
+  InsertNoRehashNeededAndValueNotPresent<keep_graveyard_tombstones_and_maintain_order>(value, preferred_bucket, h2);
+}
+
+template <typename NumberType>
+void maxf(NumberType& v1, NumberType v2) {
+  v1 = std::max(v1, v2);
 }
 
 template <class Traits>
-template <bool keep_graveyard_tombstones>
+template <bool keep_graveyard_tombstones_and_maintain_order>
 void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2) {
   for (size_t i = 0; true; ++i) {
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
     size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
-    if constexpr (keep_graveyard_tombstones) {
+    if constexpr (keep_graveyard_tombstones_and_maintain_order) {
       // Keep the first slot free in all the odd-numbered buckets.
       if ((preferred_bucket + i) % 2 == 1) {
         assert(matches & 1ul);
@@ -622,8 +634,8 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value,
       bucket.h2[idx] = h2;
       // TODO: Construct in place
       bucket.slots[idx].value = value;
-      if (i > buckets_[preferred_bucket].search_distance)
-        buckets_[preferred_bucket].search_distance = i;
+      maxf(buckets_[preferred_bucket].search_distance,
+           static_cast<typename Traits::SearchDistanceType>(i * Traits::kSlotsPerBucket + idx + 1));
       ++size_;
       // TODO: Keep track if we are allowed to destabilize pointers, and if we
       // are, move things around to be sorted.
@@ -646,8 +658,9 @@ bool HashTable<Traits>::contains(const key_type& value) const {
   const size_t hash = get_hasher_ref()(value);
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
-  const size_t distance = buckets_[preferred_bucket].search_distance;
-  for (size_t i = 0; i <= distance; ++i) {
+  const size_t distance_in_slots = buckets_[preferred_bucket].search_distance;
+  size_t slots_searched = 0;
+  for (size_t i = 0; slots_searched < distance_in_slots; ++i, slots_searched += Traits::kSlotsPerBucket) {
     // Prefetch seems to hurt lookup.  Note that F14 prefetches the entire
     // bucket up to a certain number of cache lines.
     //   __builtin_prefetch(&buckets_[preferred_bucket + i + 1].h2[0]);
@@ -693,7 +706,7 @@ template <class Traits>
       assert(buckets[bucket].h2[slot] == Traits::kEmpty);
       buckets[bucket].h2[slot] = buckets.H2(heap_element.hash);
       buckets[bucket].slots[slot].value = *heap_element.value;
-      buckets[h1].search_distance = bucket - h1 + 1;
+      buckets[h1].search_distance = (bucket - h1) * Traits::kSlotsPerBucket + slot + 1;
       ++count;
       ++slot;
       if (slot >= Traits::kSlotsPerBucket) {
@@ -706,7 +719,7 @@ template <class Traits>
     assert(it == it.end());
     buckets.swap(buckets_);
     CheckValidityAfterRehash();
-    it.Print(std::cout);
+    //it.Print(std::cout);
   } else {
     Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
     buckets.swap(buckets_);
@@ -748,7 +761,8 @@ size_t HashTable<Traits>::LogicalSlotCount() const {
 template <class Traits>
 size_t HashTable<Traits>::GetSuccessfulProbeLength(const value_type& value) const {
   const size_t h1 = buckets_.H1(get_hasher_ref()(value));
-  for (size_t i = 0; i <= buckets_[h1].search_distance; ++i) {
+  size_t slots_searched = 0;
+  for (size_t i = 0; slots_searched <= buckets_[h1].search_distance; ++i, slots_searched += Traits::kSlotsPerBucket) {
     const Bucket<Traits>& bucket = buckets_[h1 + i];
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty && bucket.slots[j].value == value) {
@@ -891,7 +905,7 @@ class SortedBucketsIterator {
   void Ingest() {
     for (; preferred_ < logical_end_; ++preferred_) {
       // ingest everything from ingested_before_ to (preferred_ + preferred_->search_distance) (inclusive).
-      for (const auto end = preferred_ + preferred_->search_distance + 1;
+      for (const auto end = preferred_ + (preferred_->search_distance + Traits::kSlotsPerBucket - 1) / Traits::kSlotsPerBucket;
            ingested_before_ < end;
            ++ingested_before_) {
         for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {

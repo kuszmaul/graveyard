@@ -671,15 +671,20 @@ void HashTable<Traits>::CheckValidityAfterRehash() const {
 #endif  // NDEBUG
 }
 
-static constexpr bool kFastRehash = false;
+static constexpr bool kFastRehash = true;
 
 template <class Traits>
     void HashTable<Traits>::rehash(size_t slot_count) {
+  std::cout << "rehash(" << slot_count << ")" << std::endl;
   if (kFastRehash) {
     Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
     size_t bucket = 0;
     size_t slot = 0;
-    for (auto heap_element : GetSortedBucketsIterator()) {
+    auto it = GetSortedBucketsIterator();
+    size_t count = 0;
+    for (; it != it.end(); ++it) {
+      auto heap_element = *it;
+      //for (auto heap_element : it) {
       size_t h1 = buckets.H1(heap_element.hash);
       if (h1 > bucket) {
         bucket = h1;
@@ -690,6 +695,7 @@ template <class Traits>
       buckets[bucket].h2[slot] = buckets.H2(heap_element.hash);
       buckets[bucket].slots[slot].value = *heap_element.value;
       buckets[h1].search_distance = bucket - h1 + 1;
+      ++count;
       ++slot;
       if (slot >= Traits::kSlotsPerBucket) {
         ++bucket;
@@ -697,8 +703,11 @@ template <class Traits>
         slot = bucket % 2;
       }
     }
+    assert(count == size_);
+    assert(it == it.end());
     buckets.swap(buckets_);
     CheckValidityAfterRehash();
+    it.Print(std::cout);
   } else {
     Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
     buckets.swap(buckets_);
@@ -804,7 +813,6 @@ class SortedBucketsIterator {
   struct HeapElement {
     size_t hash;
     Bucket<Traits>* from_bucket;
-    size_t from_slot;
     typename Traits::value_type *value;
     // We want a min heap rather than a max heap. So define operator< to be
     // inverted.
@@ -819,11 +827,11 @@ class SortedBucketsIterator {
   struct EndSentinal {
   };
   explicit SortedBucketsIterator(HashTable<Traits>& table)
-      :buckets_(&table.buckets_),
-       ingested_before_(table.buckets_.begin()),
+      :ingested_before_(table.buckets_.begin()),
        preferred_(ingested_before_),
        logical_end_(table.buckets_.begin() + table.buckets_.logical_size()),
        hasher_(table.hash_function()) {
+    heap_.reserve(64);
     Ingest();
   }
   // The iterator is its own container.
@@ -860,13 +868,15 @@ class SortedBucketsIterator {
     return !(a == b);
   }
   void Print(std::ostream& s) {
-    s << "ib=" << ingested_before_ << " p=" << preferred_ << " le=" << logical_end_ << " heap={";
+    s << "ib=" << ingested_before_ << " p=" << preferred_ << " le=" << logical_end_ << " heap_size=" << heap_.size();
+    s << " max_heap_size=" << max_heap_size_;
+    s << " heap={";
     for(size_t i = 0; i < heap_.size(); ++i) {
       if (i > 0) s << ", ";
       auto& he = heap_[i];
-      s << "{h=" << std::hex << std::setw(16) << std::setfill('0') << he.hash << std::dec << " fb=" << he.from_bucket << " fs=" << he.from_slot << " v=" << *he.value << "}";
+      s << "{h=" << std::hex << std::setw(16) << std::setfill('0') << he.hash << std::dec << " fb=" << he.from_bucket << " v=" << *he.value << "}";
     }
-    s << " ic=" << ingested_count_ << "}" << std::endl;
+    s << "}" << std::endl;
   }
  private:
   void ValidateUnderDebugging() {
@@ -888,11 +898,10 @@ class SortedBucketsIterator {
         for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {
           if (ingested_before_->h2[i] != Traits::kEmpty) {
             size_t hash = hasher_(ingested_before_->slots[i].value);
-            ++ingested_count_;
             heap_.push_back({.hash = hash,
                              .from_bucket = ingested_before_,
-                             .from_slot = i,
                              .value = &ingested_before_->slots[i].value});
+            max_heap_size_ = std::max(max_heap_size_, heap_.size());
             std::push_heap(heap_.begin(), heap_.end());
           }
         }
@@ -905,14 +914,12 @@ class SortedBucketsIterator {
     ValidateUnderDebugging();
   }
 
-  // TODO: Get rid of this.
-  Buckets<Traits> *buckets_ = nullptr;
+  size_t max_heap_size_ = 0;
 
   Bucket<Traits>* ingested_before_;
   Bucket<Traits>* preferred_;
   Bucket<Traits>* logical_end_;
   std::vector<HeapElement> heap_;
-  size_t ingested_count_ = 0;
   typename Traits::hasher hasher_;
 };
 

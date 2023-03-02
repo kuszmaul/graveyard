@@ -177,10 +177,13 @@ inline uint64_t operator-(struct timespec a, struct timespec b) {
 }  // namespace
 
 TEST(GraveyardSet, RehashTime) {
+  constexpr size_t kSize = 1000000;
   yobiduck::GraveyardSet<size_t> set;
-  for (size_t i = 0; i < 1000000; ++i) {
+  set.reserve(kSize);
+  for (size_t i = 0; i < kSize; ++i) {
     set.insert(i);
   }
+  std::cout << "rehash loop" << std::endl;
   for (size_t j = 0; j < 3; ++j) {
     struct timespec start;
     clock_gettime(CLOCK_MONOTONIC, &start);

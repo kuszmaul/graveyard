@@ -656,7 +656,7 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value,
     }
     if (matches != 0) {
       size_t idx = absl::container_internal::TrailingZeros(matches);
-      LOG(INFO) << "Inserting " << value << " at [" << h1 + i << "][" << idx << "]";
+      //LOG(INFO) << "Inserting " << value << " at [" << h1 + i << "][" << idx << "]";
       bucket->h2[idx] = h2;
       // TODO: Construct in place
       bucket->slots[idx].value = value;
@@ -827,7 +827,7 @@ std::string HashTable<Traits>::ToString() const {
 template <class Traits>
 void HashTable<Traits>::ValidateUnderDebugging() const {
   if (kDebugging) {
-    LOG(INFO) << "Validating" << ToString();
+    //LOG(INFO) << "Validating" << ToString();
     for (size_t i = 0; i < buckets_.logical_size(); ++i) {
       CHECK_LT(i * Traits::kSlotsPerBucket + buckets_[i].search_distance,
                buckets_.physical_size() * Traits::kSlotsPerBucket);

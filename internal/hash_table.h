@@ -54,7 +54,8 @@ struct HashTableTraits {
   using allocator = Allocator;
   static constexpr size_t kSlotsPerBucket = 14;
   // H2 Value for empty slots
-  static constexpr uint8_t kEmpty = 255;
+  using H2Type = uint8_t;
+  static constexpr H2Type kEmpty = 255;
   using SearchDistanceType = uint8_t;
   static constexpr SearchDistanceType kSearchDistanceEndSentinal = std::numeric_limits<SearchDistanceType>::max();
   static constexpr size_t kCacheLineSize = 64;
@@ -133,10 +134,14 @@ struct Bucket {
   // The number of slots we must search in an unsuccessful lookup that starts
   // here.
   //
-  // In some situations this is the offset (in slots) of the end of the bucket
-  // (and everything up to that point is either in the bucket or in a previous
-  // bucket).  This is true during initial construction and rehash, where we
-  // maintain the invariant that it's ordered linear probing.
+  // If the table is *ordered*, then
+  //   1) The tombstone slots are all empty
+  //   2) `search_distance` identifies the first slot that doesn't hold a value
+  //      that has a preferred slot at or before this bucket (ignoring tombstone
+  //      slots).
+  // The table maintsin ordering during initial construction and rehash.
+  //
+  // At some point we may also maintain ordering when inserting if there is no pending reservation.
   typename Traits::SearchDistanceType search_distance;
   std::array<Item<Traits>, Traits::kSlotsPerBucket> slots;
 };
@@ -361,6 +366,9 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
     return hash_sorted_iterator(*this);
   }
 
+  void ValidateUnderDebugging() const;
+  std::string ToString() const;
+
  private:
   friend SortedBucketsIterator<Traits>::SortedBucketsIterator(HashTable&);
 
@@ -384,13 +392,27 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   // `*this` and that the table does not need rehashing.
   //
   // TODO: We can probably save the recompution of h2 if we are careful.
-  template <bool keep_graveyard_tombstones>
+  //
+  // If `keep_graveyard_tombstones_and_ordering` is true then requires that the
+  // table *ordered*.  An *ordered* table has the property that buckets are not
+  // interleaved at all, so if you iterate through the table, you'll see all of
+  // bucket 0, then all of bucket 1, then all of bucket 2.  It also requires
+  // that the tombstone slots are not occuplied.  In this case it maintains the
+  // ordering property and the unoccupied-tombstone-slot property.
+  template <bool keep_graveyard_tombstones_and_ordering>
   void InsertNoRehashNeededAndValueNotPresent(value_type value);
 
   // An overload of `InsertNoRehashNeededAndValueNotPresent` that has already
   // computed the preferred bucket and h2.
   template <bool keep_graveyard_tombstones>
   void InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2);
+
+  // Inserts `value` into `*this`.
+  //
+  // Precondition: `value` is not in `*this`.  The table is ordered.
+  //
+  // Postcondition: `value` is in `*this` and the table is ordered.
+  void InsertFastSubrun(value_type value, size_t h1, typename Traits::H2Type h2, bool maintain_tombstone);
 
   // The number of present items in all the buckets combined.
   // Todo: Put `size_` into buckets_ (in the memory).
@@ -616,31 +638,133 @@ void maxf(NumberType& v1, NumberType v2) {
 
 template <class Traits>
 template <bool keep_graveyard_tombstones_and_maintain_order>
-void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2) {
+void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t h1, size_t h2) {
+  Bucket<Traits>* preferred_bucket = buckets_.begin() + h1;
+  Bucket<Traits>* logical_end = buckets_.begin() + buckets_.logical_size();
+  Bucket<Traits>* physical_end = buckets_.begin() + buckets_.physical_size();
   for (size_t i = 0; true; ++i) {
     assert(i < Traits::kSearchDistanceEndSentinal);
-    assert(preferred_bucket + i < buckets_.physical_size());
-    Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
-    size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
+    Bucket<Traits>* bucket = preferred_bucket + i;
+    assert(bucket < physical_end);
+    size_t matches = bucket->MatchingElementsMask(Traits::kEmpty);
     if constexpr (keep_graveyard_tombstones_and_maintain_order) {
       // Keep the first slot free in all the odd-numbered buckets.
-      if ((preferred_bucket + i) % 2 == 1) {
+      if ((h1 + i) % 2 == 1) {
         assert(matches & 1ul);
         matches &= ~1ul;
       }
     }
     if (matches != 0) {
       size_t idx = absl::container_internal::TrailingZeros(matches);
-      bucket.h2[idx] = h2;
+      LOG(INFO) << "Inserting " << value << " at [" << h1 + i << "][" << idx << "]";
+      bucket->h2[idx] = h2;
       // TODO: Construct in place
-      bucket.slots[idx].value = value;
-      maxf(buckets_[preferred_bucket].search_distance,
-           static_cast<typename Traits::SearchDistanceType>(i * Traits::kSlotsPerBucket + idx + 1));
+      bucket->slots[idx].value = value;
+      // Update all the search distances
+      Bucket<Traits>* search_distance_update_end = std::min(bucket + 1, logical_end);
+      typename Traits::H2Type distance = 1 + idx + (bucket - preferred_bucket) * Traits::kSlotsPerBucket;
+      for (Bucket<Traits>* intermediate_bucket = preferred_bucket;
+           intermediate_bucket < search_distance_update_end;
+           ++intermediate_bucket) {
+        maxf(intermediate_bucket->search_distance, distance);
+        distance -= Traits::kSlotsPerBucket;
+      }
       ++size_;
       // TODO: Keep track if we are allowed to destabilize pointers, and if we
       // are, move things around to be sorted.
+      ValidateUnderDebugging();
       return;
     }
+  }
+}
+
+// There are several cases for insertion:
+//
+//  1) Construction in which we know there are no duplicates (e.g., copying a
+//     table): We can choose whether to put in the graveyard tombstones, and we
+//     can use fast-subrun insertion.
+//
+//  2) Rehash, the table is ordered and graveyard tombstones are inserted.  We
+//     can use fast-subrun insertion (taking care not to remove graveyard
+//     tombstones).
+//
+//  3) Insert:  First we check that the item is not there.
+//
+//     a) The table is ordered and there is no pending reservation.  We can use
+//        fast-subrun insertion (without maintaining graveyard tombstones).
+//
+//     b) The table is unordered or there is a pending reservation.  We use the slow insertion.
+
+// A *subrun* corresponds to a preferred bucket.  A subrun the smallest
+// contigujous set of slots that contains all the values that prefer the bucket.
+// By convention, an empty subrun's location is at the beginning of the
+// preferred bucket if no subrun is using that slot.  Otherwise it is just after
+// the subrun of the previous bucket.
+
+//  For example: with buckets of size 4
+
+//  Notation: Values are a letter and a number: the number indicates the
+//  preferred bucket.
+//
+//   bucket 0: A0, B0, empty, empty
+//   bucket 1: empty, empty, empty, empty
+//   bucket 2: C2, D2, E2, F2
+//   bucket 3: G2, H3, I3, J3
+//   bucket 4: K3, L3, M3, N3
+//   bucket 5: O3, P5
+//
+// Notation: Slot numbers are of the form 3.2 which means bucket 3, slot 2.
+//
+// Notation: A subrun is an half-open interval.
+//
+//   The run for bucket 0 is [0.0, 0.2)      Contains 2 slots
+//   The run for bucket 1 is [1.0, 1.0)      Contains 0 slots, at 1.0 by convention.
+//   The run for bucket 2 is [2.0, 3,1)      Contains 5 slots
+//   The run for bucket 3 is [3.1, 5.1)      Contains 8 slots
+//   The run for bucket 4 is [5.1, 5.1)      Contains 0 slots, at 5.1 since 4.0 is in use, and it's the first slot after bucket 3's run.
+//   The run for bucket 5 is [5.1, 5.2)      Contains 1 slot.
+//
+// Fast-subrun insertion: In some cases we can insert into a subrun by swapping
+// the inserted value V with the first element after the subrun, and then
+// reinserting the displaced value at the end of its run.  In our examle, if we
+// insert Q2 (which prefers bucket 2) we put it where H3 is, then we insert H3
+// where P5 is and then insert P5 at slot 5.2 to get
+//
+//   bucket 0: A0, B0, empty, empty
+//   bucket 1: empty, empty, empty, empty
+//   bucket 2: C2, D2, E2, F2
+//   bucket 3: G2, Q2, I3, J3
+//   bucket 4: K3, L3, M3, N3
+//   bucket 5: O3, H3, P5
+
+template <class Traits>
+void HashTable<Traits>::InsertFastSubrun(value_type value, size_t h1, typename Traits::H2Type h2, bool maintain_tombstone) {
+  const size_t original_h1 = h1;
+  while (true) {
+    Bucket<Traits>& preferred_bucket = buckets_[h2];
+    size_t subrun_length = preferred_bucket.search_distance;
+    size_t dest_bucket_number = h1 + subrun_length / Traits::kSlotsPerBucket;
+    Bucket<Traits>& dest_bucket = buckets_[dest_bucket_number];
+    size_t dest_slot = subrun_length % Traits::kSlotsPerBucket;
+    if (maintain_tombstone && dest_bucket_number % 2 == 1 && dest_slot == 0) {
+      assert(dest_bucket.h2[dest_slot] == Traits::kEmpty);
+      dest_slot = 1;
+    }
+    if (dest_bucket.h2[dest_slot] == Traits::kEmpty) {
+      dest_bucket.h2[dest_slot] = h2;
+      dest_bucket.slots[dest_slot].value = std::move(value);
+      for (Bucket<Traits>* update_bucket = &buckets_[original_h1];
+           update_bucket <= dest_bucket; ++update_bucket) {
+        if (update_bucket->search_distance != Traits::kSeaarchDistanceEndSentinal) {
+          ++update_bucket->search_distance;
+        }
+      }
+      return;
+    }
+    std::swap(dest_bucket.h2[dest_slot], h2);
+    std::swap(dest_bucket.slots[dest_slot].value, value);
+    size_t new_h1 = buckets_.H1(get_hasher_ref()(value));
+    assert(h1 == new_h1);
   }
 }
 
@@ -674,14 +798,62 @@ bool HashTable<Traits>::contains(const key_type& value) const {
   return false;
 }
 
+#ifndef NDEBUG
+static constexpr bool kDebugging = true;
+#else
+static constexpr bool kDebugging = false;
+#endif
+
+template <class Traits>
+std::string HashTable<Traits>::ToString() const {
+  std::stringstream result;
+  result << "{size=" << size_ << " logical_size=" << buckets_.logical_size() << " physical_size=" << buckets_.physical_size();
+  for (size_t i = 0; i < buckets_.physical_size(); ++i) {
+    const Bucket<Traits>* bucket = buckets_.begin() + i;
+    result << std::endl << " bucket[" << i << "]: search_distance=" << static_cast<size_t>(bucket->search_distance);
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      result << " " << j << ":";
+      if (bucket->h2[j] == Traits::kEmpty) {
+        result << "_";
+      } else {
+        result << bucket->slots[j].value;
+      }
+    }
+  }
+  result << "}";
+  return std::move(result).str();
+}
+
+template <class Traits>
+void HashTable<Traits>::ValidateUnderDebugging() const {
+  if (kDebugging) {
+    LOG(INFO) << "Validating" << ToString();
+    for (size_t i = 0; i < buckets_.logical_size(); ++i) {
+      CHECK_LT(i * Traits::kSlotsPerBucket + buckets_[i].search_distance,
+               buckets_.physical_size() * Traits::kSlotsPerBucket);
+      if (i + 1 < buckets_.logical_size()) {
+        CHECK_LE(i * Traits::kSlotsPerBucket + buckets_[i].search_distance,
+                 (i + 1)  * Traits::kSlotsPerBucket + buckets_[i+1].search_distance) << "for bucket " << i;
+      }
+    }
+    for (size_t i = buckets_.logical_size(); i + 1 < buckets_.physical_size(); ++i) {
+      CHECK_EQ(buckets_[i].search_distance, 0);
+    }
+    if (buckets_.physical_size() > 0) {
+      CHECK_EQ(buckets_[buckets_.physical_size() - 1].search_distance, Traits::kSearchDistanceEndSentinal);
+    }
+  }
+}
+
 template <class Traits>
 void HashTable<Traits>::CheckValidityAfterRehash() const {
-#ifndef NDEBUG
-  for (size_t i = 1; i < buckets_.physical_size(); i+=2) {
-    // Keep the first slot free in all the odd-numbered buckets.
-    CHECK_EQ(buckets_[i].h2[0], Traits::kEmpty);
+  if (kDebugging) {
+    for (size_t i = 1; i < buckets_.physical_size(); i+=2) {
+      // Keep the first slot free in all the odd-numbered buckets.
+      CHECK_EQ(buckets_[i].h2[0], Traits::kEmpty);
+    }
+    ValidateUnderDebugging();
   }
-#endif  // NDEBUG
 }
 
 static constexpr bool kFastRehash = false;
@@ -893,14 +1065,14 @@ class SortedBucketsIterator {
   }
  private:
   void ValidateUnderDebugging() {
-#ifndef NDEBUG
-    if (preferred_ == logical_end_) {
-      return;
-    } else {
-      CHECK(!heap_.empty());
-      CHECK_LT(heap_.front().from_bucket, preferred_);
+    if (kDebugging) {
+      if (preferred_ == logical_end_) {
+        return;
+      } else {
+        CHECK(!heap_.empty());
+        CHECK_LT(heap_.front().from_bucket, preferred_);
+      }
     }
-#endif
   }
   void Ingest() {
     for (; preferred_ < logical_end_; ++preferred_) {

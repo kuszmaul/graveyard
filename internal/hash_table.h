@@ -629,6 +629,12 @@ void maxf(NumberType& v1, NumberType v2) {
   v1 = std::max(v1, v2);
 }
 
+#ifndef NDEBUG
+static inline constexpr bool kDebugging = true;
+#else
+static inline constexpr bool kDebugging = false;
+#endif
+
 template <class Traits>
 void HashTable<Traits>::InsertNotPresent(value_type value, size_t h1, size_t h2) {
  Bucket<Traits>* preferred_bucket = buckets_.begin() + h1;
@@ -637,7 +643,9 @@ void HashTable<Traits>::InsertNotPresent(value_type value, size_t h1, size_t h2)
   for (size_t i = 0; true; ++i) {
     assert(i < Traits::kSearchDistanceEndSentinal);
     Bucket<Traits>* bucket = preferred_bucket + i;
-    CHECK_LT(bucket, physical_end);
+    if constexpr (kDebugging) {
+      CHECK_LT(bucket, physical_end);
+    }
     size_t matches = bucket->MatchingElementsMask(Traits::kEmpty);
     if (matches != 0) {
       size_t idx = absl::container_internal::TrailingZeros(matches);
@@ -681,7 +689,9 @@ void HashTable<Traits>::FreshInsert(value_type value, size_t h1, size_t h2) {
         dest_slot = 1;
       }
     }
-    CHECK_LT(dest_bucket_number, physical_end);
+    if constexpr (kDebugging) {
+      CHECK_LT(dest_bucket_number, physical_end);
+    }
     Bucket<Traits>* dest_bucket = begin + dest_bucket_number;
     if (dest_bucket->h2[dest_slot] == Traits::kEmpty) {
       ++size_;
@@ -692,7 +702,9 @@ void HashTable<Traits>::FreshInsert(value_type value, size_t h1, size_t h2) {
       for (size_t update_distance_in_bucket = h1;
            update_distance_in_bucket < end_of_updates;
            ++update_distance_in_bucket) {
-        CHECK_LT(begin[update_distance_in_bucket].search_distance, distance);
+        if constexpr (kDebugging) {
+          CHECK_LT(begin[update_distance_in_bucket].search_distance, distance);
+        }
         begin[update_distance_in_bucket].search_distance = distance;
         distance -= Traits::kSlotsPerBucket;
       }
@@ -712,7 +724,9 @@ void HashTable<Traits>::FreshInsert(value_type value, size_t h1, size_t h2) {
     const size_t hash = get_hasher_ref()(value);
     size_t old_h1 = h1;
     h1 = buckets_.H1(hash);
-    CHECK_GT(h1, old_h1) << "value=" << value << " old_value=" << dest_bucket->slots[dest_slot].value << " dest_bucket_number=" << dest_bucket_number << " dest_slot=" << dest_slot << " " << ToString();
+    if constexpr (kDebugging) {
+      CHECK_GT(h1, old_h1) << "value=" << value << " old_value=" << dest_bucket->slots[dest_slot].value << " dest_bucket_number=" << dest_bucket_number << " dest_slot=" << dest_slot << " " << ToString();
+    }
     h2 = buckets_.H2(hash);
     ValidateUnderDebugging();
   }
@@ -837,12 +851,6 @@ bool HashTable<Traits>::contains(const key_type& value) const {
   }
   return false;
 }
-
-#ifndef NDEBUG
-static inline constexpr bool kDebugging = true;
-#else
-static inline constexpr bool kDebugging = false;
-#endif
 
 template <class Traits>
 std::string HashTable<Traits>::ToString() const {

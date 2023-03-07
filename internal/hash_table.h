@@ -668,24 +668,19 @@ template <bool keep_graveyard_tombstones_and_maintain_order>
 void HashTable<Traits>::FreshInsert(value_type value, size_t h1, size_t h2) {
   const size_t logical_end = buckets_.logical_size();
   const size_t physical_end = buckets_.physical_size();
-  LOG(INFO) << "Freshinsert h1=" << h1 << " logical_end=" << logical_end;
   Bucket<Traits>* const begin = buckets_.begin();
   while (true) {
-    LOG(INFO) << "h1=" << h1 << ":" << ToString();
     ValidateUnderDebugging();
     Bucket<Traits>* const preferred_bucket = begin + h1;
     size_t distance = preferred_bucket->search_distance;
-    LOG(INFO) << "distance=" << distance;
     const size_t dest_bucket_number = h1 + distance / Traits::kSlotsPerBucket;
     size_t dest_slot = distance % Traits::kSlotsPerBucket;
     if constexpr (keep_graveyard_tombstones_and_maintain_order) {
       if (dest_slot == 0 && dest_bucket_number % 2 == 1) {
-        LOG(INFO) << "Distance was " << distance << " but incremented for graveyard tombstone";
         ++distance;
         dest_slot = 1;
       }
     }
-    LOG(INFO) << "dest_bucket_number=" << dest_bucket_number << " dest_slot=" << dest_slot;
     CHECK_LT(dest_bucket_number, physical_end);
     Bucket<Traits>* dest_bucket = begin + dest_bucket_number;
     if (dest_bucket->h2[dest_slot] == Traits::kEmpty) {
@@ -694,8 +689,6 @@ void HashTable<Traits>::FreshInsert(value_type value, size_t h1, size_t h2) {
       dest_bucket->slots[dest_slot].value = std::move(value);
       const size_t end_of_updates = std::min(logical_end, dest_bucket_number + 1);
       ++distance;
-      LOG(INFO) << "Incremented distance to " << distance;
-      LOG(INFO) << "Updating search distance in [" << h1 << ", " << end_of_updates << ") starting with distance=" << distance << " " << ToString();
       for (size_t update_distance_in_bucket = h1;
            update_distance_in_bucket < end_of_updates;
            ++update_distance_in_bucket) {
@@ -703,16 +696,13 @@ void HashTable<Traits>::FreshInsert(value_type value, size_t h1, size_t h2) {
         begin[update_distance_in_bucket].search_distance = distance;
         distance -= Traits::kSlotsPerBucket;
       }
-      LOG(INFO) << "Freshinsert done: " << ToString();
       ValidateUnderDebugging();
       return;
     }
     // Found a non-empty slot.  Swap it out.
-    LOG(INFO) << ToString();
     std::swap(value, dest_bucket->slots[dest_slot].value);
     dest_bucket->h2[dest_slot] = h2;
     const size_t end_of_updates = std::min(logical_end, dest_bucket_number + 1);
-    LOG(INFO) << "Updating distances in [" << h1 << ", " << end_of_updates << ") to distance=" << distance + 1;
     for (size_t update_distance_in_bucket = h1;
          update_distance_in_bucket < end_of_updates;
          ++update_distance_in_bucket) {
@@ -724,7 +714,6 @@ void HashTable<Traits>::FreshInsert(value_type value, size_t h1, size_t h2) {
     h1 = buckets_.H1(hash);
     CHECK_GT(h1, old_h1) << "value=" << value << " old_value=" << dest_bucket->slots[dest_slot].value << " dest_bucket_number=" << dest_bucket_number << " dest_slot=" << dest_slot << " " << ToString();
     h2 = buckets_.H2(hash);
-    LOG(INFO) << ToString();
     ValidateUnderDebugging();
   }
 }

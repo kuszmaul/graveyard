@@ -391,21 +391,22 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   // Insert `value` into `*this`.  Requires that `value` is not already in
   // `*this` and that the table does not need rehashing.
   //
-  // TODO: We can probably save the recompution of h2 if we are careful.
-  //
-  // If `keep_graveyard_tombstones_and_ordering` is true then requires that the
-  // table *ordered*.  An *ordered* table has the property that buckets are not
-  // interleaved at all, so if you iterate through the table, you'll see all of
-  // bucket 0, then all of bucket 1, then all of bucket 2.  It also requires
-  // that the tombstone slots are not occuplied.  In this case it maintains the
-  // ordering property and the unoccupied-tombstone-slot property.
-  template <bool keep_graveyard_tombstones_and_ordering>
-  void InsertNoRehashNeededAndValueNotPresent(value_type value);
+  // This insert is happy to use a tombstone if it finds it.
+  void InsertNotPresent(value_type value, size_t h1, size_t h2);
 
-  // An overload of `InsertNoRehashNeededAndValueNotPresent` that has already
-  // computed the preferred bucket and h2.
+  // Insert `value` into `*this`.  Requires that `value` is not already in
+  // `*this`, that the table does not need rehashing, and that the table is
+  // ordered.  Maintains ordering.
+  //
+  // If `keep_graveyard_tombstones_and_ordering` is true then the graveyard
+  // tombstone slots remain empty (the first slot in the odd numbered buckets).
+  // Otherwise those slots may be used.  Rationale: When rehashing a table we
+  // need the empty tombstone slots, but when copying a table, we no longer need
+  // those tombstone slots.  That's because when we copy a table, we size it so
+  // that the next insert will cause a rehash.  Graveyard slots are useful only
+  // during inserts, however.
   template <bool keep_graveyard_tombstones>
-  void InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2);
+  void FreshInsert(value_type value, size_t preferred_bucket, size_t h2);
 
   // Inserts `value` into `*this`.
   //
@@ -443,9 +444,10 @@ HashTable<Traits>::HashTable(const HashTable& other, const allocator_type& a)
     : HashTable(other.size(), other.get_hasher_ref(), other.get_key_eq_ref(),
                 a) {
   for (const auto& v : other) {
-    // TODO: We could save recomputing h2 possibly.
-    InsertNoRehashNeededAndValueNotPresent<true>(v);
+    size_t hash = get_hasher_ref()(v);
+    FreshInsert<false>(v, buckets_.H1(hash), buckets_.H2(hash));
   }
+  CHECK_EQ(size(), other.size());
 }
 
 template <class Traits>
@@ -618,17 +620,8 @@ bool HashTable<Traits>::insert(value_type value) {
       return false;
     }
   }
-  InsertNoRehashNeededAndValueNotPresent<false>(value, preferred_bucket, h2);
+  InsertNotPresent(std::move(value), preferred_bucket, h2);
   return true;
-}
-
-template <class Traits>
-template <bool keep_graveyard_tombstones_and_maintain_order>
-void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value) {
-  const size_t hash = get_hasher_ref()(value);
-  const size_t preferred_bucket = buckets_.H1(hash);
-  const size_t h2 = buckets_.H2(hash);
-  InsertNoRehashNeededAndValueNotPresent<keep_graveyard_tombstones_and_maintain_order>(value, preferred_bucket, h2);
 }
 
 template <typename NumberType>
@@ -637,23 +630,15 @@ void maxf(NumberType& v1, NumberType v2) {
 }
 
 template <class Traits>
-template <bool keep_graveyard_tombstones_and_maintain_order>
-void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t h1, size_t h2) {
-  Bucket<Traits>* preferred_bucket = buckets_.begin() + h1;
+void HashTable<Traits>::InsertNotPresent(value_type value, size_t h1, size_t h2) {
+ Bucket<Traits>* preferred_bucket = buckets_.begin() + h1;
   Bucket<Traits>* logical_end = buckets_.begin() + buckets_.logical_size();
   Bucket<Traits>* physical_end = buckets_.begin() + buckets_.physical_size();
   for (size_t i = 0; true; ++i) {
     assert(i < Traits::kSearchDistanceEndSentinal);
     Bucket<Traits>* bucket = preferred_bucket + i;
-    assert(bucket < physical_end);
+    CHECK_LT(bucket, physical_end);
     size_t matches = bucket->MatchingElementsMask(Traits::kEmpty);
-    if constexpr (keep_graveyard_tombstones_and_maintain_order) {
-      // Keep the first slot free in all the odd-numbered buckets.
-      if ((h1 + i) % 2 == 1) {
-        assert(matches & 1ul);
-        matches &= ~1ul;
-      }
-    }
     if (matches != 0) {
       size_t idx = absl::container_internal::TrailingZeros(matches);
       //LOG(INFO) << "Inserting " << value << " at [" << h1 + i << "][" << idx << "]";
@@ -675,6 +660,72 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value,
       ValidateUnderDebugging();
       return;
     }
+  }
+}
+
+template <class Traits>
+template <bool keep_graveyard_tombstones_and_maintain_order>
+void HashTable<Traits>::FreshInsert(value_type value, size_t h1, size_t h2) {
+  const size_t logical_end = buckets_.logical_size();
+  const size_t physical_end = buckets_.physical_size();
+  LOG(INFO) << "Freshinsert h1=" << h1 << " logical_end=" << logical_end;
+  Bucket<Traits>* const begin = buckets_.begin();
+  while (true) {
+    LOG(INFO) << "h1=" << h1 << ":" << ToString();
+    ValidateUnderDebugging();
+    Bucket<Traits>* const preferred_bucket = begin + h1;
+    size_t distance = preferred_bucket->search_distance;
+    LOG(INFO) << "distance=" << distance;
+    const size_t dest_bucket_number = h1 + distance / Traits::kSlotsPerBucket;
+    size_t dest_slot = distance % Traits::kSlotsPerBucket;
+    if constexpr (keep_graveyard_tombstones_and_maintain_order) {
+      if (dest_slot == 0 && dest_bucket_number % 2 == 1) {
+        LOG(INFO) << "Distance was " << distance << " but incremented for graveyard tombstone";
+        ++distance;
+        dest_slot = 1;
+      }
+    }
+    LOG(INFO) << "dest_bucket_number=" << dest_bucket_number << " dest_slot=" << dest_slot;
+    CHECK_LT(dest_bucket_number, physical_end);
+    Bucket<Traits>* dest_bucket = begin + dest_bucket_number;
+    if (dest_bucket->h2[dest_slot] == Traits::kEmpty) {
+      ++size_;
+      dest_bucket->h2[dest_slot] = h2;
+      dest_bucket->slots[dest_slot].value = std::move(value);
+      const size_t end_of_updates = std::min(logical_end, dest_bucket_number + 1);
+      ++distance;
+      LOG(INFO) << "Incremented distance to " << distance;
+      LOG(INFO) << "Updating search distance in [" << h1 << ", " << end_of_updates << ") starting with distance=" << distance << " " << ToString();
+      for (size_t update_distance_in_bucket = h1;
+           update_distance_in_bucket < end_of_updates;
+           ++update_distance_in_bucket) {
+        CHECK_LT(begin[update_distance_in_bucket].search_distance, distance);
+        begin[update_distance_in_bucket].search_distance = distance;
+        distance -= Traits::kSlotsPerBucket;
+      }
+      LOG(INFO) << "Freshinsert done: " << ToString();
+      ValidateUnderDebugging();
+      return;
+    }
+    // Found a non-empty slot.  Swap it out.
+    LOG(INFO) << ToString();
+    std::swap(value, dest_bucket->slots[dest_slot].value);
+    dest_bucket->h2[dest_slot] = h2;
+    const size_t end_of_updates = std::min(logical_end, dest_bucket_number + 1);
+    LOG(INFO) << "Updating distances in [" << h1 << ", " << end_of_updates << ") to distance=" << distance + 1;
+    for (size_t update_distance_in_bucket = h1;
+         update_distance_in_bucket < end_of_updates;
+         ++update_distance_in_bucket) {
+      maxf(begin[update_distance_in_bucket].search_distance, static_cast<typename Traits::H2Type>(distance + 1));
+      distance -= Traits::kSlotsPerBucket;
+    }
+    const size_t hash = get_hasher_ref()(value);
+    size_t old_h1 = h1;
+    h1 = buckets_.H1(hash);
+    CHECK_GT(h1, old_h1) << "value=" << value << " old_value=" << dest_bucket->slots[dest_slot].value << " dest_bucket_number=" << dest_bucket_number << " dest_slot=" << dest_slot << " " << ToString();
+    h2 = buckets_.H2(hash);
+    LOG(INFO) << ToString();
+    ValidateUnderDebugging();
   }
 }
 
@@ -799,9 +850,9 @@ bool HashTable<Traits>::contains(const key_type& value) const {
 }
 
 #ifndef NDEBUG
-static constexpr bool kDebugging = true;
+static inline constexpr bool kDebugging = true;
 #else
-static constexpr bool kDebugging = false;
+static inline constexpr bool kDebugging = false;
 #endif
 
 template <class Traits>
@@ -827,21 +878,45 @@ std::string HashTable<Traits>::ToString() const {
 template <class Traits>
 void HashTable<Traits>::ValidateUnderDebugging() const {
   if (kDebugging) {
-    //LOG(INFO) << "Validating" << ToString();
+    LOG(INFO) << "Validating" << ToString();
+    CHECK_LE(size(), LogicalSlotCount() * 7 / 8);
     for (size_t i = 0; i < buckets_.logical_size(); ++i) {
-      CHECK_LT(i * Traits::kSlotsPerBucket + buckets_[i].search_distance,
-               buckets_.physical_size() * Traits::kSlotsPerBucket);
+      // Verify that the search distances don't go off the end of the bucket array.
+      CHECK_LE(i * Traits::kSlotsPerBucket + buckets_[i].search_distance,
+               buckets_.physical_size() * Traits::kSlotsPerBucket) << "Search distance goes off end of of array i=" << i << " " << ToString();
+      // Verify that the search distances are monotonically increasing.
       if (i + 1 < buckets_.logical_size()) {
         CHECK_LE(i * Traits::kSlotsPerBucket + buckets_[i].search_distance,
                  (i + 1)  * Traits::kSlotsPerBucket + buckets_[i+1].search_distance) << "for bucket " << i;
       }
     }
+    // Verify that the overflow buckets have zero search distance, except the
+    // last which has Traits::kSearchDistanceEndSentinal.
     for (size_t i = buckets_.logical_size(); i + 1 < buckets_.physical_size(); ++i) {
       CHECK_EQ(buckets_[i].search_distance, 0);
     }
     if (buckets_.physical_size() > 0) {
       CHECK_EQ(buckets_[buckets_.physical_size() - 1].search_distance, Traits::kSearchDistanceEndSentinal);
     }
+    // Verify that each hashed object is a good place (not before its preferred
+    // bucket or after that bucket's search distance).
+    //
+    // Verify that size is right.
+    size_t actual_size = 0;
+    for (size_t i = 0; i < buckets_.physical_size(); ++i) {
+      for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+        if (buckets_[i].h2[j] != Traits::kEmpty) {
+          ++actual_size;
+          size_t hash = get_hasher_ref()(buckets_[i].slots[j].value);
+          size_t h1 = buckets_.H1(hash);
+          CHECK_LE(h1, i);
+          CHECK_LT(h1, buckets_.logical_size());
+          CHECK_LT((i-h1) * Traits::kSlotsPerBucket + j,
+                   buckets_[h1].search_distance) << "Object is not within search distance: bucket=" << i << " slot=" << j << " h1=" << h1;
+        }
+      }
+    }
+    CHECK_EQ(actual_size, size());
   }
 }
 
@@ -859,7 +934,7 @@ void HashTable<Traits>::CheckValidityAfterRehash() const {
 static constexpr bool kFastRehash = false;
 
 template <class Traits>
-    void HashTable<Traits>::rehash(size_t slot_count) {
+void HashTable<Traits>::rehash(size_t slot_count) {
   if (kFastRehash) {
     Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
     size_t bucket = 0;
@@ -898,9 +973,10 @@ template <class Traits>
     size_ = 0;
     for (Bucket<Traits>& bucket : buckets) {
       for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-        if (bucket.h2[j] != Traits::kEmpty) {
-          // TODO: We could save recomputing h2 possibly.
-          InsertNoRehashNeededAndValueNotPresent<true>(std::move(bucket.slots[j].value));
+        if (typename Traits::H2Type h2 = bucket.h2[j];
+            h2 != Traits::kEmpty) {
+          size_t hash = get_hasher_ref()(bucket.slots[j].value);
+          FreshInsert<true>(std::move(bucket.slots[j].value), buckets_.H1(hash), h2);
           // TODO: Destruct bucket.slots[j].
         }
       }

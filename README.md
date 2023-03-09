@@ -172,3 +172,4 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [ ] Optimize iteration over sparse tables: Use vector instruction to find next non-empty slot.
 - [ ] Optimize the case for iterating when a prefix of the table has been deleted.  F14 does it.  Why?
 - [ ] Fall back to std::set or std::map when the probe lengths get too long.
+- [ ] Maybe just swap one element to a previous bucket when the hash ordering has been inverted.

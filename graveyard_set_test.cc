@@ -151,25 +151,6 @@ struct IdentityHasher {
   size_t operator()(const size_t v) const { return v; }
 };
 
-
-TEST(GraveyardSet, SortedBucketIterator) {
-  yobiduck::GraveyardSet<size_t, IdentityHasher> graveyard_set;
-  std::set<size_t> std_set;
-  absl::BitGen bitgen;
-  int kCount = 200;
-  for (int i = 0; i < kCount; ++i) {
-    size_t v = absl::Uniform<size_t>(bitgen);
-    graveyard_set.insert(v);
-    std_set.insert(v);
-  }
-  auto std_it = std_set.begin();
-  for (auto heap_element : graveyard_set.GetSortedBucketsIterator()) {
-    CHECK(std_it != std_set.end());
-    EXPECT_EQ(*heap_element.value, *std_it) << " value=" << std::hex << std::setw(16)  << std::setfill('0') << *heap_element.value << " expected " << *std_it;
-    ++std_it;
-  }
-}
-
 namespace {
 inline uint64_t operator-(struct timespec a, struct timespec b) {
   return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;

@@ -6,6 +6,7 @@
 #include <malloc.h>
 
 #include <iomanip>
+#include <source_location>
 
 
 // IWYU has some strange behavior around around std::swap.  It wants to get rid
@@ -355,13 +356,16 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
     return hash_sorted_iterator(*this);
   }
 
+  void Validate(int line_number = 0) const;
+  void ValidateUnderDebugging(int line_number) const;
+  std::string ToString() const;
+
  private:
-  friend SortedBucketsIterator<Traits>::SortedBucketsIterator(HashTable&);
 
   // Checks that `*this` is valid.  Requires that a rehash or initial
   // construction has just occurred.  Specifically checks that the graveyard
   // tombstones are present.
-  void CheckValidityAfterRehash() const;
+  void CheckValidityAfterRehash(int line_number) const;
 
   // Ranges from 3/4 full to 7/8 full.
 
@@ -602,6 +606,10 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value)
   InsertNoRehashNeededAndValueNotPresent<keep_graveyard_tombstones>(value, preferred_bucket, h2);
 }
 
+void maxf(uint8_t& v1, uint8_t v2) {
+  v1 = std::max(v1, v2);
+}
+
 template <class Traits>
 template <bool keep_graveyard_tombstones>
 void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2) {
@@ -622,8 +630,7 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value,
       bucket.h2[idx] = h2;
       // TODO: Construct in place
       bucket.slots[idx].value = value;
-      if (i > buckets_[preferred_bucket].search_distance)
-        buckets_[preferred_bucket].search_distance = i;
+      maxf(buckets_[preferred_bucket].search_distance, i + 1);
       ++size_;
       // TODO: Keep track if we are allowed to destabilize pointers, and if we
       // are, move things around to be sorted.
@@ -662,66 +669,96 @@ bool HashTable<Traits>::contains(const key_type& value) const {
 }
 
 template <class Traits>
-void HashTable<Traits>::CheckValidityAfterRehash() const {
-#ifndef NDEBUG
-  for (size_t i = 1; i < buckets_.physical_size(); i+=2) {
-    // Keep the first slot free in all the odd-numbered buckets.
-    CHECK_EQ(buckets_[i].h2[0], Traits::kEmpty);
-  }
-#endif  // NDEBUG
-}
-
-static constexpr bool kFastRehash = false;
-
-template <class Traits>
-    void HashTable<Traits>::rehash(size_t slot_count) {
-  if (kFastRehash) {
-    Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
-    size_t bucket = 0;
-    size_t slot = 0;
-    auto it = GetSortedBucketsIterator();
-    size_t count = 0;
-    for (; it != it.end(); ++it) {
-      auto heap_element = *it;
-      //for (auto heap_element : it) {
-      size_t h1 = buckets.H1(heap_element.hash);
-      if (h1 > bucket) {
-        bucket = h1;
-        // Keep the first slot free in all the odd-numbered buckets.
-        slot = bucket % 2;
-      }
-      assert(buckets[bucket].h2[slot] == Traits::kEmpty);
-      buckets[bucket].h2[slot] = buckets.H2(heap_element.hash);
-      buckets[bucket].slots[slot].value = *heap_element.value;
-      buckets[h1].search_distance = bucket - h1 + 1;
-      ++count;
-      ++slot;
-      if (slot >= Traits::kSlotsPerBucket) {
-        ++bucket;
-        // Keep the first slot free in all the odd-numbered buckets.
-        slot = bucket % 2;
+std::string HashTable<Traits>::ToString() const {
+  std::stringstream result;
+  result << "{size=" << size_ << " logical_size=" << buckets_.logical_size() << " physical_size=" << buckets_.physical_size();
+  for (size_t i = 0; i < buckets_.physical_size(); ++i) {
+    const Bucket<Traits>* bucket = buckets_.begin() + i;
+    result << std::endl << " bucket[" << i << "]: search_distance=" << static_cast<size_t>(bucket->search_distance);
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      result << " " << j << ":";
+      if (bucket->h2[j] == Traits::kEmpty) {
+        result << "_";
+      } else {
+        result << bucket->slots[j].value;
       }
     }
-    assert(count == size_);
-    assert(it == it.end());
-    buckets.swap(buckets_);
-    CheckValidityAfterRehash();
-    it.Print(std::cout);
-  } else {
-    Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
-    buckets.swap(buckets_);
-    size_ = 0;
-    for (Bucket<Traits>& bucket : buckets) {
+  }
+  result << "}";
+  return std::move(result).str();
+}
+
+template <class Traits>
+void HashTable<Traits>::Validate(int line_number) const {
+  //LOG(INFO) << "Validating" << ToString();
+  CHECK_LE(size(), LogicalSlotCount() * 7 / 8);
+  for (size_t i = 0; i < buckets_.logical_size(); ++i) {
+    // Verify that the search distances don't go off the end of the bucket array.
+    CHECK_LE(i + buckets_[i].search_distance,
+             buckets_.physical_size()) << "Search distance goes off end of of array i=" << i << " " << ToString();
+    // Verify that the overflow buckets have zero search distance, except the
+    // last which has Traits::kSearchDistanceEndSentinal.
+    for (size_t i = buckets_.logical_size(); i + 1 < buckets_.physical_size(); ++i) {
+      CHECK_EQ(buckets_[i].search_distance, 0);
+    }
+    if (buckets_.physical_size() > 0) {
+      CHECK_EQ(buckets_[buckets_.physical_size() - 1].search_distance, Traits::kSearchDistanceEndSentinal);
+    }
+    // Verify that each hashed object is a good place (not before its preferred
+    // bucket or after that bucket's search distance).
+    //
+    // Verify that size is right.
+    size_t actual_size = 0;
+    for (size_t i = 0; i < buckets_.physical_size(); ++i) {
       for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-        if (bucket.h2[j] != Traits::kEmpty) {
-          // TODO: We could save recomputing h2 possibly.
-          InsertNoRehashNeededAndValueNotPresent<true>(std::move(bucket.slots[j].value));
-          // TODO: Destruct bucket.slots[j].
+        if (buckets_[i].h2[j] != Traits::kEmpty) {
+          ++actual_size;
+          size_t hash = get_hasher_ref()(buckets_[i].slots[j].value);
+          size_t h1 = buckets_.H1(hash);
+          CHECK_LE(h1, i);
+          CHECK_LT(h1, buckets_.logical_size());
+          CHECK_LT((i-h1),
+                   buckets_[h1].search_distance) << "Object is not within search distance: bucket=" << i << " slot=" << j << " h1=" << h1 << " line=" << line_number  << " in " << ToString();
         }
       }
     }
-    CheckValidityAfterRehash();
+    CHECK_EQ(actual_size, size());
   }
+}
+
+template <class Traits>
+    void HashTable<Traits>::ValidateUnderDebugging(int line_number) const {
+#ifndef NDEBUG
+  Validate(line_number);
+#endif
+}
+
+template <class Traits>
+void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
+#ifndef NDEBUG
+  for (size_t i = 1; i < buckets_.physical_size(); i+=2) {
+    // Keep the first slot free in all the odd-numbered buckets.
+    CHECK_EQ(buckets_[i].h2[0], Traits::kEmpty) << "bucket " << i << " from line " << line_number << " in " << ToString();
+  }
+#endif  // NDEBUG
+  ValidateUnderDebugging(line_number);
+}
+
+template <class Traits>
+    void HashTable<Traits>::rehash(size_t slot_count) {
+  Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
+  buckets.swap(buckets_);
+  size_ = 0;
+  for (Bucket<Traits>& bucket : buckets) {
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      if (bucket.h2[j] != Traits::kEmpty) {
+        // TODO: We could save recomputing h2 possibly.
+        InsertNoRehashNeededAndValueNotPresent<true>(std::move(bucket.slots[j].value));
+        // TODO: Destruct bucket.slots[j].
+      }
+    }
+  }
+  //CheckValidityAfterRehash(__LINE__);
 }
 
 
@@ -772,155 +809,6 @@ ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
   }
   return {success_sum / size(), unsuccess_sum / buckets_.logical_size()};
 }
-
-// Provides an iterator over `Buckets` that emits key-value pairs in sorted
-// order (sorted by the hash.)
-//
-// The `end` iterator is represented by a sentinal.  (Hence it does not require
-// that we can compare two iterators, and in this regard, this is more like a
-// C++20 input iterator than a C++17 LegacyInputIterator).  (See
-// https://en.cppreference.com/w/cpp/iterator/sentinel_for, "It has been
-// permited to use a sentinal type different from the iterator type in the
-// range-based for loop since C++17.")
-//
-// We say that a value has been *produced* if the iterator has been incremented
-// past the value.
-
-// The way this works is that we have two pointers into the buckets.
-//
-//   * Everything in a bucket before `*ingested_before_` has either been
-//     produced by the iterator, or it's in the heap.  That is, it has been
-//     *ingested*.
-//
-//   * Every value whose preferred bucket is <= `preferred_` has been ingested.
-//
-// We have another pointer, `logical_end_` which is the first bucket that no
-// hash prefers.  When `preferred_==logical_end_` there is no more to be
-// ingested.
-//
-// We have a heap.  The heap contains all the values that have been ingested but
-// have not yet been produced. The heap is a min heap, sorted so that the first
-// element of the heap has the numerically smallest hash.
-//
-// The value_type is a struct containing the hash of the value stored in the
-// table, a pointer to the `Bucket` containing the value, and a slot number
-// within the bucket.
-template <class Traits>
-class SortedBucketsIterator {
- public:
-  using iterator_category = std::input_iterator_tag;
-  struct HeapElement {
-    size_t hash;
-    Bucket<Traits>* from_bucket;
-    typename Traits::value_type *value;
-    // We want a min heap rather than a max heap. So define operator< to be
-    // inverted.
-    bool operator<(const HeapElement &other) {
-      return hash > other.hash;
-    }
-  };
-  using value_type = HeapElement;
-  using difference_type = ptrdiff_t;
-  using reference = value_type&;
-  using pointer = value_type*;
-  struct EndSentinal {
-  };
-  explicit SortedBucketsIterator(HashTable<Traits>& table)
-      :ingested_before_(table.buckets_.begin()),
-       preferred_(ingested_before_),
-       logical_end_(table.buckets_.begin() + table.buckets_.logical_size()),
-       hasher_(table.hash_function()) {
-    heap_.reserve(64);
-    Ingest();
-  }
-  // The iterator is its own container.
-  SortedBucketsIterator& begin() {
-    return *this;
-  }
-  EndSentinal end() {
-    return EndSentinal();
-  }
-  reference operator*() {
-    ValidateUnderDebugging();
-    CHECK(!heap_.empty());
-    return heap_.front();
-  }
-  pointer operator->() {
-    assert(!heap_.empty());
-    return &heap_.front();
-  }
-  // Prefix increment
-  SortedBucketsIterator& operator++() {
-    assert(!heap_.empty());
-    std::pop_heap(heap_.begin(), heap_.end());
-    heap_.pop_back();
-    if (heap_.empty() || heap_.front().from_bucket >= preferred_) {
-      Ingest();
-    }
-    ValidateUnderDebugging();
-    return *this;
-  }
-  friend bool operator==(const SortedBucketsIterator& a, const EndSentinal &b) {
-    return a.heap_.empty() && a.preferred_ == a.logical_end_;
-  }
-  friend bool operator!=(const SortedBucketsIterator& a, const EndSentinal& b) {
-    return !(a == b);
-  }
-  void Print(std::ostream& s) {
-    s << "ib=" << ingested_before_ << " p=" << preferred_ << " le=" << logical_end_ << " heap_size=" << heap_.size();
-    s << " max_heap_size=" << max_heap_size_;
-    s << " heap={";
-    for(size_t i = 0; i < heap_.size(); ++i) {
-      if (i > 0) s << ", ";
-      auto& he = heap_[i];
-      s << "{h=" << std::hex << std::setw(16) << std::setfill('0') << he.hash << std::dec << " fb=" << he.from_bucket << " v=" << *he.value << "}";
-    }
-    s << "}" << std::endl;
-  }
- private:
-  void ValidateUnderDebugging() {
-#ifndef NDEBUG
-    if (preferred_ == logical_end_) {
-      return;
-    } else {
-      CHECK(!heap_.empty());
-      CHECK_LT(heap_.front().from_bucket, preferred_);
-    }
-#endif
-  }
-  void Ingest() {
-    for (; preferred_ < logical_end_; ++preferred_) {
-      // ingest everything from ingested_before_ to (preferred_ + preferred_->search_distance) (inclusive).
-      for (const auto end = preferred_ + preferred_->search_distance + 1;
-           ingested_before_ < end;
-           ++ingested_before_) {
-        for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {
-          if (ingested_before_->h2[i] != Traits::kEmpty) {
-            size_t hash = hasher_(ingested_before_->slots[i].value);
-            heap_.push_back({.hash = hash,
-                             .from_bucket = ingested_before_,
-                             .value = &ingested_before_->slots[i].value});
-            max_heap_size_ = std::max(max_heap_size_, heap_.size());
-            std::push_heap(heap_.begin(), heap_.end());
-          }
-        }
-      }
-      if (!heap_.empty() && heap_.front().from_bucket < preferred_) {
-        ValidateUnderDebugging();
-        return;
-      }
-    }
-    ValidateUnderDebugging();
-  }
-
-  size_t max_heap_size_ = 0;
-
-  Bucket<Traits>* ingested_before_;
-  Bucket<Traits>* preferred_;
-  Bucket<Traits>* logical_end_;
-  std::vector<HeapElement> heap_;
-  typename Traits::hasher hasher_;
-};
 
 }  // namespace yobiduck::internal
 

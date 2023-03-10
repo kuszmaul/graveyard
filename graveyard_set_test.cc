@@ -5,8 +5,10 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+using testing::Pair;
 using testing::UnorderedElementsAre;
 using testing::UnorderedElementsAreArray;
+using testing::_;
 
 TEST(GraveyardSet, Types) {
   using IntSet = yobiduck::GraveyardSet<uint64_t>;
@@ -26,37 +28,37 @@ TEST(GraveyardSet, Types) {
 
 TEST(GraveyardSet, Basic) {
   yobiduck::GraveyardSet<uint64_t> set;
-  CHECK_EQ(set.size(), 0ul);
-  CHECK(!set.contains(0l));
-  CHECK(set.insert(0ul));
-  CHECK(set.contains(0l));
-  CHECK(!set.contains(1l));
+  EXPECT_EQ(set.size(), 0ul);
+  EXPECT_TRUE(!set.contains(0l));
+  EXPECT_THAT(set.insert(0ul), Pair(_, true));
+  EXPECT_TRUE(set.contains(0l));
+  EXPECT_TRUE(!set.contains(1l));
 }
 
 TEST(GraveyardSet, EmptyIterator) {
   yobiduck::GraveyardSet<uint64_t> set;
-  CHECK(set.begin() == set.end());
+  EXPECT_TRUE(set.begin() == set.end());
 }
 
 TEST(GraveyardSet, EmptyConstIterator) {
   yobiduck::GraveyardSet<uint64_t> set;
-  CHECK(set.cbegin() == set.cend());
+  EXPECT_TRUE(set.cbegin() == set.cend());
   const yobiduck::GraveyardSet<uint64_t>* cset = &set;
-  CHECK(cset->cbegin() == cset->cend());
-  CHECK(cset->begin() == cset->end());
-  CHECK(cset->cbegin() == cset->end());
-  CHECK(cset->begin() == cset->cend());
-  CHECK(set.begin() == cset->cbegin());
-  CHECK(set.end() == cset->cend());
+  EXPECT_TRUE(cset->cbegin() == cset->cend());
+  EXPECT_TRUE(cset->begin() == cset->end());
+  EXPECT_TRUE(cset->cbegin() == cset->end());
+  EXPECT_TRUE(cset->begin() == cset->cend());
+  EXPECT_TRUE(set.begin() == cset->cbegin());
+  EXPECT_TRUE(set.end() == cset->cend());
 }
 
 TEST(GraveyardSet, IteratorOneElement) {
   yobiduck::GraveyardSet<uint64_t> set;
-  CHECK(set.insert(100ul));
-  CHECK(set.contains(100ul));
+  EXPECT_THAT(set.insert(100ul), Pair(_, true));
+  EXPECT_TRUE(set.contains(100ul));
   yobiduck::GraveyardSet<uint64_t>::iterator it;
   it = set.begin();
-  CHECK(it != set.end());
+  EXPECT_TRUE(it != set.end());
   ++it;
   // CHECK(it == set.end());
   EXPECT_THAT(set, UnorderedElementsAre(100ul));
@@ -120,21 +122,21 @@ std::ostream& operator<<(std::ostream& stream, const UnhashableInt& unhashable_i
 TEST(GraveyardSet, UserDefinedHashAndEq) {
   {
     absl::flat_hash_set<UnhashableInt, UnhashableIntHasher, UnhashableIntEqual> set;
-    CHECK(!set.contains(UnhashableInt{0}));
+    EXPECT_TRUE(!set.contains(UnhashableInt{0}));
     set.insert(UnhashableInt{0});
-    CHECK(set.contains(UnhashableInt{0}));
+    EXPECT_TRUE(set.contains(UnhashableInt{0}));
     for (int i = 0; i < 1000; i++) {
       set.insert(UnhashableInt{i});
     }
     for (int i = 0; i < 1000; i++) {
-      CHECK(set.contains(UnhashableInt{i}));
+      EXPECT_TRUE(set.contains(UnhashableInt{i}));
     }
   }
   {
     yobiduck::GraveyardSet<UnhashableInt, UnhashableIntHasher, UnhashableIntEqual> set;
-    CHECK(!set.contains(UnhashableInt{0}));
+    EXPECT_TRUE(!set.contains(UnhashableInt{0}));
     set.insert(UnhashableInt{0});
-    CHECK(set.contains(UnhashableInt{0}));
+    EXPECT_TRUE(set.contains(UnhashableInt{0}));
     for (int i = 0; i < 10000; ++i) {
       set.insert(UnhashableInt{i});
       for (int j = 0; j < i; ++j) {
@@ -194,7 +196,7 @@ TEST(GraveyardSet, SortedBucketIteratorBadHash) {
   }
   auto std_it = std_set.begin();
   for (auto heap_element : graveyard_set.GetSortedBucketsIterator()) {
-    CHECK(std_it != std_set.end());
+    EXPECT_TRUE(std_it != std_set.end());
     EXPECT_EQ(heap_element.value->x, *std_it);
     ++std_it;
   }

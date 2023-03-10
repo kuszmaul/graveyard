@@ -307,7 +307,7 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   size_t size() const noexcept;
 
   void clear();
-  bool insert(value_type value);
+  std::pair<iterator, bool> insert(value_type value);
   void swap(HashTable& other) noexcept;
 
   bool contains(const key_type& value) const;
@@ -378,6 +378,11 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   // to Z/LogicalSlotCount().)
   size_t LogicalSlotCount() const;
 
+  struct InsertResults {
+    iterator it;
+    size_t hash;
+  };
+
   // Insert `value` into `*this`.  Requires that `value` is not already in
   // `*this` and that the table does not need rehashing.
   //
@@ -388,7 +393,7 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   // An overload of `InsertNoRehashNeededAndValueNotPresent` that has already
   // computed the preferred bucket and h2.
   template <bool keep_graveyard_tombstones>
-  void InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2);
+  iterator InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2);
 
   // The number of present items in all the buckets combined.
   // Todo: Put `size_` into buckets_ (in the memory).
@@ -572,7 +577,7 @@ void HashTable<Traits>::clear() {
 }
 
 template <class Traits>
-bool HashTable<Traits>::insert(value_type value) {
+std::pair<typename HashTable<Traits>::iterator, bool> HashTable<Traits>::insert(value_type value) {
   // If (size_ + 1) > 7*8 slot_count_ then rehash.
   if (NeedsRehash(size_ + 1)) {
     // rehash to be 3/4 full
@@ -587,14 +592,14 @@ bool HashTable<Traits>::insert(value_type value) {
     // Don't use operator[], since that Buckets::operator[] has a bounds check.
     __builtin_prefetch(&(buckets_.begin() + preferred_bucket + i + 1)->h2[0]);
     assert(preferred_bucket + i < buckets_.physical_size());
-    const Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
+    Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
     size_t idx = bucket.FindElement(h2, value, get_key_eq_ref());
     if (idx < Traits::kSlotsPerBucket) {
-      return false;
+      return {iterator{&bucket, idx}, false};
     }
   }
-  InsertNoRehashNeededAndValueNotPresent<false>(value, preferred_bucket, h2);
-  return true;
+  return {InsertNoRehashNeededAndValueNotPresent<false>(value, preferred_bucket, h2),
+          true};
 }
 
 template <class Traits>
@@ -612,7 +617,7 @@ void maxf(uint8_t& v1, uint8_t v2) {
 
 template <class Traits>
 template <bool keep_graveyard_tombstones>
-void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2) {
+typename HashTable<Traits>::iterator HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2) {
   for (size_t i = 0; true; ++i) {
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
@@ -634,7 +639,7 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value,
       ++size_;
       // TODO: Keep track if we are allowed to destabilize pointers, and if we
       // are, move things around to be sorted.
-      return;
+      return iterator{&bucket, idx};
     }
   }
 }
@@ -745,7 +750,7 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
 }
 
 template <class Traits>
-    void HashTable<Traits>::rehash(size_t slot_count) {
+void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
   buckets.swap(buckets_);
   size_ = 0;

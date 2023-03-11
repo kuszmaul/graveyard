@@ -388,7 +388,7 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   //
   // TODO: We can probably save the recompution of h2 if we are careful.
   template <bool keep_graveyard_tombstones>
-  void InsertNoRehashNeededAndValueNotPresent(value_type value);
+  InsertResults InsertNoRehashNeededAndValueNotPresent(value_type value);
 
   // An overload of `InsertNoRehashNeededAndValueNotPresent` that has already
   // computed the preferred bucket and h2.
@@ -481,6 +481,11 @@ class HashTable<Traits>::iterator {
   }
   friend bool operator!=(const iterator& a, const iterator& b) {
     return !(a == b);
+  }
+  friend bool operator<(const iterator& a, const iterator& b) {
+    if (a.bucket_ < b.bucket_) return true;
+    if (a.bucket_ > b.bucket_) return false;
+    return a.index_ < b.index_;
   }
   friend HashTable;
   // index_ is allowed to be kSlotsPerBucket
@@ -589,6 +594,11 @@ std::pair<typename HashTable<Traits>::iterator, bool> HashTable<Traits>::insert(
   const size_t h2 = buckets_.H2(hash);
   const size_t distance = buckets_[preferred_bucket].search_distance;
   for (size_t i = 0; i < distance; ++i) {
+#ifndef NDEBUG
+    if (preferred_bucket + i >= buckets_.physical_size()) {
+      LOG(INFO) << "preferred_bucket=" << preferred_bucket << " i=" << i << " " << ToString();
+    }
+#endif
     // Don't use operator[], since that Buckets::operator[] has a bounds check.
     __builtin_prefetch(&(buckets_.begin() + preferred_bucket + i + 1)->h2[0]);
     assert(preferred_bucket + i < buckets_.physical_size());
@@ -604,11 +614,12 @@ std::pair<typename HashTable<Traits>::iterator, bool> HashTable<Traits>::insert(
 
 template <class Traits>
 template <bool keep_graveyard_tombstones>
-void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value) {
+typename HashTable<Traits>::InsertResults HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value) {
   const size_t hash = get_hasher_ref()(value);
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
-  InsertNoRehashNeededAndValueNotPresent<keep_graveyard_tombstones>(value, preferred_bucket, h2);
+  return {.it = InsertNoRehashNeededAndValueNotPresent<keep_graveyard_tombstones>(value, preferred_bucket, h2),
+          .hash = hash};
 }
 
 void maxf(uint8_t& v1, uint8_t v2) {
@@ -636,6 +647,7 @@ typename HashTable<Traits>::iterator HashTable<Traits>::InsertNoRehashNeededAndV
       // TODO: Construct in place
       bucket.slots[idx].value = value;
       maxf(buckets_[preferred_bucket].search_distance, i + 1);
+      assert(preferred_bucket + buckets_[preferred_bucket].search_distance <= buckets_.physical_size());
       ++size_;
       // TODO: Keep track if we are allowed to destabilize pointers, and if we
       // are, move things around to be sorted.
@@ -754,11 +766,36 @@ void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
   buckets.swap(buckets_);
   size_ = 0;
+  std::optional<InsertResults> prev = std::nullopt;
   for (Bucket<Traits>& bucket : buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
-        // TODO: We could save recomputing h2 possibly.
-        InsertNoRehashNeededAndValueNotPresent<true>(std::move(bucket.slots[j].value));
+        InsertResults here = InsertNoRehashNeededAndValueNotPresent<true>(std::move(bucket.slots[j].value));
+        const InsertResults original_here = here;
+        size_t prev_hash = prev->hash;
+        size_t here_hash = here.hash;
+        if (prev && prev->it < here.it && prev_hash > here_hash) {
+          // TODO: Rename iterator index_ to slot_.
+          Bucket<Traits>* prev_bucket = prev->it.bucket_;
+          Bucket<Traits>* here_bucket = here.it.bucket_;
+          size_t prev_index = prev->it.index_;
+          size_t here_index = here.it.index_;
+          std::swap(prev_bucket->h2[prev_index],
+                    here_bucket->h2[here_index]);
+          std::swap(prev_bucket->slots[prev_index].value,
+                    here_bucket->slots[here_index].value);
+          size_t prev_h1 = buckets_.H1(prev_hash);
+          Bucket<Traits> *prev_preferred_bucket = &buckets_[prev_h1];
+          maxf(prev_preferred_bucket->search_distance, here_bucket - prev_preferred_bucket + 1);
+          if (prev_preferred_bucket + prev_preferred_bucket->search_distance > buckets_.begin() + buckets_.physical_size()) {
+            LOG(INFO) << "Inserted at bucket=" << original_here.it.bucket_ - buckets_.begin() << " slot=" << original_here.it.index_;
+            LOG(INFO) << "Previous was at bucket=" << prev->it.bucket_ - buckets_.begin() << " slot=" << prev->it.index_;
+          }
+          assert(prev_preferred_bucket + prev_preferred_bucket->search_distance <= buckets_.begin() + buckets_.physical_size());
+          prev->hash = here.hash;
+        } else {
+          prev = here;
+        }
         // TODO: Destruct bucket.slots[j].
       }
     }

@@ -588,7 +588,7 @@ std::pair<typename HashTable<Traits>::iterator, bool> HashTable<Traits>::insert(
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
   const size_t distance = buckets_[preferred_bucket].search_distance;
-  for (size_t i = 0; i <= distance; ++i) {
+  for (size_t i = 0; i < distance; ++i) {
     // Don't use operator[], since that Buckets::operator[] has a bounds check.
     __builtin_prefetch(&(buckets_.begin() + preferred_bucket + i + 1)->h2[0]);
     assert(preferred_bucket + i < buckets_.physical_size());

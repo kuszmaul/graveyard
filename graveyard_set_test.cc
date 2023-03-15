@@ -176,29 +176,3 @@ TEST(GraveyardSet, RehashTime) {
     std::cout << "Rehash took " << elapsed / 1'000'000 << "." << std::setw(6) << elapsed % 1'000'000 << "ms" << std::endl;
   }
 }
-
-
-#if 0
-/// This will overflow the counters:  So we should switch to something like std::unordered_map.
-struct UnhashableIntIdentityHasher {
-  size_t operator()(const UnhashableInt &h) const { return h.x; }
-};
-
-TEST(GraveyardSet, SortedBucketIteratorBadHash) {
-  yobiduck::GraveyardSet<UnhashableInt, UnhashableIntIdentityHasher, UnhashableIntEqual> graveyard_set;
-  std::set<int> std_set;
-  absl::BitGen bitgen;
-  int kCount = 10000;
-  for (int i = 0; i < kCount; ++i) {
-    int v = absl::Uniform(bitgen, 0, kCount * kCount);
-    graveyard_set.insert(UnhashableInt{v});
-    std_set.insert(v);
-  }
-  auto std_it = std_set.begin();
-  for (auto heap_element : graveyard_set.GetSortedBucketsIterator()) {
-    EXPECT_TRUE(std_it != std_set.end());
-    EXPECT_EQ(heap_element.value->x, *std_it);
-    ++std_it;
-  }
-}
-#endif

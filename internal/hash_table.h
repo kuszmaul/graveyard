@@ -60,6 +60,13 @@ struct HashTableTraits {
   static constexpr size_t kCacheLineSize = 64;
 };
 
+// The hash tables range from 3/4 full to 7/8 full (unless there are erase
+// operations, in which case a table might be less than 3/4 full).
+static constexpr size_t full_utilization_numerator = 6;
+static constexpr size_t full_utilization_denominator = 7;
+static constexpr size_t rehashed_utilization_numerator = 3;
+static constexpr size_t rehashed_utilization_denominator = 5;
+
 template <class Traits>
 union Item {
   char bytes[sizeof(typename Traits::value_type)];
@@ -367,8 +374,6 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   // tombstones are present.
   void CheckValidityAfterRehash(int line_number) const;
 
-  // Ranges from 3/4 full to 7/8 full.
-
   // Returns true if the table needs rehashing to be big enough to hold
   // `target_size` elements.
   bool NeedsRehash(size_t target_size) const;
@@ -578,10 +583,9 @@ void HashTable<Traits>::clear() {
 
 template <class Traits>
 std::pair<typename HashTable<Traits>::iterator, bool> HashTable<Traits>::insert(value_type value) {
-  // If (size_ + 1) > 7*8 slot_count_ then rehash.
   if (NeedsRehash(size_ + 1)) {
-    // rehash to be 3/4 full
-    rehash(ceil((size_ + 1) * 4, 3));
+    // Rehash to be, say 3/4, full.
+    rehash(ceil((size_ + 1) * rehashed_utilization_denominator, rehashed_utilization_numerator));
   }
   // TODO: Use the Hash in OLP.
   const size_t hash = get_hasher_ref()(value);
@@ -696,7 +700,7 @@ std::string HashTable<Traits>::ToString() const {
 template <class Traits>
 void HashTable<Traits>::Validate(int line_number) const {
   //LOG(INFO) << "Validating" << ToString();
-  CHECK_LE(size(), LogicalSlotCount() * 7 / 8);
+  CHECK_LE(size(), LogicalSlotCount() * full_utilization_numerator / full_utilization_denominator);
   for (size_t i = 0; i < buckets_.logical_size(); ++i) {
     // Verify that the search distances don't go off the end of the bucket array.
     CHECK_LE(i + buckets_[i].search_distance,
@@ -770,7 +774,6 @@ void HashTable<Traits>::rehash(size_t slot_count) {
 
 template <class Traits>
 void HashTable<Traits>::reserve(size_t count) {
-  // If the logical capacity * 7 /8 < count  then rehash
   if (NeedsRehash(count)) {
     // Set the LogicalSlotCount to at least count.  Don't grow by less than 1/7.
     rehash(std::max(count, LogicalSlotCount() * 8 / 7));
@@ -779,7 +782,7 @@ void HashTable<Traits>::reserve(size_t count) {
 
 template <class Traits>
 bool HashTable<Traits>::NeedsRehash(size_t target_size) const {
-  return LogicalSlotCount() * 7 < target_size * 8;
+  return LogicalSlotCount() * full_utilization_numerator < target_size * full_utilization_denominator;
 }
 
 template <class Traits>

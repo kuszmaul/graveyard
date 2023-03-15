@@ -100,7 +100,7 @@ fit g(x) "data/insert_graveyard.data" using 1:3 via d
 plot "data/insert_google.data"    using 1:3 with lines linecolor rgb Gcolor title sprintf("Google (%.2f bytes/element)", a), \
      "data/insert_OLP.data"       using 1:3 with lines linecolor rgb Kcolor title sprintf("OLP (%.2f bytes/element) (%.1f%% less)",b,100*(b-a)/a), \
      "data/insert_facebook.data"  using 1:3 with lines linecolor rgb FBcolor title sprintf("Facebook (%.2f bytes/element) (%.1f%% less)",c,100*(c-a)/a), \
-     "data/insert_graveyard.data" using 1:3 with lines linecolor rgb Tcolor title sprintf("Graveyard (%.2f bytes/element) (%.1f%% less)",d,100*(c-a)/a), \
+     "data/insert_graveyard.data" using 1:3 with lines linecolor rgb Tcolor title sprintf("Graveyard (%.2f bytes/element) (%.1f%% less)",d,100*(d-a)/a), \
      a * x linecolor rgb Gcolor  with dots notitle, \
      b * x linecolor rgb Kcolor  with dots notitle, \
      c * x linecolor rgb FBcolor with dots notitle, \

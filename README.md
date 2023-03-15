@@ -151,7 +151,11 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [ ] Increase the size of `buckets_` to match the actual allocated memory.
       This doesn't seem to make any difference for libc malloc, but it probably
       makes a difference for a bucketed malloc such as tcmalloc.
-- [ ] Change the search_distance to the number of slots instead of the number of buckets.
+- [x] Don't change the search_distance to the number of slots instead of the
+      number of buckets.  (Tried this, and it didn't help: we were trying to
+      maintain a bit that the table was ordered, in which case an insert without
+      reservation could be done with $O(X)$ swaps.  It seems better to just do
+      the insert and then fix it on rehash.
 - [ ] Implement maps.  One issue is how to deal with the `value_type =
      std::pair<const key_type, mapped_type>`.  The F14 comment (F14Policy.h at
       `moveValue`. outlines three possibilities:

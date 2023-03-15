@@ -6,6 +6,7 @@
 #include <malloc.h>
 
 #include <iomanip>
+#include <new>
 #include <source_location>
 
 
@@ -160,7 +161,13 @@ class Buckets {
   ~Buckets() {
     assert((physical_size_ == 0) == (buckets_ == nullptr));
     if (buckets_ != nullptr) {
-      // TODO: Destruct the nonempty slots
+      for (Bucket<Traits>& bucket : *this) {
+        for (size_t slot = 0; slot < Traits::kSlotsPerBucket; ++slot) {
+          if (bucket.h2[slot] != Traits::kEmpty) {
+            (&bucket.slots[slot].value)->~value_type();
+          }
+        }
+      }
       free(buckets_);
       buckets_ = nullptr;
     }
@@ -251,6 +258,8 @@ class Buckets {
   size_t H2(size_t hash) const { return hash % 255; }
 
  private:
+  using value_type = typename Traits::value_type;
+
   // For computing the index from the hash.  The actual buckets vector is longer
   // (`physical_size_`) so that we can overflow simply by going off the end.
   size_t logical_size_ = 0;
@@ -637,12 +646,9 @@ typename HashTable<Traits>::iterator HashTable<Traits>::InsertNoRehashNeededAndV
     if (matches != 0) {
       size_t idx = absl::container_internal::TrailingZeros(matches);
       bucket.h2[idx] = h2;
-      // TODO: Construct in place
-      bucket.slots[idx].value = value;
+      new (&bucket.slots[idx].value) value_type(value);
       maxf(buckets_[preferred_bucket].search_distance, i + 1);
       ++size_;
-      // TODO: Keep track if we are allowed to destabilize pointers, and if we
-      // are, move things around to be sorted.
       return iterator{&bucket, idx};
     }
   }
@@ -763,7 +769,8 @@ void HashTable<Traits>::rehash(size_t slot_count) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
         InsertNoRehashNeededAndValueNotPresent<true>(std::move(bucket.slots[j].value));
-        // TODO: Destruct bucket.slots[j].
+        // Note that bucket.slots[j].value will be properly destructed when we
+        // leave scope, since bucket.h2[j] is not empty.
       }
     }
   }

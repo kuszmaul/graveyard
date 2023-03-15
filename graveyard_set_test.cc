@@ -1,5 +1,7 @@
 #include "graveyard_set.h"
 
+#include <memory>
+
 #include "absl/log/check.h"
 #include "absl/random/random.h"
 #include "gmock/gmock.h"
@@ -175,4 +177,56 @@ TEST(GraveyardSet, RehashTime) {
     uint64_t elapsed = end - start;
     std::cout << "Rehash took " << elapsed / 1'000'000 << "." << std::setw(6) << elapsed % 1'000'000 << "ms" << std::endl;
   }
+}
+
+ptrdiff_t count_existing = 0;
+
+class NoDefaultConstructor {
+ public:
+  explicit NoDefaultConstructor(int a) :value_(std::make_unique<int>(a)) {
+    ++count_existing;
+  }
+  // No default
+  NoDefaultConstructor() = delete;
+  // Copy constructor
+  NoDefaultConstructor(const NoDefaultConstructor& a) :value_(std::make_unique<int>(*a.value_)) {
+    ++count_existing;
+  }
+  // Move constructor
+  NoDefaultConstructor(NoDefaultConstructor&& v) :value_(std::move(v.value_)) {
+    ++count_existing;
+  }
+  ~NoDefaultConstructor() {
+    --count_existing;
+  }
+ private:
+  template <typename H>
+  friend H AbslHashValue(H h, const NoDefaultConstructor& v) {
+    return H::combine(std::move(h), *v.value_);
+  }
+  friend bool operator==(const NoDefaultConstructor &a, const NoDefaultConstructor &b) {
+    return *a.value_ == *b.value_;
+  }
+  friend std::ostream& operator<<(std::ostream& stream, const NoDefaultConstructor &a) {
+    return stream << *a.value_;
+  }
+ private:
+  std::unique_ptr<int> value_;
+};
+
+TEST(GraveyardSet, NoDefaultConstructor) {
+  {
+    NoDefaultConstructor v(3);
+    NoDefaultConstructor v2 = v;
+    CHECK_EQ(v, v2);
+    absl::flat_hash_set<NoDefaultConstructor> aset;
+    yobiduck::GraveyardSet<NoDefaultConstructor> gset;
+    aset.insert(v);
+    gset.insert(v);
+    for (int i = 100; i < 200; i++) {
+      aset.insert(NoDefaultConstructor(i));
+      gset.insert(NoDefaultConstructor(i));
+    }
+  }
+  CHECK_EQ(count_existing, 0);
 }

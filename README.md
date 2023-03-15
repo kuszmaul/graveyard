@@ -143,7 +143,15 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
     and a probe distance of $5.9$ slots.
 
     Result: Speeds up no-reserve insert by a few percent.  Doesn't seem to affect the other operations.a
-
+- [x] Don't change the search_distance to the number of slots instead of the
+      number of buckets.  (Tried this, and it didn't help: we were trying to
+      maintain a bit that the table was ordered, in which case an insert without
+      reservation could be done with $O(X)$ swaps.  It seems better to just do
+      the insert and then fix it on rehash.
+- [x] Handle construction and destruction of elements properly.  Right now the
+      destructors don't run.  Don't rely on the existence of a default
+      constructor (need a move constructor (and a copy constructor for copying a
+      hash table).
 - [ ] Does H2 computing %255 vs %128 make any difference?
 - [ ] Where is that jitter comming from  in facebook?
 - [ ] Put as much metadata as possible into the malloced part (but not the
@@ -151,11 +159,6 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [ ] Increase the size of `buckets_` to match the actual allocated memory.
       This doesn't seem to make any difference for libc malloc, but it probably
       makes a difference for a bucketed malloc such as tcmalloc.
-- [x] Don't change the search_distance to the number of slots instead of the
-      number of buckets.  (Tried this, and it didn't help: we were trying to
-      maintain a bit that the table was ordered, in which case an insert without
-      reservation could be done with $O(X)$ swaps.  It seems better to just do
-      the insert and then fix it on rehash.
 - [ ] Implement maps.  One issue is how to deal with the `value_type =
      std::pair<const key_type, mapped_type>`.  The F14 comment (F14Policy.h at
       `moveValue`. outlines three possibilities:
@@ -172,10 +175,6 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
       Question: What conditions is the pointless key copy actually happening?
       For example, does it use std::move when doing something like a
       `flat_hash_map<std::string, SomeMappedType>`?
-- [ ] Handle construction and destruction of elements properly.  Right now the
-      destructors don't run.  Don't rely on the existence of a default
-      constructor (need a move constructor (and a copy constructor for copying a
-      hash table).
 - [ ] Implement prehash and a two-argument find for bulk lookup.
 - [ ] Optimize iteration over sparse tables: Use vector instruction to find next non-empty slot.
 - [ ] Optimize the case for iterating when a prefix of the table has been deleted.  F14 does it.  Why?

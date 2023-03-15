@@ -172,6 +172,10 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
       Question: What conditions is the pointless key copy actually happening?
       For example, does it use std::move when doing something like a
       `flat_hash_map<std::string, SomeMappedType>`?
+- [ ] Handle construction and destruction of elements properly.  Right now the
+      destructors don't run.  Don't rely on the existence of a default
+      constructor (need a move constructor (and a copy constructor for copying a
+      hash table).
 - [ ] Implement prehash and a two-argument find for bulk lookup.
 - [ ] Optimize iteration over sparse tables: Use vector instruction to find next non-empty slot.
 - [ ] Optimize the case for iterating when a prefix of the table has been deleted.  F14 does it.  Why?

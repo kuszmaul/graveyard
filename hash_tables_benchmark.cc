@@ -28,7 +28,7 @@ enum class Implementation {
   kFacebook,
   kFacebookIdentityHash,
   // Graveyard variants
-  kGraveyard128,  // H2 computed modulo 128 (rather than 255)
+  kGraveyard255,  // H2 computed modulo 255 (rather than 128)
 };
 
 namespace {
@@ -42,7 +42,7 @@ const auto* implementation_enum_and_strings =
          {Implementation::kGoogleIdentityHash, "google-idhash"},
          {Implementation::kFacebook, "facebook"},
          {Implementation::kFacebookIdentityHash, "facebook-idhash"},
-         {Implementation::kGraveyard128, "graveyard128"}});
+         {Implementation::kGraveyard255, "graveyard255"}});
 }  // namespace
 
 ABSL_FLAG(std::vector<Implementation>, implementations,
@@ -72,19 +72,19 @@ struct IdentityHash {
   size_t operator()(uint64_t v) const { return v; }
 };
 
-// GraveyardSet using 128 for the modulo
+// GraveyardSet using 255 for the modulo
 template <class Traits>
-    class Traits128 : public Traits {
+    class Traits255 : public Traits {
  public:
-  static constexpr size_t kH2Modulo = 128;
+  static constexpr size_t kH2Modulo = 255;
 };
 using Int64Traits = yobiduck::internal::HashTableTraits<uint64_t, void, absl::Hash<uint64_t>, std::equal_to<uint64_t>, std::allocator<uint64_t>>;
-static_assert(Int64Traits::kH2Modulo == 255);
+static_assert(Int64Traits::kH2Modulo == 128);
 static_assert(Int64Traits::kSlotsPerBucket == 14);
-using Int64Traits128 = Traits128<Int64Traits>;
-static_assert(Int64Traits128::kH2Modulo == 128);
-using Graveyard128 = yobiduck::internal::HashTable<Int64Traits128>;
-static_assert(Int64Traits128::kSlotsPerBucket == 14);
+using Int64Traits255 = Traits255<Int64Traits>;
+static_assert(Int64Traits255::kH2Modulo == 255);
+using Graveyard255 = yobiduck::internal::HashTable<Int64Traits255>;
+static_assert(Int64Traits255::kSlotsPerBucket == 14);
 
 int main(int argc, char* argv[]) {
   absl::ParseCommandLine(argc, argv);
@@ -115,9 +115,9 @@ int main(int argc, char* argv[]) {
         Get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }
-  if (const auto implementation = Implementation::kGraveyard128;
+  if (const auto implementation = Implementation::kGraveyard255;
       ImplementationIsFlagged(implementation)) {
-    IntHashSetBenchmark<Graveyard128>(
+    IntHashSetBenchmark<Graveyard255>(
         Get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }

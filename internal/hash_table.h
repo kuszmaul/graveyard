@@ -59,7 +59,7 @@ struct HashTableTraits {
   static constexpr uint8_t kEmpty = 255;
   static constexpr uint8_t kSearchDistanceEndSentinal = 255;
   static constexpr size_t kCacheLineSize = 64;
-  static constexpr size_t kH2Modulo = 255;
+  static constexpr size_t kH2Modulo = 128;
 };
 
 // The hash tables range from 3/4 full to 7/8 full (unless there are erase

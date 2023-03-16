@@ -167,6 +167,13 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Does H2 computing %255 vs %128 make any difference?  128 makes insert faster.
 - [x] Convert to 128 (and take advantage of the fact that that it's one less
       SIMD instruction to look for an empty slot.)
+- [ ] Have the benchmark enforce that the scaling governer is `performance`: 
+
+```shell
+$ cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+performance
+```
+
 - [ ] Is it buying anything to have a search_distance instead of an explicit
       tombstone value?
 - [ ] Reduce the high water mark when rehashing.  (We should be able to use

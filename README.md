@@ -87,7 +87,7 @@ $ bazel-bin/hash_tables_benchmark --size_growth=100
 
 ### H2 modulo 128 vs. 255
 
-Computing H2 modulo 255 produces slower inserts.  Find may be a little slower too.
+Computing H2 modulo 255 may result slower inserts.  Find may be a little slower too.
 
 ![Insertion time](plots/insert-128vs255.svg)
 
@@ -165,7 +165,7 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
       constructor (need a move constructor (and a copy constructor for copying a
       hash table).
 - [x] Does H2 computing %255 vs %128 make any difference?  128 makes insert faster.
-- [ ] Convert to 128 (and take advantage of the fact that that it's one less
+- [x] Convert to 128 (and take advantage of the fact that that it's one less
       SIMD instruction to look for an empty slot.)
 - [ ] Is it buying anything to have a search_distance instead of an explicit
       tombstone value?

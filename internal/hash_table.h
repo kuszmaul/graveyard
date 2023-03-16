@@ -134,7 +134,18 @@ struct Bucket {
   }
 
   size_t FindEmpty() const {
-    size_t matches = MatchingElementsMask(Traits::kEmpty);
+    size_t matches;
+    if constexpr (kHaveSse2 && Traits::kH2Modulo == 128) {
+      static_assert(Traits::kEmpty > 128);
+      // We can special case in the event that the empty value is the only H2
+      // value with bit 7 set.
+      __m128i h2s = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&h2[0]));
+      int mask = _mm_movemask_epi8(h2s);
+      mask &= (1 << Traits::kSlotsPerBucket) - 1;
+      matches = mask;
+    } else {
+      matches = MatchingElementsMask(Traits::kEmpty);
+    }
     return matches ? absl::container_internal::TrailingZeros(matches) : Traits::kSlotsPerBucket;
   }
 

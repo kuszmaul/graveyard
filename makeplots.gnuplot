@@ -9,6 +9,7 @@ FBcolor = "#4267B2"
 Gcolor = "#0F9D58"
 Kcolor = "#800080"
 Tcolor = "#00FFFF"
+Tcolor2 = "#000000"
 
 set output "plots/insert-time.svg"
 current_time = strftime("%a %b %d %H:%M:%S %Y", time(0))
@@ -80,8 +81,6 @@ plot "data/notfound_google.data"           using 1:($2/$1)                     w
      "data/notfound_facebook.data"         using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
      "data/notfound_graveyard.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor  fs transparent solid 0.1 notitle,\
 
-
-
 set output "plots/memory.svg"
 unset yrange
 set ylabel "Memory bytes"
@@ -105,3 +104,26 @@ plot "data/insert_google.data"    using 1:3 with lines linecolor rgb Gcolor titl
      b * x linecolor rgb Kcolor  with dots notitle, \
      c * x linecolor rgb FBcolor with dots notitle, \
      d * x linecolor rgb Tcolor  with dots notitle
+
+set yrange [0:200]
+set output "plots/insert-128vs255.svg"
+set title "Insert: H2 Mod 128 vs. mod 255"
+plot "data/insert_graveyard.data"        using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 1 title "Graveyard",\
+     "data/insert_graveyard128.data"     using 1:($2/$1)                     with lines       linecolor rgb Tcolor2  dt 1 title "Graveyard128",\
+     "data/insert_graveyard.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor  fs transparent solid 0.1 notitle,\
+     "data/insert_graveyard128.data"     using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor2 fs transparent solid 0.1 notitle,\
+
+set output "plots/found-128vs255.svg"
+set title "Found: H2 Mod 128 vs. mod 255"
+plot "data/found_graveyard.data"        using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 1 title "Graveyard",\
+     "data/found_graveyard128.data"     using 1:($2/$1)                     with lines       linecolor rgb Tcolor2  dt 1 title "Graveyard128",\
+     "data/found_graveyard.data"      using 1:($2/$1-$4/$1):($2/$1+$4/$1)    with filledcurve linecolor rgb Tcolor fs transparent solid 0.1 notitle,\
+     "data/found_graveyard128.data"      using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor2 fs transparent solid 0.1 notitle,\
+
+set output "plots/notfound-128vs255.svg"
+set title "Not Found: H2 Mod 128 vs. mod 255"
+plot "data/notfound_graveyard.data"        using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 1 title "Graveyard",\
+     "data/notfound_graveyard128.data"     using 1:($2/$1)                     with lines       linecolor rgb Tcolor2  dt 1 title "Graveyard128",\
+     "data/notfound_graveyard.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor fs transparent solid 0.1 notitle,\
+     "data/notfound_graveyard128.data"     using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor2 fs transparent solid 0.1 notitle,\
+

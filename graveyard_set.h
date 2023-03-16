@@ -65,14 +65,7 @@ class GraveyardSet
   using Base::Base;
 
   // Copy assignment
-  GraveyardSet& operator=(const GraveyardSet& other) {
-    clear();
-    reserve(other.size());
-    for (const T& value : other) {
-      insert(value);  // TODO: Optimize this given that we know `value` is not
-                      // in `*this`.
-    }
-  }
+  using Base::operator=;
 
   // Move constructor
   GraveyardSet(GraveyardSet&& other) : GraveyardSet() { swap(other); }

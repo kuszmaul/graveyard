@@ -59,6 +59,7 @@ struct HashTableTraits {
   static constexpr uint8_t kEmpty = 255;
   static constexpr uint8_t kSearchDistanceEndSentinal = 255;
   static constexpr size_t kCacheLineSize = 64;
+  static constexpr size_t kH2Modulo = 255;
 };
 
 // The hash tables range from 3/4 full to 7/8 full (unless there are erase
@@ -255,7 +256,7 @@ class Buckets {
 
   // Returns the H2 hash, used by vector instructions to filter out most of the
   // not-equal entries.
-  size_t H2(size_t hash) const { return hash % 255; }
+  size_t H2(size_t hash) const { return hash % Traits::kH2Modulo; }
 
  private:
   using value_type = typename Traits::value_type;
@@ -306,6 +307,17 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   // Copy constructor
   explicit HashTable(const HashTable& other);
   HashTable(const HashTable& other, const allocator_type& a);
+
+  // Copy assignment
+  HashTable& operator=(const HashTable& other) {
+    clear();
+    reserve(other.size());
+    for (const value_type& value : other) {
+      insert(value);  // TODO: Optimize this given that we know `value` is not
+                      // in `*this`.
+    }
+    return *this;
+  }
 
   class iterator;
   class const_iterator;
@@ -587,7 +599,7 @@ size_t HashTable<Traits>::size() const noexcept {
 template <class Traits>
 void HashTable<Traits>::clear() {
   size_ = 0;
-  buckets_.Clear();
+  buckets_.clear();
 }
 
 template <class Traits>

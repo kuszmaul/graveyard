@@ -83,6 +83,18 @@ To produce data with more points on the x axis:
 $ bazel-bin/hash_tables_benchmark --size_growth=100
 ```
 
+## Experiments
+
+### H2 modulo 128 vs. 255
+
+Surprisingly, computing H2 modulo 255 produces faster inserts (even though the modulo function is a little slower).  Find seems unchanged.
+
+![Insertion time](plots/insert-128vs255.svg)
+
+![Found time](plots/found-128vs255.svg)
+
+![Notfound time](plots/notfound-128vs255.svg)
+
 ## Coding Style
 
 Follow the Google style guide.
@@ -152,7 +164,7 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
       destructors don't run.  Don't rely on the existence of a default
       constructor (need a move constructor (and a copy constructor for copying a
       hash table).
-- [ ] Does H2 computing %255 vs %128 make any difference?
+- [x] Does H2 computing %255 vs %128 make any difference?
 - [ ] Where is that jitter comming from  in facebook?
 - [ ] Put as much metadata as possible into the malloced part (but not the
       `logical_bucket_count_` which is in the critical path for `find`.

@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
   };
   auto swiss_memory_estimator = [](const auto& table) {
     using table_type = std::remove_reference_t<decltype(table)>;
-    return table.capacity() + (1 + sizeof(typename table_type::value_type));
+    return table.capacity() * (1 + sizeof(typename table_type::value_type));
   };
   if (const auto implementation = Implementation::kGraveyard;
       ImplementationIsFlagged(implementation)) {

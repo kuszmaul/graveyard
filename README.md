@@ -167,7 +167,8 @@ $ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c
 - [x] Does H2 computing %255 vs %128 make any difference?  128 makes insert faster.
 - [x] Convert to 128 (and take advantage of the fact that that it's one less
       SIMD instruction to look for an empty slot.)
-- [ ] Have the benchmark enforce that the scaling governer is `performance`: 
+- [x] Maybe just swap one element to a previous bucket when the hash ordering has been inverted.
+- [x] Have the benchmark enforce that the scaling governer is `performance`: 
 
 ```shell
 $ cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
@@ -207,4 +208,4 @@ performance
 - [ ] Optimize iteration over sparse tables: Use vector instruction to find next non-empty slot.
 - [ ] Optimize the case for iterating when a prefix of the table has been deleted.  F14 does it.  Why?
 - [ ] Fall back to std::set or std::map when the probe lengths get too long.
-- [x] Maybe just swap one element to a previous bucket when the hash ordering has been inverted.
+

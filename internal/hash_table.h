@@ -60,14 +60,15 @@ struct HashTableTraits {
   static constexpr uint8_t kSearchDistanceEndSentinal = 255;
   static constexpr size_t kCacheLineSize = 64;
   static constexpr size_t kH2Modulo = 128;
+
+  // The hash tables range from 3/4 full to 7/8 full (unless there are erase
+  // operations, in which case a table might be less than 3/4 full).
+  static constexpr size_t full_utilization_numerator = 7;
+  static constexpr size_t full_utilization_denominator = 8;
+  static constexpr size_t rehashed_utilization_numerator = 3;
+  static constexpr size_t rehashed_utilization_denominator = 4;
 };
 
-// The hash tables range from 3/4 full to 7/8 full (unless there are erase
-// operations, in which case a table might be less than 3/4 full).
-static constexpr size_t full_utilization_numerator = 6;
-static constexpr size_t full_utilization_denominator = 7;
-static constexpr size_t rehashed_utilization_numerator = 3;
-static constexpr size_t rehashed_utilization_denominator = 5;
 
 template <class Traits>
 union Item {
@@ -617,7 +618,7 @@ template <class Traits>
 std::pair<typename HashTable<Traits>::iterator, bool> HashTable<Traits>::insert(value_type value) {
   if (NeedsRehash(size_ + 1)) {
     // Rehash to be, say 3/4, full.
-    rehash(ceil((size_ + 1) * rehashed_utilization_denominator, rehashed_utilization_numerator));
+    rehash(ceil((size_ + 1) * Traits::rehashed_utilization_denominator, Traits::rehashed_utilization_numerator));
   }
   // TODO: Use the Hash in OLP.
   const size_t hash = get_hasher_ref()(value);
@@ -729,7 +730,7 @@ std::string HashTable<Traits>::ToString() const {
 template <class Traits>
 void HashTable<Traits>::Validate(int line_number) const {
   //LOG(INFO) << "Validating" << ToString();
-  CHECK_LE(size(), LogicalSlotCount() * full_utilization_numerator / full_utilization_denominator);
+  CHECK_LE(size(), LogicalSlotCount() * Traits::full_utilization_numerator / Traits::full_utilization_denominator);
   for (size_t i = 0; i < buckets_.logical_size(); ++i) {
     // Verify that the search distances don't go off the end of the bucket array.
     CHECK_LE(i + buckets_[i].search_distance,
@@ -812,7 +813,7 @@ void HashTable<Traits>::reserve(size_t count) {
 
 template <class Traits>
 bool HashTable<Traits>::NeedsRehash(size_t target_size) const {
-  return LogicalSlotCount() * full_utilization_numerator < target_size * full_utilization_denominator;
+  return LogicalSlotCount() * Traits::full_utilization_numerator < target_size * Traits::full_utilization_denominator;
 }
 
 template <class Traits>

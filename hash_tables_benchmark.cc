@@ -28,6 +28,7 @@ enum class Implementation {
   kFacebook,
   kFacebookIdentityHash,
   // Graveyard variants
+  kGraveyard3578, // Fill the table to 7/8 then rehash to 3/5 full (instead of 3/4 full) to reduce number of rehashes.
   kGraveyard255,  // H2 computed modulo 255 (rather than 128)
 };
 
@@ -42,6 +43,7 @@ const auto* implementation_enum_and_strings =
          {Implementation::kGoogleIdentityHash, "google-idhash"},
          {Implementation::kFacebook, "facebook"},
          {Implementation::kFacebookIdentityHash, "facebook-idhash"},
+         {Implementation::kGraveyard3578, "graveyard3578"},
          {Implementation::kGraveyard255, "graveyard255"}});
 }  // namespace
 
@@ -74,7 +76,7 @@ struct IdentityHash {
 
 // GraveyardSet using 255 for the modulo
 template <class Traits>
-    class Traits255 : public Traits {
+class Traits255 : public Traits {
  public:
   static constexpr size_t kH2Modulo = 255;
 };
@@ -85,6 +87,19 @@ using Int64Traits255 = Traits255<Int64Traits>;
 static_assert(Int64Traits255::kH2Modulo == 255);
 using Graveyard255 = yobiduck::internal::HashTable<Int64Traits255>;
 static_assert(Int64Traits255::kSlotsPerBucket == 14);
+
+// GraveyardSet is 3/4 to 7/8 by default
+// This one is 3/5 to 7/8 to reduce the number of rehashes
+template <class Traits>
+class Traits3578 : public Traits {
+ public:
+  static constexpr size_t full_utilization_numerator = 7;
+  static constexpr size_t full_utilization_denominator = 8;
+  static constexpr size_t rehashed_utilization_numerator = 3;
+  static constexpr size_t rehashed_utilization_denominator = 5;
+};
+using Int64Traits3578 = Traits3578<Int64Traits>;
+using Graveyard3578 = yobiduck::internal::HashTable<Int64Traits3578>;
 
 int main(int argc, char* argv[]) {
   absl::ParseCommandLine(argc, argv);
@@ -118,6 +133,12 @@ int main(int argc, char* argv[]) {
   if (const auto implementation = Implementation::kGraveyard255;
       ImplementationIsFlagged(implementation)) {
     IntHashSetBenchmark<Graveyard255>(
+        Get_allocated_memory_size,
+        implementation_enum_and_strings->ToString(implementation));
+  }
+  if (const auto implementation = Implementation::kGraveyard3578;
+      ImplementationIsFlagged(implementation)) {
+    IntHashSetBenchmark<Graveyard3578>(
         Get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }

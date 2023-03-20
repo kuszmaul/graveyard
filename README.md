@@ -195,7 +195,7 @@ performance
       2.   Pointless key copy when moving items during rehash
       3.   Undefined-behavior hack.
 
-      F14 uses the undefined-behavior hack for maps. Abseil uses a
+      F14 uses the undefined-behavior hack for maps.
     
       Abseil does the pointless key copy unless `std::pair<key_type,
       mapped_type` is layout compatible to `std::pair<const key_type,

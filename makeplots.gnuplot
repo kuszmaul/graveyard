@@ -10,7 +10,9 @@ Gcolor = "#0F9D58"
 Kcolor = "#800080"
 Tcolor = "#00FFFF"
 Tcolor2 = "#000000"
+T3578color = "#202020"
 
+set yrange [0:400]
 set output "plots/insert-time.svg"
 current_time = strftime("%a %b %d %H:%M:%S %Y", time(0))
 set title "Insertion (from empty, no reserve) ".current_time
@@ -22,6 +24,7 @@ plot "data/insert_google.data"           using 1:($2/$1)                     wit
      "data/insert_facebook-idhash.data"  using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 2 title "Facebook-idhash",\
      "data/insert_graveyard.data"        using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 1 title "Graveyard",\
      "data/insert_graveyard-idhash.data" using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 2 title "Graveyard-idhash",\
+     "data/insert_graveyard3578.data"    using 1:($2/$1)                     with lines       linecolor rgb T3578color  dt 1 title "Graveyard (3/5--7/8)",\
      "data/insert_google.data"           using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor  fs transparent solid 0.1 notitle,\
      "data/insert_google-idhash.data"    using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor  fs transparent solid 0.1 notitle,\
      "data/insert_OLP.data"              using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Kcolor  fs transparent solid 0.1 notitle,\
@@ -41,6 +44,7 @@ plot "data/reserved-insert_google.data"           using 1:($2/$1)               
      "data/reserved-insert_facebook-idhash.data"  using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 2 title "Facebook-idhash",\
      "data/reserved-insert_graveyard.data"        using 1:($2/$1)                     with lines       linecolor rgb Tcolor dt 1 title "Graveyard",\
      "data/reserved-insert_graveyard-idhash.data" using 1:($2/$1)                     with lines       linecolor rgb Tcolor dt 2 title "Graveyard-idhash",\
+     "data/reserved-insert_graveyard3578.data"    using 1:($2/$1)                     with lines       linecolor rgb T3578color  dt 1 title "Graveyard (3/5--7/8)",\
      "data/reserved-insert_google.data"           using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor fs transparent solid 0.1 notitle,\
      "data/reserved-insert_google-idhash.data"    using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor fs transparent solid 0.1 notitle,\
      "data/reserved-insert_OLP.data"              using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Kcolor fs transparent solid 0.1 notitle,\
@@ -61,6 +65,7 @@ plot "data/found_google.data"           using 1:($2/$1)                     with
      "data/found_facebook-idhash.data"  using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 2 title "Facebook-idhash",\
      "data/found_graveyard.data"        using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 1 title "Graveyard",\
      "data/found_graveyard-idhash.data" using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 2 title "Graveyard-idhash",\
+     "data/found_graveyard3578.data"    using 1:($2/$1)                     with lines       linecolor rgb T3578color  dt 1 title "Graveyard (3/5--7/8)",\
      "data/found_google.data"         using 1:($2/$1-$4/$1):($2/$1+$4/$1)   with filledcurve linecolor rgb Gcolor fs transparent solid 0.1 notitle,\
      "data/found_OLP.data"            using 1:($2/$1-$4/$1):($2/$1+$4/$1)   with filledcurve linecolor rgb Kcolor fs transparent solid 0.1 notitle,\
      "data/found_facebook.data"       using 1:($2/$1-$4/$1):($2/$1+$4/$1)   with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
@@ -76,6 +81,7 @@ plot "data/notfound_google.data"           using 1:($2/$1)                     w
      "data/notfound_facebook-idhash.data"  using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 2 title "Facebook-idhash",\
      "data/notfound_graveyard.data"        using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 1 title "Graveyard",\
      "data/notfound_graveyard-idhash.data" using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 2 title "Graveyard-idhash",\
+     "data/notfound_graveyard3578.data"    using 1:($2/$1)                     with lines       linecolor rgb T3578color  dt 1 title "Graveyard (3/5--7/8)",\
      "data/notfound_google.data"           using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor  fs transparent solid 0.1 notitle,\
      "data/notfound_OLP.data"              using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Kcolor  fs transparent solid 0.1 notitle,\
      "data/notfound_facebook.data"         using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
@@ -126,4 +132,3 @@ plot "data/notfound_graveyard.data"        using 1:($2/$1)                     w
      "data/notfound_graveyard255.data"     using 1:($2/$1)                     with lines       linecolor rgb Tcolor2  dt 1 title "Graveyard255",\
      "data/notfound_graveyard.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor fs transparent solid 0.1 notitle,\
      "data/notfound_graveyard255.data"     using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor2 fs transparent solid 0.1 notitle,\
-

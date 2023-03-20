@@ -31,6 +31,7 @@ enum class Implementation {
   // Graveyard variants
   kGraveyard3578, // Fill the table to 7/8 then rehash to 3/5 full (instead of 3/4 full) to reduce number of rehashes.
   kGraveyard1278, // Fill the table to 7/8 then rehash to 1/2 full (instead of 3/4 full) to reduce number of rehashes.
+  kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of 3/4 full) to reduce number of rehashes.
   kGraveyard255,  // H2 computed modulo 255 (rather than 128)
 };
 
@@ -47,6 +48,7 @@ const auto* implementation_enum_and_strings =
          {Implementation::kFacebookIdentityHash, "facebook-idhash"},
          {Implementation::kGraveyard3578, "graveyard3578"},
 	 {Implementation::kGraveyard1278, "graveyard1278"},
+	 {Implementation::kGraveyard2345, "graveyard2345"},
          {Implementation::kGraveyard255, "graveyard255"}});
 }  // namespace
 
@@ -115,6 +117,17 @@ class Traits1278 : public Traits {
 using Int64Traits1278 = Traits1278<Int64Traits>;
 using Graveyard1278 = yobiduck::internal::HashTable<Int64Traits1278>;
 
+template <class Traits>
+class Traits2345 : public Traits {
+ public:
+  static constexpr size_t full_utilization_numerator = 4;
+  static constexpr size_t full_utilization_denominator = 5;
+  static constexpr size_t rehashed_utilization_numerator = 2;
+  static constexpr size_t rehashed_utilization_denominator = 3;
+};
+using Int64Traits2345 = Traits2345<Int64Traits>;
+using Graveyard2345 = yobiduck::internal::HashTable<Int64Traits2345>;
+
 
 void VerifyPerformanceGovernor() {
   std::ifstream infile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
@@ -168,6 +181,12 @@ int main(int argc, char* argv[]) {
   if (const auto implementation = Implementation::kGraveyard1278;
       ImplementationIsFlagged(implementation)) {
     IntHashSetBenchmark<Graveyard1278>(
+        Get_allocated_memory_size,
+        implementation_enum_and_strings->ToString(implementation));
+  }
+  if (const auto implementation = Implementation::kGraveyard2345;
+      ImplementationIsFlagged(implementation)) {
+    IntHashSetBenchmark<Graveyard2345>(
         Get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }

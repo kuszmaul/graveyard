@@ -33,5 +33,5 @@ http_archive(
 
 local_repository(
     name = "folly",
-    path = "/home/bradleybear/github/folly",
+    path = "/home/bradley/github/folly",
 )

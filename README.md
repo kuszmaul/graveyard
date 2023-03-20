@@ -216,4 +216,5 @@ performance
 - [ ] Optimize the case for iterating when a prefix of the table has been deleted.  F14 does it.  Why?
 - [ ] Fall back to std::set or std::map when the probe lengths get too long.
 - [ ] Can a header-only version of the hash table be produced?
+- [ ] Heterogeneous lookup.
 

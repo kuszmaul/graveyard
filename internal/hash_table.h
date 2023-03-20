@@ -1,13 +1,14 @@
 #ifndef _GRAVEYARD_INTERNAL_HASH_TABLE_H
 #define _GRAVEYARD_INTERNAL_HASH_TABLE_H
 
-#include "internal/object_holder.h"
-
 #include <malloc.h>
 
 #include <iomanip>
 #include <new>
 #include <source_location>
+
+#include "internal/object_holder.h"
+#include "absl/log/check.h"
 
 
 // IWYU has some strange behavior around around std::swap.  It wants to get rid
@@ -55,6 +56,15 @@ struct HashTableTraits {
   using key_equal = KeyEqual;
   using allocator = Allocator;
   static constexpr size_t kSlotsPerBucket = 14;
+
+  static const key_type& KeyOf(const value_type &value) {
+    if constexpr (std::is_same<mapped_type_or_void, void>::value) {
+      return value;
+    } else {
+      return value.first;
+    }
+  }
+
   // H2 Value for empty slots
   static constexpr uint8_t kEmpty = 255;
   static constexpr uint8_t kSearchDistanceEndSentinal = 255;
@@ -122,11 +132,11 @@ struct Bucket {
     return PortableMatchingElements(needle);
   }
 
-  size_t FindElement(uint8_t needle, const typename Traits::value_type& value, const typename Traits::key_equal& key_eq) const {
+  size_t FindElement(uint8_t needle, const typename Traits::key_type& key, const typename Traits::key_equal& key_eq) const {
     size_t matches = MatchingElementsMask(needle);
     while (matches) {
       int idx = absl::container_internal::TrailingZeros(matches);
-      if (key_eq(slots[idx].value, value)) {
+      if (key_eq(Traits::KeyOf(slots[idx].value), key)) {
         return idx;
       }
       matches &= (matches - 1);
@@ -320,6 +330,9 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   explicit HashTable(const HashTable& other);
   HashTable(const HashTable& other, const allocator_type& a);
 
+ // Move constructor
+  HashTable(HashTable&& other) : HashTable() { swap(other); }
+
   // Copy assignment
   HashTable& operator=(const HashTable& other) {
     clear();
@@ -328,6 +341,12 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
       insert(value);  // TODO: Optimize this given that we know `value` is not
                       // in `*this`.
     }
+    return *this;
+  }
+
+  // Move assignment
+  HashTable& operator=(HashTable&& other) {
+    swap(other);
     return *this;
   }
 
@@ -347,7 +366,7 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   size_t size() const noexcept;
 
   void clear();
-  std::pair<iterator, bool> insert(value_type value);
+  std::pair<iterator, bool> insert(const value_type& value);
   void swap(HashTable& other) noexcept;
 
   bool contains(const key_type& value) const;
@@ -426,12 +445,12 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
   //
   // TODO: We can probably save the recompution of h2 if we are careful.
   template <bool keep_graveyard_tombstones>
-  void InsertNoRehashNeededAndValueNotPresent(value_type value);
+  void InsertNoRehashNeededAndValueNotPresent(const value_type& value);
 
   // An overload of `InsertNoRehashNeededAndValueNotPresent` that has already
   // computed the preferred bucket and h2.
   template <bool keep_graveyard_tombstones>
-  iterator InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2);
+  iterator InsertNoRehashNeededAndValueNotPresent(const value_type& value, size_t preferred_bucket, size_t h2);
 
   // The number of present items in all the buckets combined.
   // Todo: Put `size_` into buckets_ (in the memory).
@@ -614,14 +633,16 @@ void HashTable<Traits>::clear() {
   buckets_.clear();
 }
 
+// TODO: Deal with the &&value_type insert.
+
 template <class Traits>
-std::pair<typename HashTable<Traits>::iterator, bool> HashTable<Traits>::insert(value_type value) {
+std::pair<typename HashTable<Traits>::iterator, bool> HashTable<Traits>::insert(const value_type& value) {
   if (NeedsRehash(size_ + 1)) {
     // Rehash to be, say 3/4, full.
     rehash(ceil((size_ + 1) * Traits::rehashed_utilization_denominator, Traits::rehashed_utilization_numerator));
   }
   // TODO: Use the Hash in OLP.
-  const size_t hash = get_hasher_ref()(value);
+  const size_t hash = get_hasher_ref()(Traits::KeyOf(value));
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
   const size_t distance = buckets_[preferred_bucket].search_distance;
@@ -630,7 +651,7 @@ std::pair<typename HashTable<Traits>::iterator, bool> HashTable<Traits>::insert(
     __builtin_prefetch(&(buckets_.begin() + preferred_bucket + i + 1)->h2[0]);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits>& bucket = buckets_[preferred_bucket + i];
-    size_t idx = bucket.FindElement(h2, value, get_key_eq_ref());
+    size_t idx = bucket.FindElement(h2, Traits::KeyOf(value), get_key_eq_ref());
     if (idx < Traits::kSlotsPerBucket) {
       return {iterator{&bucket, idx}, false};
     }
@@ -641,8 +662,9 @@ std::pair<typename HashTable<Traits>::iterator, bool> HashTable<Traits>::insert(
 
 template <class Traits>
 template <bool keep_graveyard_tombstones>
-void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value) {
-  const size_t hash = get_hasher_ref()(value);
+void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(const value_type& value) {
+  const key_type& key = Traits::KeyOf(value);
+  const size_t hash = get_hasher_ref()(key);
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
   InsertNoRehashNeededAndValueNotPresent<keep_graveyard_tombstones>(value, preferred_bucket, h2);
@@ -654,7 +676,7 @@ void maxf(uint8_t& v1, uint8_t v2) {
 
 template <class Traits>
 template <bool keep_graveyard_tombstones>
-typename HashTable<Traits>::iterator HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(value_type value, size_t preferred_bucket, size_t h2) {
+typename HashTable<Traits>::iterator HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(const value_type& value, size_t preferred_bucket, size_t h2) {
   for (size_t i = 0; true; ++i) {
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());

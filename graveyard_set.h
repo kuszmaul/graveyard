@@ -1,26 +1,14 @@
 #ifndef _GRAVEYARD_SET_H_
 #define _GRAVEYARD_SET_H_
 
-#include <malloc.h>
-
-#include <algorithm>
-#include <cassert>
 #include <cstddef>  // for size_t
-#include <cstdint>  // for uint64_t
-#include <iostream>
-#include <limits>
-#include <utility>
-#include <vector>
 
 #include "absl/container/flat_hash_set.h"  // For hash_default_hash (TODO: use internal/hash_function_defaults.h
-#include "absl/log/check.h"
-#include "absl/log/log.h"
 #include "internal/hash_table.h"
 
 namespace yobiduck {
 
-// Hash Set with Graveyard hashing.  Type `T` must have a default constructor.
-// (TODO: Remove that restrictionon the default constructor).
+// Hash Set with Graveyard hashing.
 template <class T, class Hash = absl::container_internal::hash_default_hash<T>,
           class KeyEqual = absl::container_internal::hash_default_eq<T>,
           class Allocator = std::allocator<T>>
@@ -58,23 +46,15 @@ class GraveyardSet
 
   using typename Base::const_pointer;
 
-  GraveyardSet() = default;
-
+  // Default constructor:
+  //   GraveyardSet()
+  //
   // Copy constructor
   //  GraveyardSet(const GraveyardSet &set);
   using Base::Base;
 
-  // Copy assignment
+  // Copy and Move assignment
   using Base::operator=;
-
-  // Move constructor
-  GraveyardSet(GraveyardSet&& other) : GraveyardSet() { swap(other); }
-
-  // Move assignment
-  GraveyardSet& operator=(GraveyardSet&& other) {
-    swap(other);
-    return *this;
-  }
 
   using Base::clear;
 

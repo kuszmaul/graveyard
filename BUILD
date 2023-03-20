@@ -83,8 +83,6 @@ cc_library(
     hdrs = ["graveyard_set.h"],
     deps = [
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
         ":hash_table",
     ],
 )
@@ -94,6 +92,26 @@ cc_test(
     srcs = ["graveyard_set_test.cc"],
     deps = [
         ":graveyard_set",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/random",
+        "@com_google_googletest//:gtest_main",
+    ]
+)
+
+cc_library(
+    name = "graveyard_map",
+    hdrs = ["graveyard_map.h"],
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_set",
+        ":hash_table",
+    ],
+)
+
+cc_test(
+    name = "graveyard_map_test",
+    srcs = ["graveyard_map_test.cc"],
+    deps = [
+        ":graveyard_map",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/random",
         "@com_google_googletest//:gtest_main",
@@ -111,6 +129,8 @@ cc_library(
     hdrs = ["internal/hash_table.h"],
     visibility = ["//visibility:private"],
     deps = [":object_holder",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
     ],
 )
 

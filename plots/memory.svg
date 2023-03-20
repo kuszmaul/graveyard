@@ -285,7 +285,39 @@
 		L412.57,246.46 L427.90,246.46 L443.99,171.06 L460.88,171.06 L478.62,171.06 L497.25,171.06 L516.81,171.06 L537.34,171.06
 		L558.91,171.06  '/></g>
 	</g>
-	<g id="gnuplot_plot_5" ><title>gnuplot_plot_5</title>
+	<g id="gnuplot_plot_5" ><title>Graveyard 1/2--7/8 (12.76 bytes/element) (-6.3% less)</title>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
+	<g transform="translate(173.82,147.91)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="start">
+		<text><tspan font-family="Arial" >Graveyard 1/2--7/8 (12.76 bytes/element) (-6.3% less)</tspan></text>
+	</g>
+</g>
+<g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
+	<path stroke='rgb(  0,   0,  64)'  d='M122.87,144.01 L165.43,144.01 M106.09,422.40 L106.09,422.39 L106.10,422.39 L106.11,422.39 L106.11,422.38 L106.12,422.38
+		L106.12,422.37 L106.13,422.37 L106.14,422.37 L106.14,422.35 L106.15,422.35 L106.16,422.35 L106.17,422.35 L106.18,422.32
+		L106.19,422.32 L106.20,422.32 L106.21,422.32 L106.22,422.32 L106.23,422.32 L106.24,422.26 L106.25,422.26 L106.26,422.26
+		L106.27,422.26 L106.28,422.26 L106.29,422.26 L106.30,422.26 L106.31,422.26 L106.33,422.26 L106.34,422.26 L106.35,422.26
+		L106.36,422.16 L106.38,422.16 L106.39,422.16 L106.41,422.16 L106.42,422.16 L106.44,422.16 L106.46,422.16 L106.47,422.16
+		L106.49,422.16 L106.51,422.16 L106.53,422.16 L106.56,421.99 L106.58,421.99 L106.60,421.99 L106.63,421.99 L106.66,421.99
+		L106.69,421.99 L106.71,421.99 L106.75,421.99 L106.78,421.99 L106.81,421.99 L106.85,421.99 L106.89,421.99 L106.93,421.68
+		L106.97,421.68 L107.01,421.68 L107.06,421.68 L107.11,421.68 L107.16,421.68 L107.21,421.68 L107.27,421.68 L107.33,421.68
+		L107.39,421.68 L107.45,421.68 L107.52,421.13 L107.59,421.13 L107.67,421.13 L107.75,421.13 L107.83,421.13 L107.92,421.13
+		L108.01,421.13 L108.10,421.13 L108.20,421.13 L108.31,421.13 L108.42,421.13 L108.54,421.13 L108.66,420.18 L108.79,420.18
+		L108.92,420.18 L109.07,420.18 L109.21,420.18 L109.37,420.18 L109.53,420.18 L109.71,420.18 L109.89,420.18 L110.08,420.18
+		L110.28,420.18 L110.49,418.52 L110.71,418.52 L110.94,418.52 L111.18,418.52 L111.43,418.52 L111.70,418.52 L111.98,418.52
+		L112.27,418.52 L112.58,418.52 L112.91,418.52 L113.25,418.52 L113.61,418.52 L113.98,415.62 L114.38,415.62 L114.79,415.62
+		L115.23,415.62 L115.68,415.62 L116.16,415.62 L116.67,415.62 L117.20,415.62 L117.75,415.62 L118.33,415.62 L118.95,415.62
+		L119.59,410.53 L120.26,410.53 L120.97,410.53 L121.72,410.53 L122.50,410.53 L123.32,410.53 L124.18,410.53 L125.08,410.53
+		L126.03,410.53 L127.03,410.53 L128.08,410.53 L129.18,410.53 L130.33,401.63 L131.54,401.63 L132.82,401.63 L134.15,401.63
+		L135.56,401.63 L137.03,401.63 L138.58,401.63 L140.20,401.63 L141.91,401.63 L143.70,401.63 L145.58,401.63 L147.55,386.06
+		L149.62,386.06 L151.80,386.06 L154.09,386.06 L156.49,386.06 L159.01,386.06 L161.65,386.06 L164.43,386.06 L167.35,386.06
+		L170.41,386.06 L173.63,386.06 L177.00,358.80 L180.55,358.80 L184.27,358.80 L188.18,358.80 L192.29,358.80 L196.60,358.80
+		L201.12,358.80 L205.87,358.80 L210.86,358.80 L216.10,358.80 L221.60,358.80 L227.38,358.80 L233.44,311.10 L239.81,311.10
+		L246.49,311.10 L253.51,311.10 L260.89,311.10 L268.62,311.10 L276.75,311.10 L285.28,311.10 L294.24,311.10 L303.65,311.10
+		L313.53,311.10 L323.90,227.63 L334.79,227.63 L346.23,227.63 L358.23,227.63 L370.84,227.63 L384.08,227.63 L397.98,227.63
+		L412.57,227.63 L427.90,227.63 L443.99,227.63 L460.88,227.63 L478.62,227.63 L497.25,81.55 L516.81,81.55 L537.34,81.55
+		L558.91,81.55  '/></g>
+	</g>
+	<g id="gnuplot_plot_6" ><title>gnuplot_plot_6</title>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
 	<use xlink:href='#gpDot' x='106.09' y='422.40' color='rgb( 15, 157,  88)'/>
 
@@ -489,7 +521,7 @@
 
 </g>
 	</g>
-	<g id="gnuplot_plot_6" ><title>gnuplot_plot_6</title>
+	<g id="gnuplot_plot_7" ><title>gnuplot_plot_7</title>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
 	<use xlink:href='#gpDot' x='106.09' y='422.40' color='rgb(128,   0, 128)'/>
 
@@ -693,7 +725,7 @@
 
 </g>
 	</g>
-	<g id="gnuplot_plot_7" ><title>gnuplot_plot_7</title>
+	<g id="gnuplot_plot_8" ><title>gnuplot_plot_8</title>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
 	<use xlink:href='#gpDot' x='106.09' y='422.40' color='rgb( 66, 103, 178)'/>
 
@@ -897,7 +929,7 @@
 
 </g>
 	</g>
-	<g id="gnuplot_plot_8" ><title>gnuplot_plot_8</title>
+	<g id="gnuplot_plot_9" ><title>gnuplot_plot_9</title>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
 	<use xlink:href='#gpDot' x='106.09' y='422.40' color='rgb(  0, 255, 255)'/>
 
@@ -1111,7 +1143,7 @@
 	<path stroke='black'  d='M106.09,54.01 L106.09,422.40 L574.82,422.40 L574.82,54.01 L106.09,54.01 Z  '/></g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">
 	<g transform="translate(340.45,30.91)" stroke="none" fill="black" font-family="Arial" font-size="12.00"  text-anchor="middle">
-		<text><tspan font-family="Arial" >Memory Mon Mar 20 14:09:41 2023</tspan></text>
+		<text><tspan font-family="Arial" >Memory Mon Mar 20 14:23:49 2023</tspan></text>
 	</g>
 </g>
 <g fill="none" color="black" stroke="currentColor" stroke-width="1.00" stroke-linecap="butt" stroke-linejoin="miter">

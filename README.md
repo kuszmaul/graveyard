@@ -175,6 +175,11 @@ $ cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 performance
 ```
 
+- [x] Does running at a lower load factor help insertions?
+      
+      Answer 0:  Using $1/2--7/8$ doesn't help inserts compared to $3/4--7/8$.
+
+- [ ] How about running at $2/3--4/5"?
 - [ ] Is it buying anything to have a search_distance instead of an explicit
       tombstone value?
 - [ ] Reduce the high water mark when rehashing.  (We should be able to use

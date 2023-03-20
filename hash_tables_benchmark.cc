@@ -30,6 +30,7 @@ enum class Implementation {
   kFacebookIdentityHash,
   // Graveyard variants
   kGraveyard3578, // Fill the table to 7/8 then rehash to 3/5 full (instead of 3/4 full) to reduce number of rehashes.
+  kGraveyard1278, // Fill the table to 7/8 then rehash to 1/2 full (instead of 3/4 full) to reduce number of rehashes.
   kGraveyard255,  // H2 computed modulo 255 (rather than 128)
 };
 
@@ -45,6 +46,7 @@ const auto* implementation_enum_and_strings =
          {Implementation::kFacebook, "facebook"},
          {Implementation::kFacebookIdentityHash, "facebook-idhash"},
          {Implementation::kGraveyard3578, "graveyard3578"},
+	 {Implementation::kGraveyard1278, "graveyard1278"},
          {Implementation::kGraveyard255, "graveyard255"}});
 }  // namespace
 
@@ -102,6 +104,18 @@ class Traits3578 : public Traits {
 using Int64Traits3578 = Traits3578<Int64Traits>;
 using Graveyard3578 = yobiduck::internal::HashTable<Int64Traits3578>;
 
+template <class Traits>
+class Traits1278 : public Traits {
+ public:
+  static constexpr size_t full_utilization_numerator = 7;
+  static constexpr size_t full_utilization_denominator = 8;
+  static constexpr size_t rehashed_utilization_numerator = 1;
+  static constexpr size_t rehashed_utilization_denominator = 2;
+};
+using Int64Traits1278 = Traits1278<Int64Traits>;
+using Graveyard1278 = yobiduck::internal::HashTable<Int64Traits1278>;
+
+
 void VerifyPerformanceGovernor() {
   std::ifstream infile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
   std::string line;
@@ -148,6 +162,12 @@ int main(int argc, char* argv[]) {
   if (const auto implementation = Implementation::kGraveyard3578;
       ImplementationIsFlagged(implementation)) {
     IntHashSetBenchmark<Graveyard3578>(
+        Get_allocated_memory_size,
+        implementation_enum_and_strings->ToString(implementation));
+  }
+  if (const auto implementation = Implementation::kGraveyard1278;
+      ImplementationIsFlagged(implementation)) {
+    IntHashSetBenchmark<Graveyard1278>(
         Get_allocated_memory_size,
         implementation_enum_and_strings->ToString(implementation));
   }

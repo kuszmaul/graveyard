@@ -4,6 +4,7 @@
 
 #include "absl/log/check.h"
 #include "absl/random/random.h"
+#include "absl/container/flat_hash_set.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -62,7 +63,7 @@ TEST(GraveyardSet, IteratorOneElement) {
   it = set.begin();
   EXPECT_TRUE(it != set.end());
   ++it;
-  // CHECK(it == set.end());
+  CHECK(it == set.end());
   EXPECT_THAT(set, UnorderedElementsAre(100ul));
 }
 
@@ -85,17 +86,43 @@ TEST(GraveyardSet, RandomInserts) {
   EXPECT_THAT(set, UnorderedElementsAreArray(fset));
 }
 
+TEST(GraveyardSet, Rehash0) {
+  yobiduck::GraveyardSet<uint64_t> set;
+  constexpr size_t N = 1000;
+  set.reserve(N);
+  for (size_t i = 0; i < N/2; ++i) {
+    set.insert(i);
+  }
+  set.rehash(0);
+}
+
+// TODO: A test that does a rehash after some erases.
+
+namespace{
+template <class KeyType>
+size_t ExpectedCapacityAfterRehash(size_t size) {
+  using Traits = yobiduck::internal::HashTableTraits<KeyType, void, absl::Hash<KeyType>, std::equal_to<>, std::allocator<KeyType>>;
+  size_t slots_needed = yobiduck::internal::ceil(size * Traits::full_utilization_denominator,
+							   Traits::full_utilization_numerator);
+  size_t logical_buckets_needed = yobiduck::internal::ceil(slots_needed, Traits::kSlotsPerBucket);
+  // We have a minor DRY problem here: This magic formula also appears
+  // in hash_table.h.
+  size_t extra_buckets = (logical_buckets_needed > 4) ? 4
+                         : (logical_buckets_needed <= 2) ? 1
+                                                         : logical_buckets_needed - 1;
+  size_t physical_buckets = logical_buckets_needed + extra_buckets;
+  return physical_buckets * Traits::kSlotsPerBucket;
+}
+}  // namespace
+
 TEST(GraveyardSet, Reserve) {
-  {
-    yobiduck::GraveyardSet<uint64_t> set;
-    set.reserve(1000);
-    set.insert(100u);
-  }
-  {
-    yobiduck::GraveyardSet<uint64_t> set;
-    set.reserve(1000);
-    set.insert(100u);
-  }
+  yobiduck::GraveyardSet<uint64_t> set;
+  set.reserve(1000);
+  set.insert(100u);
+  EXPECT_EQ(set.size(), 1);
+  // There's a tradeoff between making the test easy to read and avoiding the use of inscrutable magic numbers.  So we'll do it both ways.
+  EXPECT_EQ(ExpectedCapacityAfterRehash<uint64_t>(1000), 86 * 14);
+  EXPECT_EQ(set.capacity(), ExpectedCapacityAfterRehash<uint64_t>(1000));
 }
 
 TEST(GraveyardSet, AssignAndReserve) {

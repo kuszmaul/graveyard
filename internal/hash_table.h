@@ -73,6 +73,7 @@ struct HashTableTraits {
 
   // The hash tables range from 3/4 full to 7/8 full (unless there are erase
   // operations, in which case a table might be less than 3/4 full).
+  // TODO: Make these be "kConstant".
   static constexpr size_t full_utilization_numerator = 7;
   static constexpr size_t full_utilization_denominator = 8;
   static constexpr size_t rehashed_utilization_numerator = 3;
@@ -389,7 +390,8 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
     return *static_cast<const KeyEqualHolder&>(*this);
   }
 
-  // Returns the actual size of the buckets including the overflow buckets.
+  // Returns the actual size of the buckets (in slots) including the
+  // overflow buckets.
   size_t bucket_count() const {
     return buckets_.physical_size() * Traits::kSlotsPerBucket;
   }
@@ -402,7 +404,13 @@ class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
     return buckets_.physical_size() * sizeof(*buckets_.begin());
   }
 
-  // Rehashes the table so that we can hold at least count.
+  // Rehashes the table so that we can hold at least `count` without
+  // exceeding the maximum load factor.  Also we can hold at least
+  // `size()` without exceeding the maximum load factor.
+  //
+  // Note: If you do a series of `insert` and `rehash(0)` operations,
+  // it can be slow, `rehash()` doesn't guarantee, for example, that
+  // if the table grows, it grows by at least a constant factor.
   void rehash(size_t count);
 
   void reserve(size_t count);
@@ -807,6 +815,9 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
 
 template <class Traits>
 void HashTable<Traits>::rehash(size_t slot_count) {
+  if (slot_count == 0) {
+    slot_count = ceil(size() * Traits::full_utilization_denominator, Traits::full_utilization_numerator);
+  }
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
   buckets.swap(buckets_);
   size_ = 0;
@@ -828,8 +839,11 @@ void HashTable<Traits>::rehash(size_t slot_count) {
 template <class Traits>
 void HashTable<Traits>::reserve(size_t count) {
   if (NeedsRehash(count)) {
-    // Set the LogicalSlotCount to at least count.  Don't grow by less than 1/7.
-    rehash(std::max(count, LogicalSlotCount() * 8 / 7));
+    size_t new_capacity_for_count = ceil(count * Traits::full_utilization_denominator, Traits::full_utilization_numerator);
+    // Don't grow by less than 1/7.
+    size_t new_capacity = std::max(new_capacity_for_count, ceil(LogicalSlotCount() * 8, 7));
+    // Set the LogicalSlotCount to at least count.  
+    rehash(new_capacity);
   }
 }
 

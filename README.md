@@ -217,4 +217,5 @@ performance
 - [ ] Fall back to std::set or std::map when the probe lengths get too long.
 - [ ] Can a header-only version of the hash table be produced?
 - [ ] Heterogeneous lookup.
+- [ ] Deal with various flavors of insert (&&) and constructors.
 

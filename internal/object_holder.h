@@ -12,19 +12,18 @@
 
 namespace yobiduck::internal {
 
-template <char Tag, class T>
-class ObjectHolder {
- public:
+template <char Tag, class T> class ObjectHolder {
+public:
   template <typename... Args>
-  ObjectHolder(Args&&... args) : value_{std::forward<Args>(args)...} {}
+  ObjectHolder(Args &&...args) : value_{std::forward<Args>(args)...} {}
 
-  T& operator*() { return value_; };
-  const T& operator*() const { return value_; }
+  T &operator*() { return value_; };
+  const T &operator*() const { return value_; }
 
- private:
+private:
   T value_;
 };
 
-}  // namespace yobiduck::internal
+} // namespace yobiduck::internal
 
-#endif  // _GRAVEYARD_INTERNAL_OBJECT_HOLDER_H_
+#endif // _GRAVEYARD_INTERNAL_OBJECT_HOLDER_H_

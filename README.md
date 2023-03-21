@@ -101,13 +101,13 @@ Follow the Google style guide.
 
 Keep code formatted with `clang-format`.  E.g.,
 ```shell
-$ clang-format -i *.h *.cc
+$ clang-format -i *.h *.cc */*.h */*.cc
 ```
 
 Keep includes clean with iwyu:
 
 ```shell
-$ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c++17 -I/home/bradley/github/abseil-cpp/ -I/home/bradley/github/folly -I. -I/home/bradley/github/googletest/googlemock/include/ -I/home/bradley/github/googletest/googletest/include $x; done
+$ for x in *.h *.cc */*.h */*.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c++17 -I/home/bradley/github/abseil-cpp/ -I/home/bradley/github/folly -I. -I/home/bradley/github/googletest/googlemock/include/ -I/home/bradley/github/googletest/googletest/include $x; done
 ```
 
 Don't forget `internal/*` for iwyu.

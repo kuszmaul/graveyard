@@ -5,9 +5,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <iostream>  // for operator<<, basic_ostream, basic_ostream<>...
+#include <iostream> // for operator<<, basic_ostream, basic_ostream<>...
 #include <string>
-#include <string_view>  // for string_view
+#include <string_view> // for string_view
 #include <vector>
 
 #include "absl/flags/declare.h"
@@ -27,12 +27,12 @@ ABSL_DECLARE_FLAG(std::vector<Operation>, operations);
 // Returns a set of distinct number of cardinality `size`.  Returns the same set
 // if we run this several times within a single process (but the set may be
 // different from run-to-run).
-void GetSomeNumbers(size_t size, std::vector<uint64_t>& result);
+void GetSomeNumbers(size_t size, std::vector<uint64_t> &result);
 // Return a set of distinct numbers of cardinality `size`, but it doesn't
 // interesect `GetSomeNumbers(size)`.  Return the same set within several runs
 // in the same process.
-std::vector<uint64_t> GetSomeOtherNumbers(
-    const std::vector<uint64_t>& other_numbers);
+std::vector<uint64_t>
+GetSomeOtherNumbers(const std::vector<uint64_t> &other_numbers);
 
 bool OperationIsFlagged(Operation operation);
 
@@ -40,8 +40,9 @@ std::string FileNameForHashSetBenchmark(Operation operation,
                                         std::string_view implementation);
 
 template <class HashSet>
-void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
-                         std::string_view implementation) {
+void IntHashSetBenchmark(
+    std::function<size_t(const HashSet &)> memory_estimator,
+    std::string_view implementation) {
   size_t size_growth = absl::GetFlag(FLAGS_size_growth);
   std::vector<size_t> sizes;
   for (size_t size = 1; size < size_growth; ++size) {
@@ -87,7 +88,8 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
             GetSomeNumbers(size, values);
           }
           set = HashSet();
-          if (0) std::cerr << "Reserving " << size << std::endl;
+          if (0)
+            std::cerr << "Reserving " << size << std::endl;
           set.reserve(size);
         },
         [&]() {
@@ -153,4 +155,4 @@ void IntHashSetBenchmark(std::function<size_t(const HashSet&)> memory_estimator,
   }
 }
 
-#endif  // HASH_BENCHMARK_H_
+#endif // HASH_BENCHMARK_H_

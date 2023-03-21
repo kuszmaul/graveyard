@@ -2,16 +2,16 @@
 
 #include <memory>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/log/check.h"
 #include "absl/random/random.h"
-#include "absl/container/flat_hash_set.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+using testing::_;
 using testing::Pair;
 using testing::UnorderedElementsAre;
 using testing::UnorderedElementsAreArray;
-using testing::_;
 
 TEST(GraveyardSet, Types) {
   using IntSet = yobiduck::GraveyardSet<uint64_t>;
@@ -23,10 +23,10 @@ TEST(GraveyardSet, Types) {
   static_assert(std::is_same_v<IntSet::key_equal, std::equal_to<uint64_t>>);
   static_assert(
       std::is_same_v<IntSet::allocator_type, std::allocator<uint64_t>>);
-  static_assert(std::is_same_v<IntSet::reference, uint64_t&>);
-  static_assert(std::is_same_v<IntSet::const_reference, const uint64_t&>);
-  static_assert(std::is_same_v<IntSet::pointer, uint64_t*>);
-  static_assert(std::is_same_v<IntSet::const_pointer, const uint64_t*>);
+  static_assert(std::is_same_v<IntSet::reference, uint64_t &>);
+  static_assert(std::is_same_v<IntSet::const_reference, const uint64_t &>);
+  static_assert(std::is_same_v<IntSet::pointer, uint64_t *>);
+  static_assert(std::is_same_v<IntSet::const_pointer, const uint64_t *>);
 }
 
 TEST(GraveyardSet, Basic) {
@@ -46,7 +46,7 @@ TEST(GraveyardSet, EmptyIterator) {
 TEST(GraveyardSet, EmptyConstIterator) {
   yobiduck::GraveyardSet<uint64_t> set;
   EXPECT_TRUE(set.cbegin() == set.cend());
-  const yobiduck::GraveyardSet<uint64_t>* cset = &set;
+  const yobiduck::GraveyardSet<uint64_t> *cset = &set;
   EXPECT_TRUE(cset->cbegin() == cset->cend());
   EXPECT_TRUE(cset->begin() == cset->end());
   EXPECT_TRUE(cset->cbegin() == cset->end());
@@ -90,7 +90,7 @@ TEST(GraveyardSet, Rehash0) {
   yobiduck::GraveyardSet<uint64_t> set;
   constexpr size_t N = 1000;
   set.reserve(N);
-  for (size_t i = 0; i < N/2; ++i) {
+  for (size_t i = 0; i < N / 2; ++i) {
     set.insert(i);
   }
   set.rehash(0);
@@ -98,29 +98,35 @@ TEST(GraveyardSet, Rehash0) {
 
 // TODO: A test that does a rehash after some erases.
 
-namespace{
-template <class KeyType>
-size_t ExpectedCapacityAfterRehash(size_t size) {
-  using Traits = yobiduck::internal::HashTableTraits<KeyType, void, absl::Hash<KeyType>, std::equal_to<>, std::allocator<KeyType>>;
-  size_t slots_needed = yobiduck::internal::ceil(size * Traits::full_utilization_denominator,
-							   Traits::full_utilization_numerator);
-  size_t logical_buckets_needed = yobiduck::internal::ceil(slots_needed, Traits::kSlotsPerBucket);
+namespace {
+template <class KeyType> size_t ExpectedCapacityAfterRehash(size_t size) {
+  using Traits =
+      yobiduck::internal::HashTableTraits<KeyType, void, absl::Hash<KeyType>,
+                                          std::equal_to<>,
+                                          std::allocator<KeyType>>;
+  size_t slots_needed =
+      yobiduck::internal::ceil(size * Traits::full_utilization_denominator,
+                               Traits::full_utilization_numerator);
+  size_t logical_buckets_needed =
+      yobiduck::internal::ceil(slots_needed, Traits::kSlotsPerBucket);
   // We have a minor DRY problem here: This magic formula also appears
   // in hash_table.h.
   size_t extra_buckets = (logical_buckets_needed > 4) ? 4
-                         : (logical_buckets_needed <= 2) ? 1
-                                                         : logical_buckets_needed - 1;
+                         : (logical_buckets_needed <= 2)
+                             ? 1
+                             : logical_buckets_needed - 1;
   size_t physical_buckets = logical_buckets_needed + extra_buckets;
   return physical_buckets * Traits::kSlotsPerBucket;
 }
-}  // namespace
+} // namespace
 
 TEST(GraveyardSet, Reserve) {
   yobiduck::GraveyardSet<uint64_t> set;
   set.reserve(1000);
   set.insert(100u);
   EXPECT_EQ(set.size(), 1);
-  // There's a tradeoff between making the test easy to read and avoiding the use of inscrutable magic numbers.  So we'll do it both ways.
+  // There's a tradeoff between making the test easy to read and avoiding the
+  // use of inscrutable magic numbers.  So we'll do it both ways.
   EXPECT_EQ(ExpectedCapacityAfterRehash<uint64_t>(1000), 86 * 14);
   EXPECT_EQ(set.capacity(), ExpectedCapacityAfterRehash<uint64_t>(1000));
 }
@@ -135,22 +141,28 @@ TEST(GraveyardSet, AssignAndReserve) {
 
 struct UnhashableInt {
   int x;
-  explicit UnhashableInt(int x) :x(x) {}
+  explicit UnhashableInt(int x) : x(x) {}
 };
 struct UnhashableIntHasher {
-  size_t operator()(const UnhashableInt &h) const { return absl::Hash<int>()(h.x); }
+  size_t operator()(const UnhashableInt &h) const {
+    return absl::Hash<int>()(h.x);
+  }
 };
 struct UnhashableIntEqual {
-  size_t operator()(const UnhashableInt &a, const UnhashableInt &b) const { return a.x == b.x; }
+  size_t operator()(const UnhashableInt &a, const UnhashableInt &b) const {
+    return a.x == b.x;
+  }
 };
 
-std::ostream& operator<<(std::ostream& stream, const UnhashableInt& unhashable_int) {
+std::ostream &operator<<(std::ostream &stream,
+                         const UnhashableInt &unhashable_int) {
   return stream << unhashable_int.x;
 }
 
 TEST(GraveyardSet, UserDefinedHashAndEq) {
   {
-    absl::flat_hash_set<UnhashableInt, UnhashableIntHasher, UnhashableIntEqual> set;
+    absl::flat_hash_set<UnhashableInt, UnhashableIntHasher, UnhashableIntEqual>
+        set;
     EXPECT_TRUE(!set.contains(UnhashableInt{0}));
     set.insert(UnhashableInt{0});
     EXPECT_TRUE(set.contains(UnhashableInt{0}));
@@ -162,7 +174,9 @@ TEST(GraveyardSet, UserDefinedHashAndEq) {
     }
   }
   {
-    yobiduck::GraveyardSet<UnhashableInt, UnhashableIntHasher, UnhashableIntEqual> set;
+    yobiduck::GraveyardSet<UnhashableInt, UnhashableIntHasher,
+                           UnhashableIntEqual>
+        set;
     EXPECT_TRUE(!set.contains(UnhashableInt{0}));
     set.insert(UnhashableInt{0});
     EXPECT_TRUE(set.contains(UnhashableInt{0}));
@@ -186,7 +200,7 @@ namespace {
 inline uint64_t operator-(struct timespec a, struct timespec b) {
   return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;
 }
-}  // namespace
+} // namespace
 
 TEST(GraveyardSet, RehashTime) {
   constexpr size_t kSize = 1000000;
@@ -202,42 +216,46 @@ TEST(GraveyardSet, RehashTime) {
     struct timespec end;
     clock_gettime(CLOCK_MONOTONIC, &end);
     uint64_t elapsed = end - start;
-    std::cout << "Rehash took " << elapsed / 1'000'000 << "." << std::setw(6) << elapsed % 1'000'000 << "ms" << std::endl;
+    std::cout << "Rehash took " << elapsed / 1'000'000 << "." << std::setw(6)
+              << elapsed % 1'000'000 << "ms" << std::endl;
   }
 }
 
 ptrdiff_t count_existing = 0;
 
 class NoDefaultConstructor {
- public:
-  explicit NoDefaultConstructor(int a) :value_(std::make_unique<int>(a)) {
+public:
+  explicit NoDefaultConstructor(int a) : value_(std::make_unique<int>(a)) {
     ++count_existing;
   }
   // No default
   NoDefaultConstructor() = delete;
   // Copy constructor
-  NoDefaultConstructor(const NoDefaultConstructor& a) :value_(std::make_unique<int>(*a.value_)) {
+  NoDefaultConstructor(const NoDefaultConstructor &a)
+      : value_(std::make_unique<int>(*a.value_)) {
     ++count_existing;
   }
   // Move constructor
-  NoDefaultConstructor(NoDefaultConstructor&& v) :value_(std::move(v.value_)) {
+  NoDefaultConstructor(NoDefaultConstructor &&v) : value_(std::move(v.value_)) {
     ++count_existing;
   }
-  ~NoDefaultConstructor() {
-    --count_existing;
-  }
- private:
+  ~NoDefaultConstructor() { --count_existing; }
+
+private:
   template <typename H>
-  friend H AbslHashValue(H h, const NoDefaultConstructor& v) {
+  friend H AbslHashValue(H h, const NoDefaultConstructor &v) {
     return H::combine(std::move(h), *v.value_);
   }
-  friend bool operator==(const NoDefaultConstructor &a, const NoDefaultConstructor &b) {
+  friend bool operator==(const NoDefaultConstructor &a,
+                         const NoDefaultConstructor &b) {
     return *a.value_ == *b.value_;
   }
-  friend std::ostream& operator<<(std::ostream& stream, const NoDefaultConstructor &a) {
+  friend std::ostream &operator<<(std::ostream &stream,
+                                  const NoDefaultConstructor &a) {
     return stream << *a.value_;
   }
- private:
+
+private:
   std::unique_ptr<int> value_;
 };
 

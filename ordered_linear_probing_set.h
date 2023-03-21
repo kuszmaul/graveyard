@@ -2,13 +2,13 @@
 #define _ORDERED_LINEAR_PROBING_SET_H_
 
 #include <cassert>
-#include <cstddef>  // for size_t
-#include <cstdint>  // for uint64_t
+#include <cstddef> // for size_t
+#include <cstdint> // for uint64_t
 #include <iostream>
 #include <limits>
 #include <vector>
 
-#include "absl/container/flat_hash_set.h"  // For hash_default_hash
+#include "absl/container/flat_hash_set.h" // For hash_default_hash
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 
@@ -18,7 +18,7 @@ template <class T, class Hash = absl::container_internal::hash_default_hash<T>,
           class Eq = absl::container_internal::hash_default_eq<T>>
 class OrderedLinearProbingSet {
   // Ranges from 3/4 full to 7/8 full.
- public:
+public:
   using value_type = T;
   using hasher = Hash;
   void reserve(size_t count);
@@ -28,7 +28,7 @@ class OrderedLinearProbingSet {
   size_t capacity() const { return 1 + slots_.size(); }
   size_t memory_estimate() const { return capacity() * sizeof(slots_[0]); }
 
- private:
+private:
   static constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }
   // Rehashes the table so that we can hold at least count.
   void rehash(size_t count);
@@ -38,7 +38,7 @@ class OrderedLinearProbingSet {
   size_t occupied_slot_count_ = 0;
   size_t slot_count_ = 0;
   bool max_is_present_ = false;
-  std::vector<T> slots_;  // slots_.size() may be bigger than slot_count_.
+  std::vector<T> slots_; // slots_.size() may be bigger than slot_count_.
 };
 
 template <class T, class Hash, class Eq>
@@ -49,7 +49,8 @@ void OrderedLinearProbingSet<T, Hash, Eq>::reserve(size_t count) {
       std::cerr << "reserve: Rehashing from " << slots_.size() << " to "
                 << count << std::endl;
     rehash(count);
-    if (0) std::cerr << "size=" << slots_.size();
+    if (0)
+      std::cerr << "size=" << slots_.size();
   }
 }
 
@@ -84,7 +85,7 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
   for (; slots_[slot] <= value; ++slot) {
     assert(slot < slots_.size());
     if (slots_[slot] == value) {
-      return false;  // already there.
+      return false; // already there.
     }
     CHECK(!kDebugOLP || slot + 1 < slots_.size())
         << "Overflow: slot_count_=" << slot_count_ << " slot=" << slot
@@ -117,7 +118,8 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::insert(uint64_t value) {
         << PreferredSlot(slots_[slot], slot_count_) << " originally inserting "
         << original_value;
     assert(slot < slots_.size());
-    if (0) std::cerr << " Storing " << value << " at " << slot << std::endl;
+    if (0)
+      std::cerr << " Storing " << value << " at " << slot << std::endl;
     std::swap(value, slots_[slot]);
     if (value == kMax) {
       ++occupied_slot_count_;
@@ -137,7 +139,8 @@ void OrderedLinearProbingSet<T, Hash, Eq>::rehash(size_t slot_count) {
   std::swap(slots_, slots);
   occupied_slot_count_ = 0;
   for (uint64_t v : slots) {
-    if (v != kMax) insert(v);
+    if (v != kMax)
+      insert(v);
   }
 }
 
@@ -151,7 +154,7 @@ bool OrderedLinearProbingSet<T, Hash, Eq>::contains(uint64_t value) const {
   for (; slots_[slot] <= value; ++slot) {
     assert(slot < slots_.size());
     if (slots_[slot] == value) {
-      return true;  // already there.
+      return true; // already there.
     }
     CHECK(!kDebugOLP || slot + 1 < slots_.size()) << "contains overflow";
   }
@@ -163,4 +166,4 @@ size_t OrderedLinearProbingSet<T, Hash, Eq>::size() const {
   return max_is_present_ + occupied_slot_count_;
 }
 
-#endif  // _ORDERED_LINEAR_PROBING_SET_H_
+#endif // _ORDERED_LINEAR_PROBING_SET_H_

@@ -1,26 +1,26 @@
 #include "hash_benchmark.h"
 
-#include <cstdlib>  // for abort
+#include <cstdlib> // for abort
 #include <random>
 #include <string_view>
-#include <utility>  // for pair, move
+#include <utility> // for pair, move
 #include <vector>
 
-#include "absl/algorithm/container.h"      // for c_find, ContainerIter
-#include "absl/container/flat_hash_set.h"  // for flat_hash_set, BitMask
-#include "absl/hash/hash.h"                // for Hash
+#include "absl/algorithm/container.h"     // for c_find, ContainerIter
+#include "absl/container/flat_hash_set.h" // for flat_hash_set, BitMask
+#include "absl/hash/hash.h"               // for Hash
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"  // for string_view
+#include "absl/strings/string_view.h" // for string_view
 #include "enum_print.h"
 #include "enums_flag.h"
 
 namespace {
-const auto* operation_enum_and_strings = EnumsAndStrings<Operation>::Create(
+const auto *operation_enum_and_strings = EnumsAndStrings<Operation>::Create(
     {{Operation::kInsert, "insert"},
      {Operation::kReservedInsert, "reserved-insert"},
      {Operation::kFound, "found"},
      {Operation::kNotFound, "notfound"}});
-}  // namespace
+} // namespace
 
 ABSL_FLAG(size_t, size_growth, 20,
           "For benchmarking tables of various sizes, increase the size by "
@@ -33,8 +33,8 @@ std::string AbslUnparseFlag(std::vector<Operation> operations) {
   return AbslUnparseVectorEnumFlag(*operation_enum_and_strings, operations);
 }
 
-bool AbslParseFlag(std::string_view text, std::vector<Operation>* operations,
-                   std::string* error) {
+bool AbslParseFlag(std::string_view text, std::vector<Operation> *operations,
+                   std::string *error) {
   return AbslParseVectorEnumFlag(*operation_enum_and_strings, text, operations,
                                  error);
 }
@@ -54,9 +54,9 @@ namespace {
 std::random_device r;
 std::default_random_engine e1(r());
 std::uniform_int_distribution<uint64_t> uniform_dist;
-}  // namespace
+} // namespace
 
-void GetSomeNumbers(size_t size, std::vector<uint64_t>& result) {
+void GetSomeNumbers(size_t size, std::vector<uint64_t> &result) {
   result.clear();
   result.reserve(size);
   absl::flat_hash_set<uint64_t> values;
@@ -69,8 +69,8 @@ void GetSomeNumbers(size_t size, std::vector<uint64_t>& result) {
   }
 }
 
-std::vector<uint64_t> GetSomeOtherNumbers(
-    const std::vector<uint64_t>& other_numbers) {
+std::vector<uint64_t>
+GetSomeOtherNumbers(const std::vector<uint64_t> &other_numbers) {
   absl::flat_hash_set<uint64_t> other(other_numbers.begin(),
                                       other_numbers.end());
   absl::flat_hash_set<uint64_t> values;
@@ -95,12 +95,12 @@ const std::vector<std::string_view> kOps = {
     "insert", "reserved-insert", "contains-found", "contains-not-found"};
 
 template <class Table, class Key>
-const typename Table::value_type& FindOrDie(const Table& table,
-                                            const Key& key) {
+const typename Table::value_type &FindOrDie(const Table &table,
+                                            const Key &key) {
   auto it = table.find(key);
   if (it == table.end()) {
     abort();
   }
   return *it;
 }
-}  // namespace
+} // namespace

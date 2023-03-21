@@ -1,9 +1,9 @@
 #ifndef _GRAVEYARD_SET_H_
 #define _GRAVEYARD_SET_H_
 
-#include <cstddef>  // for size_t
+#include <cstddef> // for size_t
 
-#include "absl/container/flat_hash_set.h"  // For hash_default_hash (TODO: use internal/hash_function_defaults.h
+#include "absl/container/flat_hash_set.h" // For hash_default_hash (TODO: use internal/hash_function_defaults.h
 #include "internal/hash_table.h"
 
 namespace yobiduck {
@@ -19,7 +19,7 @@ class GraveyardSet
       yobiduck::internal::HashTableTraits<T, void, Hash, KeyEqual, Allocator>;
   using Base = yobiduck::internal::HashTable<Traits>;
 
- public:
+public:
   // The order as found in
   // https://en.cppreference.com/w/cpp/container/unordered_set.  Put blank lines
   // between items to prevent clang_format from reordering them.
@@ -112,6 +112,6 @@ class GraveyardSet
 // preferred bucket.  Then during insert we can avoid computing most of the
 // hashes.
 
-}  // namespace yobiduck
+} // namespace yobiduck
 
-#endif  // _GRAVEYARD_SET_H_
+#endif // _GRAVEYARD_SET_H_

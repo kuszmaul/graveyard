@@ -1,26 +1,24 @@
 #ifndef _GRAVEYARD_MAP_H_
 #define _GRAVEYARD_MAP_H_
 
-#include "absl/container/flat_hash_set.h"  // For hash_default_hash (TODO: use internal/hash_function_defaults.h
+#include "absl/container/flat_hash_set.h" // For hash_default_hash (TODO: use internal/hash_function_defaults.h
 #include "internal/hash_table.h"
 
 namespace yobiduck {
 
 // Hash Map with Graveyard hashing.
-template<
-  class Key,
-  class T,
-  class Hash = absl::container_internal::hash_default_hash<Key>,
-  class KeyEqual = absl::container_internal::hash_default_eq<Key>,
-  class Allocator = std::allocator<std::pair<const Key, T>>>
+template <class Key, class T,
+          class Hash = absl::container_internal::hash_default_hash<Key>,
+          class KeyEqual = absl::container_internal::hash_default_eq<Key>,
+          class Allocator = std::allocator<std::pair<const Key, T>>>
 class GraveyardMap
-    : private yobiduck::internal::HashTable<
-      yobiduck::internal::HashTableTraits<Key, T, Hash, KeyEqual, Allocator>> {
+    : private yobiduck::internal::HashTable<yobiduck::internal::HashTableTraits<
+          Key, T, Hash, KeyEqual, Allocator>> {
   using Traits =
       yobiduck::internal::HashTableTraits<Key, T, Hash, KeyEqual, Allocator>;
   using Base = yobiduck::internal::HashTable<Traits>;
 
- public:
+public:
   // The order as found in
   // https://en.cppreference.com/w/cpp/container/unordered_set.  Put blank lines
   // between items to prevent clang_format from reordering them.
@@ -109,6 +107,6 @@ class GraveyardMap
   using Base::GetSortedBucketsIterator;
 };
 
-}  // namespace yobiduck
+} // namespace yobiduck
 
-#endif  // _GRAVEYARD_MAP_H_
+#endif // _GRAVEYARD_MAP_H_

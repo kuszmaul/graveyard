@@ -3,14 +3,14 @@
 #include <string>
 #include <utility>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/random/random.h"
-#include "absl/container/flat_hash_map.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-using testing::Pair;
 using testing::_;
+using testing::Pair;
 using testing::UnorderedElementsAre;
 using testing::UnorderedElementsAreArray;
 
@@ -21,13 +21,18 @@ TEST(GraveyardMap, Types) {
   static_assert(std::is_same_v<IntSet::key_type, uint64_t>);
   static_assert(std::is_same_v<IntSet::size_type, size_t>);
   static_assert(std::is_same_v<IntSet::difference_type, ptrdiff_t>);
-  static_assert(std::is_same_v<IntSet::hasher, absl::container_internal::hash_default_hash<uint64_t>>);
-  static_assert(std::is_same_v<IntSet::key_equal, absl::container_internal::hash_default_eq<uint64_t>>);
-  static_assert(std::is_same_v<IntSet::allocator_type, std::allocator<value_type>>);
-  static_assert(std::is_same_v<IntSet::reference, value_type&>);
-  static_assert(std::is_same_v<IntSet::const_reference, const value_type&>);
-  static_assert(std::is_same_v<IntSet::pointer, value_type*>);
-  static_assert(std::is_same_v<IntSet::const_pointer, const value_type*>);
+  static_assert(
+      std::is_same_v<IntSet::hasher,
+                     absl::container_internal::hash_default_hash<uint64_t>>);
+  static_assert(
+      std::is_same_v<IntSet::key_equal,
+                     absl::container_internal::hash_default_eq<uint64_t>>);
+  static_assert(
+      std::is_same_v<IntSet::allocator_type, std::allocator<value_type>>);
+  static_assert(std::is_same_v<IntSet::reference, value_type &>);
+  static_assert(std::is_same_v<IntSet::const_reference, const value_type &>);
+  static_assert(std::is_same_v<IntSet::pointer, value_type *>);
+  static_assert(std::is_same_v<IntSet::const_pointer, const value_type *>);
 }
 
 TEST(GraveyardSet, Basic) {
@@ -47,7 +52,7 @@ TEST(GraveyardMap, EmptyIterator) {
 TEST(GraveyardMap, EmptyConstIterator) {
   yobiduck::GraveyardMap<uint64_t, std::string> map;
   EXPECT_TRUE(map.cbegin() == map.cend());
-  const yobiduck::GraveyardMap<uint64_t, std::string>* cmap = &map;
+  const yobiduck::GraveyardMap<uint64_t, std::string> *cmap = &map;
   EXPECT_TRUE(cmap->cbegin() == cmap->cend());
   EXPECT_TRUE(cmap->begin() == cmap->end());
   EXPECT_TRUE(cmap->cbegin() == cmap->end());
@@ -102,7 +107,6 @@ TEST(GraveyardMap, AssignAndReserve) {
     map.reserve(1000);
   }
 }
-
 
 #if 0
   IntSet::allocator_type allocator;

@@ -7,7 +7,7 @@
 #include <functional>
 
 #include "absl/flags/flag.h"
-#include "absl/strings/string_view.h"  // for string_view
+#include "absl/strings/string_view.h" // for string_view
 
 ABSL_FLAG(size_t, number_of_trials, 5, "Number of trials.  Must be positive.");
 
@@ -15,11 +15,11 @@ namespace {
 inline uint64_t operator-(struct timespec a, struct timespec b) {
   return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;
 }
-}  // namespace
+} // namespace
 
-void Benchmark(std::ofstream& output,
+void Benchmark(std::ofstream &output,
                std::function<void(size_t count, size_t trial)> setup,
-               std::function<size_t()> fun, const std::vector<size_t>& counts) {
+               std::function<size_t()> fun, const std::vector<size_t> &counts) {
   const size_t kNumberOfTrials = absl::GetFlag(FLAGS_number_of_trials);
   const double kNInverse = 1.0 / kNumberOfTrials;
   for (size_t count : counts) {

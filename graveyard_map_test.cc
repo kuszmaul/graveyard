@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/hash/hash.h"                // for Hash
 #include "absl/log/check.h"
 #include "absl/random/random.h"
 #include "absl/strings/str_cat.h"          // for StrCat

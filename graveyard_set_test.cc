@@ -1,8 +1,19 @@
 #include "graveyard_set.h"
 
+#include <time.h>  // for timespec, clock_gettime
+
+#include <cstddef>
+#include <cstdint>
+#include <functional> // for equal_to
+#include <iomanip>
+#include <iostream>
 #include <memory>
+#include <string>
+#include <type_traits>
+#include <utility>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/hash/hash.h"
 #include "absl/log/check.h"
 #include "absl/random/random.h"
 #include "gmock/gmock.h"

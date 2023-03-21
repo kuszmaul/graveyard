@@ -107,7 +107,7 @@ $ clang-format -i *.h *.cc
 Keep includes clean with iwyu:
 
 ```shell
-$ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c++17 -I/home/bradley/.cache/bazel/_bazel_bradley/9c77e745fbeb00862aa543f29e225d72/external/com_google_absl/ -I/home/bradley/github/folly -I. $x;done
+$ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c++17 -I/home/bradley/github/abseil-cpp/ -I/home/bradley/github/folly -I. -I/home/bradley/github/googletest/googlemock/include/ -I/home/bradley/github/googletest/googletest/include $x; done
 ```
 
 Don't forget `internal/*` for iwyu.

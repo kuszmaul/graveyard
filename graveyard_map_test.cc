@@ -11,11 +11,8 @@
 #include "absl/log/check.h"
 #include "absl/random/random.h"
 #include "absl/strings/str_cat.h" // for StrCat
-#include "gmock/gmock.h"          // IWYU pragma: keep
-#include "gtest/gtest.h"          // IWYU pragma: keep
-
-// Note gmock and gtest don't behave well with iwyu.
-// IWYU pragma: no_include "gmock/gmock-matchers.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 using testing::_;
 using testing::Pair;

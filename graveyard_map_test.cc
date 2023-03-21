@@ -7,16 +7,15 @@
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/hash/hash.h"                // for Hash
+#include "absl/hash/hash.h" // for Hash
 #include "absl/log/check.h"
 #include "absl/random/random.h"
-#include "absl/strings/str_cat.h"          // for StrCat
-#include "gmock/gmock.h" // IWYU pragma: keep
-#include "gtest/gtest.h" // IWYU pragma: keep
+#include "absl/strings/str_cat.h" // for StrCat
+#include "gmock/gmock.h"          // IWYU pragma: keep
+#include "gtest/gtest.h"          // IWYU pragma: keep
 
 // Note gmock and gtest don't behave well with iwyu.
 // IWYU pragma: no_include "gmock/gmock-matchers.h"
-
 
 using testing::_;
 using testing::Pair;

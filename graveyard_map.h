@@ -4,7 +4,7 @@
 // IWYU has some strange behavior around std::pair.  It wants to get rid
 // of utility and add iterator.
 
-#include <memory> // for allocator
+#include <memory>  // for allocator
 #include <utility> // IWYU pragma: keep
 
 #include "absl/container/flat_hash_set.h" // For hash_default_hash (TODO: use internal/hash_function_defaults.h

@@ -1,6 +1,6 @@
 #include "graveyard_set.h"
 
-#include <time.h>  // for timespec, clock_gettime
+#include <time.h> // for timespec, clock_gettime
 
 #include <cstddef>
 #include <cstdint>

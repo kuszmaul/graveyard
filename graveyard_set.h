@@ -1,7 +1,7 @@
 #ifndef _GRAVEYARD_SET_H_
 #define _GRAVEYARD_SET_H_
 
-#include <cstddef> // for size_t
+#include <memory> // for allocator
 
 #include "absl/container/flat_hash_set.h" // For hash_default_hash (TODO: use internal/hash_function_defaults.h
 #include "internal/hash_table.h"
@@ -60,9 +60,9 @@ public:
 
   using Base::swap;
 
-  using Base::iterator;
+  using typename Base::iterator;
 
-  using Base::const_iterator;
+  using typename Base::const_iterator;
 
   using Base::begin;
 

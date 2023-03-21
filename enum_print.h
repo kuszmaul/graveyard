@@ -3,10 +3,15 @@
 
 // Support for parsing and printing an enum
 
+// IWYU has some strange behavior around std::pair.  It wants to get rid
+// of utility and add iterator.
+
 #include <optional>
 #include <string> // for string
-#include <utility>
+#include <utility> // IWYU pragma: keep
 #include <vector>
+
+// IWYU pragma: no_include <iterator>
 
 #include "absl/log/check.h"
 #include "absl/strings/string_view.h"

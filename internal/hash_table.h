@@ -3,17 +3,19 @@
 
 #include <malloc.h>
 
-#include <iomanip>
+#include <algorithm>
 #include <new>
-#include <source_location>
+#include <ostream> // for operator<<, since check.h doesn't include enough.
+#include <string>
+#include <utility> // for std::swap
 
 #include "internal/object_holder.h"
 #include "absl/log/check.h"
+#include "absl/container/flat_hash_set.h" // For absl::container_internal::TrailingZeros
 
-
-// IWYU has some strange behavior around around std::swap.  It wants to get rid
-// of utility and add vector. Then it wants to get rid of vector and add
-// unordered_map.
+// IWYU has some strange behavior around std::swap.  It wants to get
+// rid of utility and add variant. But then it's still not happy and
+// keeps making changes in a cycle.
 
 #include <array>
 #include <cassert>
@@ -24,7 +26,7 @@
 #include <memory>                    // for allocator_traits
 #include <type_traits>               // for conditional, is_same
 #include <utility>       // IWYU pragma: keep
-// IWYU pragma: no_include <vector>
+// IWYU pragma: no_include <variant>
 
 #include "absl/log/log.h"
 

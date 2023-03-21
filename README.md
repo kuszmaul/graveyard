@@ -107,8 +107,16 @@ $ clang-format -i *.h *.cc
 Keep includes clean with iwyu:
 
 ```shell
-$ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c++17 -I/home/bradleybear/.cache/bazel/_bazel_bradleybear/06d43ecbdaa4800474a92f4f59e8b2b3/external/com_google_absl/ -I/home/bradleybear/github/folly $x; done
+$ for x in *.h *.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c++17 -I/home/bradley/.cache/bazel/_bazel_bradley/9c77e745fbeb00862aa543f29e225d72/external/com_google_absl/ -I/home/bradley/github/folly -I. $x;done
 ```
+
+Don't forget `internal/*` for iwyu.
+
+(You may need to install the right version of clang.  E.g., in Ubuntu 22, `include-what-you-use` needs `sudo apt install clang-13`.)
+
+IWYU is giving some false noise and is a little bit difficult to work
+with.  It's confused about what std::swap includes.  Also the google
+test framework doesn't play well with IWYU.
 
 ## TODO
 

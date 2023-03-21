@@ -1,8 +1,16 @@
 #ifndef _GRAVEYARD_MAP_H_
 #define _GRAVEYARD_MAP_H_
 
+// IWYU has some strange behavior around std::pair.  It wants to get rid
+// of utility and add iterator.
+
+#include <memory> // for allocator
+#include <utility> // IWYU pragma: keep
+
 #include "absl/container/flat_hash_set.h" // For hash_default_hash (TODO: use internal/hash_function_defaults.h
 #include "internal/hash_table.h"
+
+// IWYU pragma: no_include <iterator>
 
 namespace yobiduck {
 
@@ -59,9 +67,9 @@ public:
 
   using Base::swap;
 
-  using Base::iterator;
+  using typename Base::iterator;
 
-  using Base::const_iterator;
+  using typename Base::const_iterator;
 
   using Base::begin;
 

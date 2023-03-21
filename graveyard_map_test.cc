@@ -1,13 +1,21 @@
 #include "graveyard_map.h"
 
+#include <cstddef> // for size_t, ptrdiff_t
+#include <cstdint> // for uint64_t
 #include <string>
+#include <type_traits> // for is_same_v
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/random/random.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include "absl/strings/str_cat.h"          // for StrCat
+#include "gmock/gmock.h" // IWYU pragma: keep
+#include "gtest/gtest.h" // IWYU pragma: keep
+
+// Note gmock and gtest don't behave well with iwyu.
+// IWYU pragma: no_include "gmock/gmock-matchers.h"
+
 
 using testing::_;
 using testing::Pair;

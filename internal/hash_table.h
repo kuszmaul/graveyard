@@ -5,7 +5,7 @@
 
 #include <algorithm>
 #include <new>
-#include <ostream> // for operator<<, since check.h doesn't include enough.
+#include <sstream>
 #include <string>
 #include <utility> // for std::swap
 

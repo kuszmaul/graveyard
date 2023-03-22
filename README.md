@@ -216,9 +216,12 @@ performance
       Abseil does the pointless key copy unless `std::pair<key_type,
       mapped_type` is layout compatible to `std::pair<const key_type,
       mapped_type>` in which case it can use `std::move` on the key type.
+
       Question: What conditions is the pointless key copy actually happening?
-      For example, does it use std::move when doing something like a
-      `flat_hash_map<std::string, SomeMappedType>`?
+
+      Answer: The non-standard layouts show up for classes that have
+      certain kinds of mixed public/private member variables or
+      virtual inheritance.
 - [ ] Implement prehash and a two-argument find for bulk lookup.
 - [ ] Optimize iteration over sparse tables: Use vector instruction to find next non-empty slot.
 - [ ] Optimize the case for iterating when a prefix of the table has been deleted.  F14 does it.  Why?
@@ -226,4 +229,6 @@ performance
 - [ ] Can a header-only version of the hash table be produced?
 - [ ] Heterogeneous lookup.
 - [ ] Deal with various flavors of insert (&&) and constructors.
+- [ ] clang-tidy github.com/erenon/bazel_clang_tidy
+
 

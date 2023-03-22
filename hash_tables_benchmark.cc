@@ -28,10 +28,11 @@ enum class Implementation {
   kGraveyard,
   kGoogle,
   kFacebook,
-  kGraveyardIdentityHash,
   kOLP,
+  kGraveyardIdentityHash,
   kGoogleIdentityHash,
   kFacebookIdentityHash,
+  kOLPIdentityHash,
   // Graveyard variants
   kGraveyard3578, // Fill the table to 7/8 then rehash to 3/5 full (instead of
                   // 3/4 full) to reduce number of rehashes.
@@ -40,20 +41,19 @@ enum class Implementation {
   kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of
                   // 3/4 full) to reduce number of rehashes.
   kGraveyard255,  // H2 computed modulo 255 (rather than 128)
-  kOLPIdentityHash,
 };
 
 namespace {
 const auto *implementation_enum_and_strings =
     EnumsAndStrings<Implementation>::Create(
         {{Implementation::kGraveyard, "graveyard"},
-         {Implementation::kGraveyardIdentityHash, "graveyard-idhash"},
-         {Implementation::kOLP, "OLP"},
-         {Implementation::kOLPIdentityHash, "OLP-idhash"},
          {Implementation::kGoogle, "google"},
-         {Implementation::kGoogleIdentityHash, "google-idhash"},
          {Implementation::kFacebook, "facebook"},
+         {Implementation::kOLP, "OLP"},
+         {Implementation::kGraveyardIdentityHash, "graveyard-idhash"},
+         {Implementation::kGoogleIdentityHash, "google-idhash"},
          {Implementation::kFacebookIdentityHash, "facebook-idhash"},
+         {Implementation::kOLPIdentityHash, "OLP-idhash"},
          {Implementation::kGraveyard3578, "graveyard3578"},
          {Implementation::kGraveyard1278, "graveyard1278"},
          {Implementation::kGraveyard2345, "graveyard2345"},

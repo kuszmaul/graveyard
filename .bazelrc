@@ -1,1 +1,1 @@
-build --cxxopt='-std=c++17' --cxxopt=-Wimplicit-fallthrough --cxxopt=-Wextra --cxxopt=-Wshadow
+build --cxxopt='-std=c++17' --cxxopt=-Wimplicit-fallthrough --cxxopt=-Wextra --cxxopt=-Wshadow --cxxopt=-Wcast-align --cxxopt=-Wunused --cxxopt=-Woverloaded-virtual --cxxopt=-Wmisleading-indentation --cxxopt=-Wduplicated-cond  --cxxopt=-Wlogical-op

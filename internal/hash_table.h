@@ -773,38 +773,38 @@ void HashTable<Traits>::Validate(int line_number) const {
     CHECK_LE(i + buckets_[i].search_distance, buckets_.physical_size())
         << "Search distance goes off end of of array i=" << i << " "
         << ToString();
-    // Verify that the overflow buckets have zero search distance, except the
-    // last which has Traits::kSearchDistanceEndSentinal.
-    for (size_t i = buckets_.logical_size(); i + 1 < buckets_.physical_size();
-         ++i) {
-      CHECK_EQ(buckets_[i].search_distance, 0);
-    }
-    if (buckets_.physical_size() > 0) {
-      CHECK_EQ(buckets_[buckets_.physical_size() - 1].search_distance,
-               Traits::kSearchDistanceEndSentinal);
-    }
-    // Verify that each hashed object is a good place (not before its preferred
-    // bucket or after that bucket's search distance).
-    //
-    // Verify that size is right.
-    size_t actual_size = 0;
-    for (size_t i = 0; i < buckets_.physical_size(); ++i) {
-      for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-        if (buckets_[i].h2[j] != Traits::kEmpty) {
-          ++actual_size;
-          size_t hash = get_hasher_ref()(buckets_[i].slots[j].value);
-          size_t h1 = buckets_.H1(hash);
-          CHECK_LE(h1, i);
-          CHECK_LT(h1, buckets_.logical_size());
-          CHECK_LT((i - h1), buckets_[h1].search_distance)
-              << "Object is not within search distance: bucket=" << i
-              << " slot=" << j << " h1=" << h1 << " line=" << line_number
-              << " in " << ToString();
-        }
+  }
+  // Verify that the overflow buckets have zero search distance, except the
+  // last which has Traits::kSearchDistanceEndSentinal.
+  for (size_t i = buckets_.logical_size(); i + 1 < buckets_.physical_size();
+       ++i) {
+    CHECK_EQ(buckets_[i].search_distance, 0);
+  }
+  if (buckets_.physical_size() > 0) {
+    CHECK_EQ(buckets_[buckets_.physical_size() - 1].search_distance,
+	     Traits::kSearchDistanceEndSentinal);
+  }
+  // Verify that each hashed object is a good place (not before its
+  // preferred bucket or after that bucket's search distance).
+  //
+  // Verify that size is right.
+  size_t actual_size = 0;
+  for (size_t i = 0; i < buckets_.physical_size(); ++i) {
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      if (buckets_[i].h2[j] != Traits::kEmpty) {
+	++actual_size;
+	size_t hash = get_hasher_ref()(buckets_[i].slots[j].value);
+	size_t h1 = buckets_.H1(hash);
+	CHECK_LE(h1, i);
+	CHECK_LT(h1, buckets_.logical_size());
+	CHECK_LT((i - h1), buckets_[h1].search_distance)
+	  << "Object is not within search distance: bucket=" << i
+	  << " slot=" << j << " h1=" << h1 << " line=" << line_number
+	  << " in " << ToString();
       }
     }
-    CHECK_EQ(actual_size, size());
   }
+  CHECK_EQ(actual_size, size());
 }
 
 template <class Traits>

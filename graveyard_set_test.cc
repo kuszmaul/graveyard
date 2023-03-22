@@ -152,7 +152,7 @@ TEST(GraveyardSet, AssignAndReserve) {
 
 struct UnhashableInt {
   int x;
-  explicit UnhashableInt(int x) : x(x) {}
+  explicit UnhashableInt(int x_value) : x(x_value) {}
 };
 struct UnhashableIntHasher {
   size_t operator()(const UnhashableInt &h) const {

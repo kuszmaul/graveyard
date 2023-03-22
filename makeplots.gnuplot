@@ -69,7 +69,7 @@ plot "data/found_google.data"           using 1:($2/$1)                     with
      "data/found_graveyard.data"        using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 1 title "Graveyard",\
      "data/found_graveyard-idhash.data" using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 2 title "Graveyard-idhash",\
      "data/found_graveyard3578.data"    using 1:($2/$1)                     with lines       linecolor rgb T3578color  dt 1 title "Graveyard (3/5--7/8)",\
-     "data/found_graveyard2345.data"    using 1:($2/$1)                     with lines       linecolor rgb T2345color  dt 1 title "Graveyard (1/5--7/8)",\
+     "data/found_graveyard2345.data"    using 1:($2/$1)                     with lines       linecolor rgb T2345color  dt 1 title "Graveyard (2/3--4/5)",\
      "data/found_google.data"         using 1:($2/$1-$4/$1):($2/$1+$4/$1)   with filledcurve linecolor rgb Gcolor fs transparent solid 0.1 notitle,\
      "data/found_OLP.data"            using 1:($2/$1-$4/$1):($2/$1+$4/$1)   with filledcurve linecolor rgb Kcolor fs transparent solid 0.1 notitle,\
      "data/found_facebook.data"       using 1:($2/$1-$4/$1):($2/$1+$4/$1)   with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
@@ -113,7 +113,7 @@ plot "data/insert_google.data"        using 1:3 with lines linecolor rgb Gcolor 
      "data/insert_OLP.data"           using 1:3 with lines linecolor rgb Kcolor     title sprintf("OLP (%.2f bytes/element) (%.1f%% less)",b,100*(b-a)/a), \
      "data/insert_facebook.data"      using 1:3 with lines linecolor rgb FBcolor    title sprintf("Facebook (%.2f bytes/element) (%.1f%% less)",c,100*(c-a)/a), \
      "data/insert_graveyard.data"     using 1:3 with lines linecolor rgb Tcolor     title sprintf("Graveyard (%.2f bytes/element) (%.1f%% less)",d,100*(d-a)/a), \
-     "data/insert_graveyard2345.data" using 1:3 with lines linecolor rgb T2345color title sprintf("Graveyard 2/3--4/5 (%.2f bytes/element) (%.1f%% less)",d,100*(d2345-a)/a), \
+     "data/insert_graveyard2345.data" using 1:3 with lines linecolor rgb T2345color title sprintf("Graveyard 2/3--4/5 (%.2f bytes/element) (%.1f%% less)",d2345,100*(d2345-a)/a), \
      a * x linecolor rgb Gcolor  with dots notitle, \
      b * x linecolor rgb Kcolor  with dots notitle, \
      c * x linecolor rgb FBcolor with dots notitle, \

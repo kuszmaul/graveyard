@@ -230,5 +230,4 @@ performance
 - [ ] Heterogeneous lookup.
 - [ ] Deal with various flavors of insert (&&) and constructors.
 - [ ] clang-tidy github.com/erenon/bazel_clang_tidy
-
-
+- [ ] Make the buckets point at an empty buckets item even when the table is empty so we can get rid of the branch that checks to see if the buckets are empty.

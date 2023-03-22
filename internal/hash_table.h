@@ -39,6 +39,10 @@
 #define YOBIDUCK_HAVE_SSE2 0
 #endif
 
+// Note that we use GoogleStyleNaming for private member functions
+// but cplusplus_library_standard_naming for the parts of the API that
+// look like the C++ standard libary.
+
 namespace yobiduck::internal {
 
 static constexpr bool kHaveSse2 = (YOBIDUCK_HAVE_SSE2 != 0);
@@ -299,6 +303,29 @@ struct ProbeStatistics {
   double unsuccessful;
 };
 
+//  Support for heterogenous lookup
+template <class, class = void>
+struct IsTransparent : std::false_type {};
+template <class T>
+struct IsTransparent<T, absl::void_t<typename T::is_transparent>>
+    : std::true_type {};
+
+
+template <bool is_transparent>
+struct KeyArg {
+  // Transparent. Forward `K`.
+  template <typename K, typename key_type>
+  using type = K;
+};
+
+template <>
+struct KeyArg<false> {
+  // Not transparent. Always use `key_type`.
+  template <typename K, typename key_type>
+  using type = key_type;
+};
+
+// The hash table
 template <class Traits>
 class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
                   private ObjectHolder<'E', typename Traits::key_equal>,
@@ -324,6 +351,19 @@ public:
   using pointer = typename std::allocator_traits<allocator_type>::pointer;
   using const_pointer =
       typename std::allocator_traits<allocator_type>::const_pointer;
+
+ private:
+  using KeyArgImpl =
+    KeyArg<IsTransparent<key_equal>::value && IsTransparent<hasher>::value>;
+  
+ public:
+  // Alias used for heterogeneous lookup functions.
+  // `key_arg<K>` evaluates to `K` when the functors are transparent and to
+  // `key_type` otherwise. It permits template argument deduction on `K` for the
+  // transparent case.
+  template <class K>
+  using key_arg = typename KeyArgImpl::template type<K, key_type>;
+
   HashTable();
   explicit HashTable(size_t initial_capacity, hasher const &hash = hasher(),
                      key_equal const &key_eq = key_equal(),
@@ -370,6 +410,33 @@ public:
   void clear();
   std::pair<iterator, bool> insert(const value_type &value);
   void swap(HashTable &other) noexcept;
+
+  // Similarly to abseil, the API of find() has two extensions.
+  //
+  // 1) The hash can be passed by the user.  It must be equal to the
+  //    hash of the key.
+  //
+  // 2) Support C++20-style heterogeneous lookup.
+
+  template <class K = key_type>
+  iterator find(const key_arg<K>& key, size_t hash);
+
+  template <class K = key_type>
+  const_iterator find(const key_arg<K>& key, size_t hash) const {
+    return const_cast<HashTable*>(this)->find(key, hash);
+  }
+
+  template <class K = key_type>
+  iterator find(const key_arg<K>& key) {
+    PrefetchHeapBlock();
+    return find(key, get_hasher_ref()(key));
+  }
+
+  template <class K = key_type>
+  const_iterator find(const key_arg<K>& key) const {
+    PrefetchHeapBlock();
+    return find(key, get_hasher_ref()(key));
+  }
 
   bool contains(const key_type &value) const;
 
@@ -429,6 +496,16 @@ public:
   std::string ToString() const;
 
 private:
+  // Prefetch the heap-allocated memory region to resolve potential TLB and
+  // cache misses. This is intended to overlap with execution of calculating the
+  // hash for a key.
+  void PrefetchHeapBlock() const {
+#if ABSL_HAVE_BUILTIN(__builtin_prefetch) || defined(__GNUC__)
+    // This is safe even if `buckets_.begin() == nullptr`.
+    __builtin_prefetch(buckets_.begin(), 0, 1);
+#endif
+  }
+
   // Checks that `*this` is valid.  Requires that a rehash or initial
   // construction has just occurred.  Specifically checks that the graveyard
   // tombstones are present.
@@ -718,26 +795,30 @@ void HashTable<Traits>::swap(HashTable &other) noexcept {
 }
 
 template <class Traits>
-bool HashTable<Traits>::contains(const key_type &value) const {
-  if (size_ == 0) {
-    return false;
-  }
-  const size_t hash = get_hasher_ref()(value);
-  const size_t preferred_bucket = buckets_.H1(hash);
-  const size_t h2 = buckets_.H2(hash);
-  const size_t distance = buckets_[preferred_bucket].search_distance;
-  for (size_t i = 0; i <= distance; ++i) {
-    // Prefetch seems to hurt lookup.  Note that F14 prefetches the entire
-    // bucket up to a certain number of cache lines.
-    //   __builtin_prefetch(&buckets_[preferred_bucket + i + 1].h2[0]);
-    assert(preferred_bucket + i < buckets_.physical_size());
-    const Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
-    size_t idx = bucket.FindElement(h2, value, get_key_eq_ref());
-    if (idx < Traits::kSlotsPerBucket) {
-      return true;
+template <class K>
+typename HashTable<Traits>::iterator HashTable<Traits>::find(const key_arg<K>& key, size_t hash) {
+  if (size_ != 0) {
+    const size_t preferred_bucket = buckets_.H1(hash);
+    const size_t h2 = buckets_.H2(hash);
+    const size_t distance = buckets_[preferred_bucket].search_distance;
+    for (size_t i = 0; i <= distance; ++i) {
+      // Prefetch seems to hurt lookup.  Note that F14 prefetches the entire
+      // bucket up to a certain number of cache lines.
+      //   __builtin_prefetch(&buckets_[preferred_bucket + i + 1].h2[0]);
+      assert(preferred_bucket + i < buckets_.physical_size());
+      Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
+      size_t idx = bucket.FindElement(h2, key, get_key_eq_ref());
+      if (idx < Traits::kSlotsPerBucket) {
+	return iterator{&bucket, idx};
+      }
     }
   }
-  return false;
+  return end();
+}
+
+template <class Traits>
+bool HashTable<Traits>::contains(const key_type &value) const {
+  return find(value) != end();
 }
 
 template <class Traits> std::string HashTable<Traits>::ToString() const {

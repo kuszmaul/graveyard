@@ -90,6 +90,7 @@ cc_library(
 cc_test(
     name = "graveyard_set_test",
     srcs = ["graveyard_set_test.cc"],
+    size = "small",
     deps = [
         ":graveyard_set",
         "@com_google_absl//absl/log:check",
@@ -111,6 +112,7 @@ cc_library(
 cc_test(
     name = "graveyard_map_test",
     srcs = ["graveyard_map_test.cc"],
+    size = "small",
     deps = [
         ":graveyard_map",
         "@com_google_absl//absl/log:check",

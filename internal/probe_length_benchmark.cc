@@ -7,7 +7,7 @@
 #include "graveyard_set.h"
 #include "internal/hash_table.h" // for ProbeStatistics, Buckets
 
-int main(int argc, char *argv[]) {
+int main() {
   constexpr size_t kSize = 10'000'000;
   yobiduck::GraveyardSet<uint64_t> set(kSize);
   std::random_device r;

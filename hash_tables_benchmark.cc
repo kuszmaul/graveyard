@@ -24,13 +24,13 @@
 #include "ordered_linear_probing_set.h"
 
 enum class Implementation {
-  kOLP,
-  kOLPIdentityHash,
+  // Order these from most-important-to-benchmark to least-important-to-benchmark.
   kGraveyard,
-  kGraveyardIdentityHash,
   kGoogle,
-  kGoogleIdentityHash,
   kFacebook,
+  kGraveyardIdentityHash,
+  kOLP,
+  kGoogleIdentityHash,
   kFacebookIdentityHash,
   // Graveyard variants
   kGraveyard3578, // Fill the table to 7/8 then rehash to 3/5 full (instead of
@@ -40,6 +40,7 @@ enum class Implementation {
   kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of
                   // 3/4 full) to reduce number of rehashes.
   kGraveyard255,  // H2 computed modulo 255 (rather than 128)
+  kOLPIdentityHash,
 };
 
 namespace {
@@ -75,11 +76,11 @@ bool AbslParseFlag(std::string_view text,
                                  implementations, error);
 }
 
-bool ImplementationIsFlagged(Implementation implementation) {
+std::set<Implementation> FlaggedImplementations() {
   std::vector<Implementation> implementations_vector =
       absl::GetFlag(FLAGS_implementations);
-  return absl::c_find(implementations_vector, implementation) !=
-         implementations_vector.end();
+  return std::set<Implementation>(implementations_vector.begin(), 
+				  implementations_vector.end());
 }
 
 struct IdentityHash {
@@ -159,84 +160,88 @@ int main(int argc, char *argv[]) {
     using table_type = std::remove_reference_t<decltype(table)>;
     return table.capacity() * (1 + sizeof(typename table_type::value_type));
   };
-  if (const auto implementation = Implementation::kGraveyard;
-      ImplementationIsFlagged(implementation)) {
-    using Graveyard = yobiduck::GraveyardSet<uint64_t>;
-    IntHashSetBenchmark<Graveyard>(
-        Get_allocated_memory_size,
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kGraveyardIdentityHash;
-      ImplementationIsFlagged(implementation)) {
-    using GraveyardNoHash = yobiduck::GraveyardSet<uint64_t, IdentityHash>;
-    IntHashSetBenchmark<GraveyardNoHash>(
-        Get_allocated_memory_size,
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kGraveyard255;
-      ImplementationIsFlagged(implementation)) {
-    IntHashSetBenchmark<Graveyard255>(
-        Get_allocated_memory_size,
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kGraveyard3578;
-      ImplementationIsFlagged(implementation)) {
-    IntHashSetBenchmark<Graveyard3578>(
-        Get_allocated_memory_size,
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kGraveyard1278;
-      ImplementationIsFlagged(implementation)) {
-    IntHashSetBenchmark<Graveyard1278>(
-        Get_allocated_memory_size,
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kGraveyard2345;
-      ImplementationIsFlagged(implementation)) {
-    IntHashSetBenchmark<Graveyard2345>(
-        Get_allocated_memory_size,
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kOLP;
-      ImplementationIsFlagged(implementation)) {
-    using OLP = OrderedLinearProbingSet<uint64_t>;
-    IntHashSetBenchmark<OLP>(
-        [](const OLP &table) { return table.memory_estimate(); },
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kOLPIdentityHash;
-      ImplementationIsFlagged(implementation)) {
-    using OLPNoHash = OrderedLinearProbingSet<uint64_t, IdentityHash>;
-    IntHashSetBenchmark<OLPNoHash>(
-        // TODO: Use the facebook name for `memory_estimate()`.
-        [](const OLPNoHash &table) { return table.memory_estimate(); },
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kGoogle;
-      ImplementationIsFlagged(implementation)) {
-    IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
-        swiss_memory_estimator,
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kGoogleIdentityHash;
-      ImplementationIsFlagged(implementation)) {
-    using FlatNoHash = absl::flat_hash_set<uint64_t, IdentityHash>;
-    IntHashSetBenchmark<FlatNoHash>(
-        swiss_memory_estimator,
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kFacebook;
-      ImplementationIsFlagged(implementation)) {
-    using F14 = folly::F14FastSet<uint64_t>;
-    IntHashSetBenchmark<F14>(
-        get_allocated_memory_size,
-        implementation_enum_and_strings->ToString(implementation));
-  }
-  if (const auto implementation = Implementation::kFacebookIdentityHash;
-      ImplementationIsFlagged(implementation)) {
-    using F14NoHash = folly::F14FastSet<uint64_t, IdentityHash>;
-    IntHashSetBenchmark<F14NoHash>(
-        get_allocated_memory_size,
-        implementation_enum_and_strings->ToString(implementation));
+  for (Implementation implementation : FlaggedImplementations()) {
+    switch (implementation) {
+    case Implementation::kGraveyard: {
+      using Graveyard = yobiduck::GraveyardSet<uint64_t>;
+      IntHashSetBenchmark<Graveyard>(
+          Get_allocated_memory_size,
+	  implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case Implementation::kGraveyardIdentityHash: {
+      using GraveyardNoHash = yobiduck::GraveyardSet<uint64_t, IdentityHash>;
+      IntHashSetBenchmark<GraveyardNoHash>(
+          Get_allocated_memory_size,
+          implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case  Implementation::kGraveyard255: {
+      IntHashSetBenchmark<Graveyard255>(
+          Get_allocated_memory_size,
+	  implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case Implementation::kGraveyard3578: {
+      IntHashSetBenchmark<Graveyard3578>(
+          Get_allocated_memory_size,
+	  implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case  Implementation::kGraveyard1278: {
+      IntHashSetBenchmark<Graveyard1278>(
+          Get_allocated_memory_size,
+          implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case Implementation::kGraveyard2345: {
+      IntHashSetBenchmark<Graveyard2345>(
+          Get_allocated_memory_size,
+          implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case Implementation::kOLP: {
+      using OLP = OrderedLinearProbingSet<uint64_t>;
+      IntHashSetBenchmark<OLP>(
+          [](const OLP &table) { return table.memory_estimate(); },
+          implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case  Implementation::kOLPIdentityHash: {
+      using OLPNoHash = OrderedLinearProbingSet<uint64_t, IdentityHash>;
+      IntHashSetBenchmark<OLPNoHash>(
+          // TODO: Use the facebook name for `memory_estimate()`.
+          [](const OLPNoHash &table) { return table.memory_estimate(); },
+          implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case Implementation::kGoogle:{
+      IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
+          swiss_memory_estimator,
+          implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case Implementation::kGoogleIdentityHash: {
+      using FlatNoHash = absl::flat_hash_set<uint64_t, IdentityHash>;
+      IntHashSetBenchmark<FlatNoHash>(
+          swiss_memory_estimator,
+          implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case Implementation::kFacebook: {
+      using F14 = folly::F14FastSet<uint64_t>;
+      IntHashSetBenchmark<F14>(
+          get_allocated_memory_size,
+          implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    case Implementation::kFacebookIdentityHash: {
+      using F14NoHash = folly::F14FastSet<uint64_t, IdentityHash>;
+      IntHashSetBenchmark<F14NoHash>(
+          get_allocated_memory_size,
+          implementation_enum_and_strings->ToString(implementation));
+      break;
+    }
+    }
   }
 }

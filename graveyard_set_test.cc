@@ -271,6 +271,7 @@ private:
 };
 
 TEST(GraveyardSet, NoDefaultConstructor) {
+  // Does it work the same for `graveyard_set` and `flat_hash_set`?
   {
     NoDefaultConstructor v(3);
     NoDefaultConstructor v2 = v;
@@ -285,4 +286,26 @@ TEST(GraveyardSet, NoDefaultConstructor) {
     }
   }
   CHECK_EQ(count_existing, 0);
+}
+
+template <class StringSet>
+void HeterogeneousStringTest(StringSet &set) {
+  auto [inserted_it, inserted] = set.insert(std::string("a"));
+  EXPECT_TRUE(inserted);
+  EXPECT_TRUE(set.contains(std::string("a")));
+  EXPECT_TRUE(set.contains(std::string_view("a")));
+  EXPECT_TRUE(set.contains("a"));
+  EXPECT_FALSE(set.contains(std::string("b")));
+  EXPECT_FALSE(set.contains(std::string_view("b")));
+  EXPECT_FALSE(set.contains("b"));
+  //auto find_it = set.find(std::string("a"));
+  //EXPECT_TRUE(find_it == inserted_it);
+}
+
+TEST(GraveyardSet, Heterogenous) {
+  // Does it work the same for `graveyard_set` and `flat_hash_set`?
+  absl::flat_hash_set<std::string> aset;
+  yobiduck::GraveyardSet<std::string> gset;
+  HeterogeneousStringTest(aset);
+  HeterogeneousStringTest(gset);
 }

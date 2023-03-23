@@ -50,6 +50,28 @@ static constexpr bool kHaveSse2 = (YOBIDUCK_HAVE_SSE2 != 0);
 // Returns the ceiling of (a/b).
 inline constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }
 
+//  Support for heterogenous lookup
+template <class, class = void>
+struct IsTransparent : std::false_type {};
+template <class T>
+struct IsTransparent<T, absl::void_t<typename T::is_transparent>>
+    : std::true_type {};
+
+
+template <bool is_transparent>
+struct KeyArg {
+  // Transparent. Forward `K`.
+  template <typename K, typename key_type>
+  using type = K;
+};
+
+template <>
+struct KeyArg<false> {
+  // Not transparent. Always use `key_type`.
+  template <typename K, typename key_type>
+  using type = key_type;
+};
+
 template <class KeyType, class MappedTypeOrVoid, class Hash, class KeyEqual,
           class Allocator>
 struct HashTableTraits {
@@ -62,6 +84,16 @@ struct HashTableTraits {
   using key_equal = KeyEqual;
   using allocator = Allocator;
   static constexpr size_t kSlotsPerBucket = 14;
+
+  using KeyArgImpl =
+    KeyArg<IsTransparent<key_equal>::value && IsTransparent<hasher>::value>;
+
+  // Alias used for heterogeneous lookup functions.
+  // `key_arg<K>` evaluates to `K` when the functors are transparent and to
+  // `key_type` otherwise. It permits template argument deduction on `K` for the
+  // transparent case.
+  template <class K>
+  using key_arg = typename KeyArgImpl::template type<K, key_type>;
 
   static const key_type &KeyOf(const value_type &value) {
     if constexpr (std::is_same<mapped_type_or_void, void>::value) {
@@ -94,6 +126,13 @@ template <class Traits> union Item {
 template <class Traits> class SortedBucketsIterator;
 
 template <class Traits> struct Bucket {
+  using key_type = typename Traits::key_type;
+
+  template <class K>
+  using key_arg = typename Traits::key_arg<K>;
+
+  using key_equal = typename Traits::key_equal;
+
   // Bucket has no constructor or destructor since by default it's POD.
   Bucket() = delete;
   // Copy constructor
@@ -137,8 +176,9 @@ template <class Traits> struct Bucket {
     return PortableMatchingElements(needle);
   }
 
-  size_t FindElement(uint8_t needle, const typename Traits::key_type &key,
-                     const typename Traits::key_equal &key_eq) const {
+  template <class K = key_type>
+  size_t FindElement(uint8_t needle, const key_arg<K> &key,
+                     const key_equal &key_eq) const {
     size_t matches = MatchingElementsMask(needle);
     while (matches) {
       int idx = absl::container_internal::TrailingZeros(matches);
@@ -303,28 +343,6 @@ struct ProbeStatistics {
   double unsuccessful;
 };
 
-//  Support for heterogenous lookup
-template <class, class = void>
-struct IsTransparent : std::false_type {};
-template <class T>
-struct IsTransparent<T, absl::void_t<typename T::is_transparent>>
-    : std::true_type {};
-
-
-template <bool is_transparent>
-struct KeyArg {
-  // Transparent. Forward `K`.
-  template <typename K, typename key_type>
-  using type = K;
-};
-
-template <>
-struct KeyArg<false> {
-  // Not transparent. Always use `key_type`.
-  template <typename K, typename key_type>
-  using type = key_type;
-};
-
 // The hash table
 template <class Traits>
 class HashTable : private ObjectHolder<'H', typename Traits::hasher>,
@@ -352,17 +370,9 @@ public:
   using const_pointer =
       typename std::allocator_traits<allocator_type>::const_pointer;
 
- private:
-  using KeyArgImpl =
-    KeyArg<IsTransparent<key_equal>::value && IsTransparent<hasher>::value>;
-  
  public:
-  // Alias used for heterogeneous lookup functions.
-  // `key_arg<K>` evaluates to `K` when the functors are transparent and to
-  // `key_type` otherwise. It permits template argument deduction on `K` for the
-  // transparent case.
   template <class K>
-  using key_arg = typename KeyArgImpl::template type<K, key_type>;
+  using key_arg = typename Traits::key_arg<K>;
 
   HashTable();
   explicit HashTable(size_t initial_capacity, hasher const &hash = hasher(),
@@ -438,7 +448,8 @@ public:
     return find(key, get_hasher_ref()(key));
   }
 
-  bool contains(const key_type &value) const;
+  template <class K = key_type>
+  bool contains(const key_arg<K>& key) const;
 
   allocator_type get_allocator() const { return get_allocator_ref(); }
   allocator_type &get_allocator_ref() {
@@ -817,7 +828,8 @@ typename HashTable<Traits>::iterator HashTable<Traits>::find(const key_arg<K>& k
 }
 
 template <class Traits>
-bool HashTable<Traits>::contains(const key_type &value) const {
+template <class K>
+bool HashTable<Traits>::contains(const key_arg<K>& value) const {
   return find(value) != end();
 }
 

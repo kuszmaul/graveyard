@@ -9,6 +9,11 @@
 namespace yobiduck {
 
 // Hash Set with Graveyard hashing.
+//
+// Supports heterogeneous lookup (the same as `absl::flat_hash_set`
+// does).  In particular the special case of `key_type = std::string`
+// is automatically heterogeneous (supporting lookups of
+// `std::string`, `char*`, and `std::string_view`.
 template <class T, class Hash = absl::container_internal::hash_default_hash<T>,
           class KeyEqual = absl::container_internal::hash_default_eq<T>,
           class Allocator = std::allocator<T>>

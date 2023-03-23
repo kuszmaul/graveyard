@@ -329,6 +329,14 @@ void HeterogeneousStringTest(StringSet &set) {
   EXPECT_EQ(set.count(bv), 0);
 
   EXPECT_THAT(set.equal_range(as), Pair(Eq(set.find(as)), Eq(set.end())));
+  EXPECT_THAT(set.equal_range(ap), Pair(Eq(set.find(as)), Eq(set.end())));
+  EXPECT_THAT(set.equal_range(aa), Pair(Eq(set.find(as)), Eq(set.end())));
+  EXPECT_THAT(set.equal_range(av), Pair(Eq(set.find(as)), Eq(set.end())));
+  
+  EXPECT_THAT(set.equal_range(bs), Pair(Eq(set.find(bs)), Eq(set.end())));
+  EXPECT_THAT(set.equal_range(bp), Pair(Eq(set.find(bs)), Eq(set.end())));
+  EXPECT_THAT(set.equal_range(ba), Pair(Eq(set.find(bs)), Eq(set.end())));
+  EXPECT_THAT(set.equal_range(bv), Pair(Eq(set.find(bs)), Eq(set.end())));
 }
 
 TEST(GraveyardSet, Heterogenous) {
@@ -337,4 +345,11 @@ TEST(GraveyardSet, Heterogenous) {
   yobiduck::GraveyardSet<std::string> gset;
   HeterogeneousStringTest(aset);
   HeterogeneousStringTest(gset);
+}
+
+TEST(GraveyardSet, Empty) {
+  yobiduck::GraveyardSet<std::string> gset;
+  EXPECT_TRUE(gset.empty());
+  gset.insert("a");
+  EXPECT_FALSE(gset.empty());
 }

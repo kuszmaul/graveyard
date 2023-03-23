@@ -415,7 +415,14 @@ public:
   // node_type not implemented
   // insert_return_type not implemented
 
+  // Note: The use of noexcept is not consistent.  Sometimes it's
+  // there, but sometimes not, for now good reason.
+
   size_t size() const noexcept;
+
+  bool empty() const noexcept {
+    return size() == 0;
+  }
 
   void clear();
   std::pair<iterator, bool> insert(const value_type &value);

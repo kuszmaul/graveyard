@@ -87,6 +87,8 @@ public:
 
   using Base::equal_range;
 
+  using Base::empty;
+
   using Base::size;
 
   // size_t capacity() const;

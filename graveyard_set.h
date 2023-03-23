@@ -79,9 +79,13 @@ public:
 
   using Base::insert;
 
+  using Base::count;
+
   using Base::find;
 
   using Base::contains;
+
+  using Base::equal_range;
 
   using Base::size;
 

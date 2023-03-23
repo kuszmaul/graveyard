@@ -20,6 +20,7 @@
 #include "gtest/gtest.h"
 
 using testing::_;
+using testing::Eq;
 using testing::Pair;
 using testing::UnorderedElementsAre;
 using testing::UnorderedElementsAreArray;
@@ -308,6 +309,7 @@ void HeterogeneousStringTest(StringSet &set) {
   EXPECT_FALSE(set.contains(bp));
   EXPECT_FALSE(set.contains(ba));
   EXPECT_FALSE(set.contains(bv));
+
   EXPECT_TRUE(set.find(as) == inserted_it);
   EXPECT_TRUE(set.find(ap) == inserted_it);
   EXPECT_TRUE(set.find(aa) == inserted_it);
@@ -316,6 +318,17 @@ void HeterogeneousStringTest(StringSet &set) {
   EXPECT_TRUE(set.find(bp) == set.end());
   EXPECT_TRUE(set.find(ba) == set.end());
   EXPECT_TRUE(set.find(bv) == set.end());
+
+  EXPECT_EQ(set.count(as), 1);
+  EXPECT_EQ(set.count(ap), 1);
+  EXPECT_EQ(set.count(aa), 1);
+  EXPECT_EQ(set.count(av), 1);
+  EXPECT_EQ(set.count(bs), 0);
+  EXPECT_EQ(set.count(bp), 0);
+  EXPECT_EQ(set.count(ba), 0);
+  EXPECT_EQ(set.count(bv), 0);
+
+  EXPECT_THAT(set.equal_range(as), Pair(Eq(set.find(as)), Eq(set.end())));
 }
 
 TEST(GraveyardSet, Heterogenous) {

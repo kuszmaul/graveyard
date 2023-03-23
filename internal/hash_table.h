@@ -429,6 +429,11 @@ public:
   // 2) Support C++20-style heterogeneous lookup.
 
   template <class K = key_type>
+  size_t count(const key_arg<K>& key) const {
+    return find(key) == end() ? 0 : 1;
+  }
+
+  template <class K = key_type>
   iterator find(const key_arg<K>& key, size_t hash);
 
   template <class K = key_type>
@@ -450,6 +455,20 @@ public:
 
   template <class K = key_type>
   bool contains(const key_arg<K>& key) const;
+
+  template <class K = key_type>
+  std::pair<iterator, iterator> equal_range(const key_arg<K>& key) {
+    auto it = find(key);
+    if (it != end()) return {it, std::next(it)};
+    return {it, it};
+  }
+
+  template <class K = key_type>
+  std::pair<iterator, iterator> equal_range(const key_arg<K>& key) const {
+    auto it = find(key);
+    if (it != end()) return {it, std::next(it)};
+    return {it, it};
+  }
 
   allocator_type get_allocator() const { return get_allocator_ref(); }
   allocator_type &get_allocator_ref() {

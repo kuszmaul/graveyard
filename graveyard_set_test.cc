@@ -339,7 +339,7 @@ void HeterogeneousStringTest(StringSet &set) {
   EXPECT_THAT(set.equal_range(bv), Pair(Eq(set.find(bs)), Eq(set.end())));
 }
 
-TEST(GraveyardSet, Heterogenous) {
+TEST(GraveyardSet, Heterogeneous) {
   // Does it work the same for `graveyard_set` and `flat_hash_set`?
   absl::flat_hash_set<std::string> aset;
   yobiduck::GraveyardSet<std::string> gset;

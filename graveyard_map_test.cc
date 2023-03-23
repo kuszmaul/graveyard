@@ -15,6 +15,7 @@
 #include "gtest/gtest.h"
 
 using testing::_;
+using testing::Eq;
 using testing::Pair;
 using testing::UnorderedElementsAre;
 using testing::UnorderedElementsAreArray;
@@ -121,3 +122,64 @@ TEST(GraveyardMap, AssignAndReserve) {
   CHECK_EQ(status, 0);
   LOG(INFO) << "Demangled type: " << demangled;
 #endif
+
+
+template <class StringMap>
+void HeterogeneousStringTest(StringMap &map) {
+  auto [inserted_it, inserted] = map.insert({std::string("a"), 42});
+  std::string as = "a";
+  const char* ap = "a";
+  char aa[] = "a";
+  std::string_view av(as);
+  std::string bs = "b";
+  const char* bp = "b";
+  char ba[] = "b";
+  std::string_view bv(bs);
+  EXPECT_TRUE(inserted);
+  EXPECT_TRUE(map.contains(as));
+  EXPECT_TRUE(map.contains(ap));
+  EXPECT_TRUE(map.contains(aa));
+  EXPECT_TRUE(map.contains(av));
+  EXPECT_FALSE(map.contains(bs));
+  EXPECT_FALSE(map.contains(bp));
+  EXPECT_FALSE(map.contains(ba));
+  EXPECT_FALSE(map.contains(bv));
+
+  EXPECT_TRUE(map.find(as) == inserted_it);
+  EXPECT_TRUE(map.find(ap) == inserted_it);
+  EXPECT_TRUE(map.find(aa) == inserted_it);
+  EXPECT_TRUE(map.find(av) == inserted_it);
+  EXPECT_TRUE(map.find(bs) == map.end());
+  EXPECT_TRUE(map.find(bp) == map.end());
+  EXPECT_TRUE(map.find(ba) == map.end());
+  EXPECT_TRUE(map.find(bv) == map.end());
+
+  EXPECT_EQ(map.count(as), 1);
+  EXPECT_EQ(map.count(ap), 1);
+  EXPECT_EQ(map.count(aa), 1);
+  EXPECT_EQ(map.count(av), 1);
+  EXPECT_EQ(map.count(bs), 0);
+  EXPECT_EQ(map.count(bp), 0);
+  EXPECT_EQ(map.count(ba), 0);
+  EXPECT_EQ(map.count(bv), 0);
+
+  EXPECT_THAT(map.equal_range(as), Pair(Eq(map.find(as)), Eq(map.end())));
+  EXPECT_THAT(map.equal_range(ap), Pair(Eq(map.find(as)), Eq(map.end())));
+  EXPECT_THAT(map.equal_range(aa), Pair(Eq(map.find(as)), Eq(map.end())));
+  EXPECT_THAT(map.equal_range(av), Pair(Eq(map.find(as)), Eq(map.end())));
+  
+  EXPECT_THAT(map.equal_range(bs), Pair(Eq(map.find(bs)), Eq(map.end())));
+  EXPECT_THAT(map.equal_range(bp), Pair(Eq(map.find(bs)), Eq(map.end())));
+  EXPECT_THAT(map.equal_range(ba), Pair(Eq(map.find(bs)), Eq(map.end())));
+  EXPECT_THAT(map.equal_range(bv), Pair(Eq(map.find(bs)), Eq(map.end())));
+
+  //EXPECT_EQ(&map[as], &map.find(as)->second);
+}
+
+TEST(GraveyardMap, Heterogenous) {
+  // Does it work the same for `graveyard_map` and `flat_hash_map`?
+  absl::flat_hash_map<std::string, uint64_t> amap;
+  yobiduck::GraveyardMap<std::string, uint64_t> gmap;
+  HeterogeneousStringTest(amap);
+  HeterogeneousStringTest(gmap);
+}

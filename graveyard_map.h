@@ -26,6 +26,9 @@ class GraveyardMap
       yobiduck::internal::HashTableTraits<Key, T, Hash, KeyEqual, Allocator>;
   using Base = yobiduck::internal::HashTable<Traits>;
 
+  template <class K>
+  using key_arg = typename Traits::key_arg<K>;
+
 public:
   // The order as found in
   // https://en.cppreference.com/w/cpp/container/unordered_set.  Put blank lines
@@ -81,7 +84,20 @@ public:
 
   using Base::insert;
 
+  template <class K = key_type>
+  T& operator[](const key_arg<K>& key) {
+    return Traits::KeyOf(&*try_emplace(key).first);
+  }
+
+  using Base::count;
+
+  using Base::find;
+
   using Base::contains;
+
+  using Base::equal_range;
+
+  using Base::empty;
 
   using Base::size;
 

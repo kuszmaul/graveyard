@@ -103,6 +103,14 @@ struct HashTableTraits {
     }
   }
 
+  static key_type &KeyOf(value_type &value) {
+    if constexpr (std::is_same<mapped_type_or_void, void>::value) {
+      return value;
+    } else {
+      return value.first;
+    }
+  }
+
   // H2 Value for empty slots
   static constexpr uint8_t kEmpty = 255;
   static constexpr uint8_t kSearchDistanceEndSentinal = 255;
@@ -653,6 +661,7 @@ public:
   }
 
   reference operator*() { return bucket_->slots[index_].value; }
+  pointer operator->() { return &bucket_->slots[index_].value; }
 
 private:
   friend const_iterator;
@@ -708,6 +717,7 @@ public:
   }
 
   reference operator*() { return bucket_->slots[index_].value; }
+  pointer operator->() { return &bucket_->slots[index_].value; }
 
 private:
   friend bool operator==(const const_iterator &a, const const_iterator &b) {

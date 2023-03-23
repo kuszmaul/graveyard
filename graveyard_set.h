@@ -79,6 +79,8 @@ public:
 
   using Base::insert;
 
+  using Base::find;
+
   using Base::contains;
 
   using Base::size;

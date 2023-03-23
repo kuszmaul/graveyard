@@ -291,15 +291,31 @@ TEST(GraveyardSet, NoDefaultConstructor) {
 template <class StringSet>
 void HeterogeneousStringTest(StringSet &set) {
   auto [inserted_it, inserted] = set.insert(std::string("a"));
+  std::string as = "a";
+  const char* ap = "a";
+  char aa[] = "a";
+  std::string_view av(as);
+  std::string bs = "b";
+  const char* bp = "b";
+  char ba[] = "b";
+  std::string_view bv(bs);
   EXPECT_TRUE(inserted);
-  EXPECT_TRUE(set.contains(std::string("a")));
-  EXPECT_TRUE(set.contains(std::string_view("a")));
-  EXPECT_TRUE(set.contains("a"));
-  EXPECT_FALSE(set.contains(std::string("b")));
-  EXPECT_FALSE(set.contains(std::string_view("b")));
-  EXPECT_FALSE(set.contains("b"));
-  //auto find_it = set.find(std::string("a"));
-  //EXPECT_TRUE(find_it == inserted_it);
+  EXPECT_TRUE(set.contains(as));
+  EXPECT_TRUE(set.contains(ap));
+  EXPECT_TRUE(set.contains(aa));
+  EXPECT_TRUE(set.contains(av));
+  EXPECT_FALSE(set.contains(bs));
+  EXPECT_FALSE(set.contains(bp));
+  EXPECT_FALSE(set.contains(ba));
+  EXPECT_FALSE(set.contains(bv));
+  EXPECT_TRUE(set.find(as) == inserted_it);
+  EXPECT_TRUE(set.find(ap) == inserted_it);
+  EXPECT_TRUE(set.find(aa) == inserted_it);
+  EXPECT_TRUE(set.find(av) == inserted_it);
+  EXPECT_TRUE(set.find(bs) == set.end());
+  EXPECT_TRUE(set.find(bp) == set.end());
+  EXPECT_TRUE(set.find(ba) == set.end());
+  EXPECT_TRUE(set.find(bv) == set.end());
 }
 
 TEST(GraveyardSet, Heterogenous) {

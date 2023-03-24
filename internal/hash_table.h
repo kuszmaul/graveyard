@@ -197,6 +197,8 @@ template <class Traits> struct Bucket {
     return Traits::kSlotsPerBucket;
   }
 
+  // Returns an empty slot number in this bucket, if it exists.  Else
+  // returns Traits::kSlotsPerBucket.
   size_t FindEmpty() const {
     size_t matches;
     if constexpr (kHaveSse2 && Traits::kH2Modulo == 128) {
@@ -212,6 +214,23 @@ template <class Traits> struct Bucket {
     }
     return matches ? absl::container_internal::TrailingZeros(matches)
                    : Traits::kSlotsPerBucket;
+  }
+
+  // Returns a bit mask containing the non-empty slot numbers in this bucket.
+  unsigned int FindNonEmpties() const {
+    unsigned int mask;
+    if constexpr (kHaveSse2 && Traits::kH2Modulo == 128) {
+      static_assert(Traits::kEmpty > 128);
+      // We can special case in the event that the empty value is the only H2
+      // value with bit 7 set.
+      __m128i h2s = _mm_loadu_si128(reinterpret_cast<const __m128i *>(&h2[0]));
+      mask = _mm_movemask_epi8(h2s);
+    } else {
+      mask = MatchingElementsMask(Traits::kEmpty);
+    }
+    mask = ~mask;
+    mask &= (1 << Traits::kSlotsPerBucket) - 1;
+    return mask;
   }
 
   std::array<uint8_t, Traits::kSlotsPerBucket> h2;
@@ -685,10 +704,15 @@ private:
       bool is_last =
           bucket_->search_distance == Traits::kSearchDistanceEndSentinal;
       index_ = 0;
-      ++bucket_;
-      if (is_last) {
-        // *this is the end iterator.
-        return *this;
+      while (true) {
+	++bucket_;
+	if (is_last) {
+	  // *this is the end iterator.
+	  return *this;
+	}
+	if (bucket_->FindNonEmpties() != 0) {
+	  break;
+	}
       }
     }
   }

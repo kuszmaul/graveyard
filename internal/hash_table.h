@@ -57,7 +57,6 @@ template <class T>
 struct IsTransparent<T, absl::void_t<typename T::is_transparent>>
     : std::true_type {};
 
-
 template <bool is_transparent>
 struct KeyArg {
   // Transparent. Forward `K`.
@@ -434,6 +433,8 @@ public:
 
   void clear();
   std::pair<iterator, bool> insert(const value_type &value);
+  template<class ... Args>
+  std::pair<iterator, bool> emplace(Args&&... args);
   void swap(HashTable &other) noexcept;
 
   // Similarly to abseil, the API of find() has two extensions.
@@ -833,6 +834,14 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
       return iterator{&bucket, idx};
     }
   }
+}
+
+template <class Traits>
+template<class... Args>
+std::pair<typename HashTable<Traits>::iterator, bool>
+HashTable<Traits>::emplace(Args&&... args) {
+  // TODO: Deal with the case where we can calculate a key without constructing the value.
+  return insert(value_type(args...));
 }
 
 template <class Traits>

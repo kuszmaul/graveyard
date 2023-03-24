@@ -353,3 +353,97 @@ TEST(GraveyardSet, Empty) {
   gset.insert("a");
   EXPECT_FALSE(gset.empty());
 }
+
+class Emplaced {
+ public:
+  Emplaced() = delete;
+  Emplaced(int a, int b) :a_(a), b_(b) {}
+ private:
+  friend bool operator==(const Emplaced& left, const Emplaced &right) {
+    return left.a_ == right.a_;
+  }
+  friend bool operator!=(const Emplaced& left, const Emplaced &right) {
+    return !(left == right);
+  }
+  template <typename H>
+  friend H AbslHashValue(H h, const Emplaced &v) {
+    return H::combine(std::move(h), v.a_);
+  }
+  int a_, b_;
+};
+
+template <class EmplacedSet>
+void EmplaceTest(EmplacedSet &set) {
+  EXPECT_THAT(set.insert(Emplaced(1, 2)), Pair(_, true));
+  EXPECT_THAT(set.emplace(3, 4), Pair(_, true));
+  EXPECT_TRUE(set.contains(Emplaced(3, 5)));
+  EXPECT_EQ(*set.find(Emplaced(3, 6)), Emplaced(3, 7));
+  EXPECT_THAT(set.emplace(1, 6), Pair(Eq(set.find(Emplaced(1, 7))), false));
+}
+
+TEST(GraveyardSet, Emplace) {
+  EXPECT_EQ(Emplaced(3, 4), Emplaced(3, 5));
+  EXPECT_NE(Emplaced(3, 3), Emplaced(4, 3));
+  absl::flat_hash_set<Emplaced> aset;
+  yobiduck::GraveyardSet<Emplaced> gset;
+  EmplaceTest(aset);
+  EmplaceTest(gset);
+}
+
+// A class that needs to be emplaced and supports heterogeneous
+// lookup.
+class EmplacedHet {
+ public:
+  EmplacedHet() = delete;
+  EmplacedHet(int a, int b) :a_(a), b_(b) {}
+ private:
+  friend struct EqEmplacedHet;
+  friend struct HashEmplacedHet;
+  friend bool operator==(const EmplacedHet& left, const EmplacedHet &right) {
+    return left.a_ == right.a_;
+  }
+  friend bool operator!=(const EmplacedHet& left, const EmplacedHet &right) {
+    return !(left == right);
+  }
+  int a_, b_;
+};
+struct HashEmplacedHet {
+  using is_transparent = void;
+  size_t operator()(const EmplacedHet& v) const {
+    return absl::Hash<int>()(v.a_);
+  }
+  size_t operator()(int v) const {
+    return absl::Hash<int>()(v);
+  }
+};
+struct EqEmplacedHet {
+  using is_transparent = void;
+  bool operator()(const EmplacedHet& left, const EmplacedHet &right) const {
+    return left == right;
+  }
+  bool operator()(const EmplacedHet& left, int right) const {
+    return left.a_ == right;
+  }
+};
+
+template <class EmplacedSet>
+void EmplaceHetTest(EmplacedSet &set) {
+  EXPECT_THAT(set.insert(EmplacedHet(1, 2)), Pair(_, true));
+  EXPECT_THAT(set.emplace(3, 4), Pair(_, true));
+  EXPECT_TRUE(set.contains(EmplacedHet(3, 5)));
+  EXPECT_EQ(*set.find(EmplacedHet(3, 6)), EmplacedHet(3, 7));
+  EXPECT_THAT(set.emplace(1, 6), Pair(Eq(set.find(EmplacedHet(1, 7))), false));
+  EXPECT_TRUE(set.contains(3));
+}
+
+
+TEST(GraveyardSet, EmplaceHeterogeneous) {
+  EXPECT_EQ(EmplacedHet(3, 4), EmplacedHet(3, 5));
+  EXPECT_NE(EmplacedHet(3, 3), EmplacedHet(4, 3));
+  EXPECT_TRUE(EqEmplacedHet()(EmplacedHet(3, 5), 3));
+  EXPECT_EQ(HashEmplacedHet()(EmplacedHet(3, 4)), HashEmplacedHet()(3));
+  absl::flat_hash_set<EmplacedHet, HashEmplacedHet, EqEmplacedHet> aset;
+  yobiduck::GraveyardSet<EmplacedHet, HashEmplacedHet, EqEmplacedHet> gset;
+  EmplaceHetTest(aset);
+  EmplaceHetTest(gset);
+}

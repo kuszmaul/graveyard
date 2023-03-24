@@ -190,6 +190,9 @@ performance
 - [*] How about running at $2/3--4/5"?
 
       Answer: Makes insert slower, but doesn't help anything else.
+- [x] Implement (simple) emplace.
+- [ ] Implement emplace for map where the mapped_type doesn't need to be constructed.
+- [ ] Use vector instructions on iterator++.
 - [ ] Is it buying anything to have a search_distance instead of an explicit
       tombstone value?
 - [ ] Reduce the high water mark when rehashing.  (We should be able to use

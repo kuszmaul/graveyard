@@ -718,6 +718,7 @@ private:
     while (true) {
       bool is_last =
 	bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
+      unsigned int non_empties;
       index_ = 0;
       while (true) {
 	++bucket_;
@@ -725,7 +726,8 @@ private:
 	  // *this is the end iterator.
 	  return *this;
 	}
-	if (bucket_->FindNonEmpties() != 0) {
+	non_empties = bucket_->FindNonEmpties();
+	if (non_empties != 0) {
 	  break;
 	}
       }

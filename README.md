@@ -190,9 +190,15 @@ performance
 - [*] How about running at $2/3--4/5"?
 
       Answer: Makes insert slower, but doesn't help anything else.
+
 - [x] Implement (simple) emplace.
+
 - [x] Reduce the amount of duplicate code in `iterator` and `const_iterator`.
+
 - [x] Use vector instructions on iterator++.
+
+- [x] buckets physical size should be computed, not stored (to save 8 bytes).
+
 - [ ] Implement emplace for map where the mapped_type doesn't need to be constructed.
 - [ ] Is it buying anything to have a search_distance instead of an explicit
       tombstone value?
@@ -209,7 +215,6 @@ performance
       `MADV_FREE` over `MADV_DONTNEED`:
       https://kernelnewbies.org/Linux_4.5#Add_MADV_FREE_flag_to_madvise.282.29)
 - [ ] Where is that jitter comming from  in facebook?
-- [ ] buckets physical size should be computed, not stored (to save 8 bytes).
 
 - [ ] physical size should be 1 if logical size is 1.  But we are
        putting the end-of-search sentinal in the last bucket.

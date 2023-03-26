@@ -272,17 +272,7 @@ public:
   // be positive).
   explicit Buckets(size_t logical_size) : logical_size_(logical_size) {
     assert(logical_size_ > 0);
-    // Add 4 buckets if logical_size_ > 4.
-    // Add 3 buckets if logical_size_ == 4.
-    // Add 2 buckets if logical_size_ == 3.
-    // Add 1 bucket if logical_bucket_count_ <= 2.
-    size_t extra_buckets = (logical_size_ > 4)    ? 4
-                           : (logical_size_ <= 2) ? 1
-                                                  : logical_size_ - 1;
-    physical_size_ = logical_size_ + extra_buckets;
-    assert(physical_size_ > 0);
     size_t physical = physical_size();
-    assert(physical_size_ == physical);
     // TODO: Round up the physical_bucket_size_ to the actual size allocated.
     // To do this we can call malloc_usable_size to find out how big it really
     // is.  But we aren't supposed to modify those bytes (it will mess up
@@ -314,7 +304,6 @@ public:
 
   void clear() {
     logical_size_ = 0;
-    physical_size_ = 0;
     free(buckets_);
     buckets_ = 0;
   }
@@ -322,7 +311,6 @@ public:
   void swap(Buckets &other) {
     using std::swap;
     swap(logical_size_, other.logical_size_);
-    swap(physical_size_, other.physical_size_);
     swap(buckets_, other.buckets_);
   }
 
@@ -338,7 +326,6 @@ public:
                            : (logical_size_ > 2) ? logical_size_ - 1
                            : (logical_size_ > 0) ? 1
                            : 0;
-    assert(logical_size() + extra_buckets == physical_size_);
     return logical_size() + extra_buckets;
   }
   bool empty() const { return logical_size() == 0; }
@@ -373,9 +360,6 @@ private:
   // For computing the index from the hash.  The actual buckets vector is longer
   // (`physical_size_`) so that we can overflow simply by going off the end.
   size_t logical_size_ = 0;
-  // The length of `buckets_`, as allocated.
-  // TODO: Put the physical size into the malloced memory.
-  size_t physical_size_ = 0;
   Bucket<Traits> *buckets_ = nullptr;
 };
 

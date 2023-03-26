@@ -715,26 +715,24 @@ private:
       }
       ++index_;
     }
+    unsigned int non_empties;
     while (true) {
-      unsigned int non_empties;
-      while (true) {
-	bool is_last =
-	  bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
-	++bucket_;
-	if (is_last) {
-	  index_ = 0;
-	  // *this is the end iterator.
-	  return *this;
-	}
-	non_empties = bucket_->FindNonEmpties();
-	if (non_empties != 0) {
-	  break;
-	}
+      bool is_last =
+	bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
+      ++bucket_;
+      if (is_last) {
+	index_ = 0;
+	// *this is the end iterator.
+	return *this;
       }
-      assert(non_empties != 0);
-      index_ = absl::container_internal::TrailingZeros(non_empties);
-      return *this;
+      non_empties = bucket_->FindNonEmpties();
+      if (non_empties != 0) {
+	break;
+      }
     }
+    assert(non_empties != 0);
+    index_ = absl::container_internal::TrailingZeros(non_empties);
+    return *this;
   }
   Iterator(bucket_type *bucket, size_t index)
       : bucket_(bucket), index_(index) {}

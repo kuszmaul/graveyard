@@ -709,11 +709,18 @@ private:
   friend HashTable;
   // index_ is allowed to be kSlotsPerBucket
   Iterator &SkipEmpty() {
-    while (index_ < Iterator::traits::kSlotsPerBucket) {
-      if (bucket_->h2[index_] != Iterator::traits::kEmpty) {
-	return *this;
+    {
+      unsigned int non_empties = bucket_->FindNonEmpties();
+      non_empties &= ~((1u << index_) - 1);
+      while (index_ < Iterator::traits::kSlotsPerBucket) {
+	if (bucket_->h2[index_] != Iterator::traits::kEmpty) {
+	  assert(non_empties != 0 &&
+		 absl::container_internal::TrailingZeros(non_empties) == index_);
+	  return *this;
+	}
+	++index_;
       }
-      ++index_;
+      assert(non_empties == 0);
     }
     unsigned int non_empties;
     while (true) {

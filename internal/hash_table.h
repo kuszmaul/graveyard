@@ -295,7 +295,7 @@ public:
       bucket.Init();
     }
     // Set the end-of-search sentinal.
-    buckets_[physical_size_ - 1].search_distance =
+    buckets_[physical - 1].search_distance =
         Traits::kSearchDistanceEndSentinal;
     if (0) {
       // It turns out that for libc malloc, the extra usable size usually just

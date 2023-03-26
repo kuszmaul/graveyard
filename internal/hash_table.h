@@ -732,8 +732,8 @@ private:
 	}
       }
       assert(non_empties != 0);
-      index_ == absl::container_internal::TrailingZeros(non_empties);
-      return *this;index_ = 0;
+      index_ = absl::container_internal::TrailingZeros(non_empties);
+      return *this;
     }
   }
   Iterator(bucket_type *bucket, size_t index)

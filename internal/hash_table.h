@@ -666,6 +666,31 @@ typename HashTable<Traits>::const_iterator HashTable<Traits>::cend() const {
   return const_iterator(buckets_.cend(), 0);
 }
 
+template <class Iterator>
+static inline Iterator& SkipEmptyImpl(Iterator& it) {
+  while (true) {
+    while (it.index_ < Iterator::traits::kSlotsPerBucket) {
+      if (it.bucket_->h2[it.index_] != Iterator::traits::kEmpty) {
+	return it;
+      }
+      ++it.index_;
+    }
+    bool is_last =
+      it.bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
+    it.index_ = 0;
+    while (true) {
+      ++it.bucket_;
+      if (is_last) {
+	// *this is the end iterator.
+	return it;
+      }
+      if (it.bucket_->FindNonEmpties() != 0) {
+	break;
+      }
+    }
+  }
+}
+
 template <class Traits> class HashTable<Traits>::iterator {
 public:
   using difference_type = ptrdiff_t;
@@ -684,6 +709,8 @@ public:
   pointer operator->() { return &bucket_->slots[index_].value; }
 
 private:
+  using traits = Traits;
+
   friend const_iterator;
   friend bool operator==(const iterator &a, const iterator &b) {
     return a.bucket_ == b.bucket_ && a.index_ == b.index_;
@@ -692,29 +719,10 @@ private:
     return !(a == b);
   }
   friend HashTable;
+  friend iterator& SkipEmptyImpl<iterator>(iterator&);
   // index_ is allowed to be kSlotsPerBucket
   iterator &SkipEmpty() {
-    while (true) {
-      while (index_ < Traits::kSlotsPerBucket) {
-        if (bucket_->h2[index_] != Traits::kEmpty) {
-          return *this;
-        }
-        ++index_;
-      }
-      bool is_last =
-          bucket_->search_distance == Traits::kSearchDistanceEndSentinal;
-      index_ = 0;
-      while (true) {
-	++bucket_;
-	if (is_last) {
-	  // *this is the end iterator.
-	  return *this;
-	}
-	if (bucket_->FindNonEmpties() != 0) {
-	  break;
-	}
-      }
-    }
+    return SkipEmptyImpl(*this);
   }
   iterator(Bucket<Traits> *bucket, size_t index)
       : bucket_(bucket), index_(index) {}
@@ -724,7 +732,6 @@ private:
   size_t index_;
 };
 
-// TODO: Reduce the copy pasta.
 template <class Traits> class HashTable<Traits>::const_iterator {
 public:
   using difference_type = ptrdiff_t;
@@ -745,6 +752,8 @@ public:
   pointer operator->() { return &bucket_->slots[index_].value; }
 
 private:
+  using traits = Traits;
+
   friend bool operator==(const const_iterator &a, const const_iterator &b) {
     return a.bucket_ == b.bucket_ && a.index_ == b.index_;
   }
@@ -752,24 +761,10 @@ private:
     return !(a == b);
   }
   friend HashTable;
+  friend const_iterator& SkipEmptyImpl<const_iterator>(const_iterator&);
   // index_ is allowed to be kSlotsPerBucket
   const_iterator &SkipEmpty() {
-    while (true) {
-      while (index_ < Traits::kSlotsPerBucket) {
-        if (bucket_->h2[index_] != Traits::kEmpty) {
-          return *this;
-        }
-        ++index_;
-      }
-      bool is_last =
-          bucket_->search_distance == Traits::kSearchDistanceEndSentinal;
-      index_ = 0;
-      ++bucket_;
-      if (is_last) {
-        // *this is the end const_iterator.
-        return *this;
-      }
-    }
+    return SkipEmptyImpl(*this);
   }
   const_iterator(const Bucket<Traits> *bucket, size_t index)
       : bucket_(bucket), index_(index) {}

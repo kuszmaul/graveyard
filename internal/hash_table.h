@@ -325,8 +325,20 @@ public:
   }
 
   size_t logical_size() const { return logical_size_; }
-  size_t physical_size() const { return physical_size_; }
-  bool empty() const { return physical_size() == 0; }
+  size_t physical_size() const { 
+    assert(logical_size_ > 0);
+    // Add 4 buckets if logical_size_ > 4.
+    // Add 3 buckets if logical_size_ == 4.
+    // Add 2 buckets if logical_size_ == 3.
+    // Add 1 bucket if logical_bucket_count_ <= 2.
+    // TODO: We'd like to add 0 buckets if the logical_bucket_count == 1.
+    size_t extra_buckets = (logical_size_ > 4)    ? 4
+                           : (logical_size_ <= 2) ? 1
+                                                  : logical_size_ - 1;
+    assert(logical_size() + extra_buckets == physical_size_);
+    return logical_size() + extra_buckets;
+  }
+  bool empty() const { return logical_size() == 0; }
   Bucket<Traits> &operator[](size_t index) {
     assert(index < physical_size());
     return buckets_[index];

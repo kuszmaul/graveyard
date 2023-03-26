@@ -118,6 +118,15 @@ IWYU is giving some false noise and is a little bit difficult to work
 with.  It's confused about what std::swap includes.  Also the google
 test framework doesn't play well with IWYU.
 
+## Things to boast about
+
+- [ ] Small number of bytes for empty table (only 16 bytes)?  Compare
+      to F14 and Absl.  Only the logical number of buckets is stored
+      in the actual data structure (so we can start computing the
+      index without first accessing any of the heap-allocated memory.
+
+- [ ] Small number of bytes for small table?  Compare to F14 and Absl.  (Not yet done?)
+
 ## TODO
 
 - [x] Move implementation details into a separate file.  (2023-02-13)

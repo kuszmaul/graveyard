@@ -281,13 +281,15 @@ public:
                                                   : logical_size_ - 1;
     physical_size_ = logical_size_ + extra_buckets;
     assert(physical_size_ > 0);
+    size_t physical = physical_size();
+    assert(physical_size_ == physical);
     // TODO: Round up the physical_bucket_size_ to the actual size allocated.
     // To do this we can call malloc_usable_size to find out how big it really
     // is.  But we aren't supposed to modify those bytes (it will mess up
     // tools such as address sanitizer or valgrind).  So we realloc the
     // pointer to the actual size.
     buckets_ = static_cast<Bucket<Traits> *>(aligned_alloc(
-        Traits::kCacheLineSize, physical_size_ * sizeof(*buckets_)));
+        Traits::kCacheLineSize, physical * sizeof(*buckets_)));
     assert(buckets_ != nullptr);
     for (Bucket<Traits> &bucket : *this) {
       bucket.Init();

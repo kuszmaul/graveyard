@@ -428,8 +428,11 @@ public:
     return *this;
   }
 
-  class iterator;
-  class const_iterator;
+ private:
+  template <bool is_const> class Iterator;
+ public:
+  using iterator = Iterator<false>;
+  using const_iterator = Iterator<true>;
 
   iterator begin();
   iterator end();
@@ -666,41 +669,26 @@ typename HashTable<Traits>::const_iterator HashTable<Traits>::cend() const {
   return const_iterator(buckets_.cend(), 0);
 }
 
-template <class Iterator>
-static inline Iterator& SkipEmptyImpl(Iterator& it) {
-  while (true) {
-    while (it.index_ < Iterator::traits::kSlotsPerBucket) {
-      if (it.bucket_->h2[it.index_] != Iterator::traits::kEmpty) {
-	return it;
-      }
-      ++it.index_;
-    }
-    bool is_last =
-      it.bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
-    it.index_ = 0;
-    while (true) {
-      ++it.bucket_;
-      if (is_last) {
-	// *this is the end iterator.
-	return it;
-      }
-      if (it.bucket_->FindNonEmpties() != 0) {
-	break;
-      }
-    }
-  }
-}
-
-template <class Traits> class HashTable<Traits>::iterator {
+template <class Traits>
+template <bool is_const>
+class HashTable<Traits>::Iterator {
+  using original_value_type = typename Traits::value_type;
+  using bucket_type = std::conditional_t<is_const, const Bucket<Traits>, Bucket<Traits>>;
 public:
   using difference_type = ptrdiff_t;
-  using value_type = typename Traits::value_type;
+  using value_type = std::conditional_t<is_const, const original_value_type, original_value_type>;
   using pointer = value_type *;
   using reference = value_type &;
   using iterator_category = std::forward_iterator_tag;
 
-  iterator() = default;
-  iterator &operator++() {
+  Iterator() = default;
+
+  // Implicit conversion from iterator to const_iterator.
+  template <bool IsConst = is_const,
+            std::enable_if_t<IsConst, bool> = true>
+  Iterator(iterator x) : bucket_(x.bucket_), index_(x.index_) {}
+
+  Iterator &operator++() {
     ++index_;
     return SkipEmpty();
   }
@@ -712,65 +700,42 @@ private:
   using traits = Traits;
 
   friend const_iterator;
-  friend bool operator==(const iterator &a, const iterator &b) {
+  friend bool operator==(const Iterator &a, const Iterator &b) {
     return a.bucket_ == b.bucket_ && a.index_ == b.index_;
   }
-  friend bool operator!=(const iterator &a, const iterator &b) {
+  friend bool operator!=(const Iterator &a, const Iterator &b) {
     return !(a == b);
   }
   friend HashTable;
-  friend iterator& SkipEmptyImpl<iterator>(iterator&);
   // index_ is allowed to be kSlotsPerBucket
-  iterator &SkipEmpty() {
-    return SkipEmptyImpl(*this);
+  Iterator &SkipEmpty() {
+    while (true) {
+      while (index_ < Iterator::traits::kSlotsPerBucket) {
+	if (bucket_->h2[index_] != Iterator::traits::kEmpty) {
+	  return *this;
+	}
+	++index_;
+      }
+      bool is_last =
+	bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
+      index_ = 0;
+      while (true) {
+	++bucket_;
+	if (is_last) {
+	  // *this is the end iterator.
+	  return *this;
+	}
+	if (bucket_->FindNonEmpties() != 0) {
+	  break;
+	}
+      }
+    }
   }
-  iterator(Bucket<Traits> *bucket, size_t index)
+  Iterator(bucket_type *bucket, size_t index)
       : bucket_(bucket), index_(index) {}
   // The end iterator is represented with bucket_ == buckets_.end()
   // and index_ == kSlotsPerBucket.
-  Bucket<Traits> *bucket_;
-  size_t index_;
-};
-
-template <class Traits> class HashTable<Traits>::const_iterator {
-public:
-  using difference_type = ptrdiff_t;
-  using value_type = HashTable::value_type;
-  using pointer = const value_type *;
-  using reference = const value_type &;
-  using iterator_category = std::forward_iterator_tag;
-
-  const_iterator() = default;
-  // Implicit constructor
-  const_iterator(iterator x) : bucket_(x.bucket_), index_(x.index_) {}
-  const_iterator &operator++() {
-    ++index_;
-    return SkipEmpty();
-  }
-
-  reference operator*() { return bucket_->slots[index_].value; }
-  pointer operator->() { return &bucket_->slots[index_].value; }
-
-private:
-  using traits = Traits;
-
-  friend bool operator==(const const_iterator &a, const const_iterator &b) {
-    return a.bucket_ == b.bucket_ && a.index_ == b.index_;
-  }
-  friend bool operator!=(const const_iterator &a, const const_iterator &b) {
-    return !(a == b);
-  }
-  friend HashTable;
-  friend const_iterator& SkipEmptyImpl<const_iterator>(const_iterator&);
-  // index_ is allowed to be kSlotsPerBucket
-  const_iterator &SkipEmpty() {
-    return SkipEmptyImpl(*this);
-  }
-  const_iterator(const Bucket<Traits> *bucket, size_t index)
-      : bucket_(bucket), index_(index) {}
-  // The end const_iterator is represented with bucket_ == buckets_.end()
-  // and index_ == kSlotsPerBucket.
-  const Bucket<Traits> *bucket_;
+  bucket_type *bucket_;
   size_t index_;
 };
 

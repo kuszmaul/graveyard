@@ -210,6 +210,8 @@ performance
 
 - [x] erase
 
+- [ ] Put size into buckets.
+
 - [ ] make sure that after enough inserts, rehash occurs.  (Right now,
       a sequence of alternating erases and inserts can cause the table
       to never get rehashed, and the graveyard properties won't be

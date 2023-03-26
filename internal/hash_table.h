@@ -254,18 +254,7 @@ public:
   Buckets &operator=(Buckets &&other) = delete;
 
   ~Buckets() {
-    assert((logical_size() == 0) == (buckets_ == nullptr));
-    if (buckets_ != nullptr) {
-      for (Bucket<Traits> &bucket : *this) {
-        for (size_t slot = 0; slot < Traits::kSlotsPerBucket; ++slot) {
-          if (bucket.h2[slot] != Traits::kEmpty) {
-            bucket.slots[slot].value.~value_type();
-          }
-        }
-      }
-      free(buckets_);
-      buckets_ = nullptr;
-    }
+    clear();
   }
 
   // Constructs a `Buckets` that has the given logical bucket size (which must
@@ -278,24 +267,24 @@ public:
     // is.  But we aren't supposed to modify those bytes (it will mess up
     // tools such as address sanitizer or valgrind).  So we realloc the
     // pointer to the actual size.
-    buckets_ = static_cast<Bucket<Traits> *>(aligned_alloc(
-        Traits::kCacheLineSize, physical * sizeof(*buckets_)));
-    assert(buckets_ != nullptr);
+    data_ = static_cast<char*>(aligned_alloc(Traits::kCacheLineSize, 
+					     physical * sizeof(Bucket<Traits>)));
+    assert(data_ != nullptr);
     for (Bucket<Traits> &bucket : *this) {
       bucket.Init();
     }
     // Set the end-of-search sentinal.
-    buckets_[physical - 1].search_distance =
+    begin()[physical - 1].search_distance =
         Traits::kSearchDistanceEndSentinal;
     if (0) {
       // It turns out that for libc malloc, the extra usable size usually just
       // 8 extra bytes.
-      size_t allocated = malloc_usable_size(buckets_);
+      size_t allocated = malloc_usable_size(data_);
       LOG(INFO) << "logical_size=" << logical_size_
                 << " physical_size=" << physical
                 << " allocated bytes=" << allocated
-                << " size=" << allocated / sizeof(*buckets_) << " %"
-                << sizeof(*buckets_) << "=" << allocated % sizeof(*buckets_);
+                << " size=" << allocated / sizeof(Bucket<Traits>) << " %"
+                << sizeof(Bucket<Traits>) << "=" << allocated % sizeof(Bucket<Traits>);
     }
   }
 
@@ -303,15 +292,25 @@ public:
   // std::vector.
 
   void clear() {
+    assert((logical_size() == 0) == (data_ == nullptr));
+    if (data_ != nullptr) {
+      for (Bucket<Traits> &bucket : *this) {
+	for (size_t slot = 0; slot < Traits::kSlotsPerBucket; ++slot) {
+	  if (bucket.h2[slot] != Traits::kEmpty) {
+	    bucket.slots[slot].value.~value_type();
+	  }
+	}
+      }
+      free(data_);
+      data_ = nullptr;
+    }
     logical_size_ = 0;
-    free(buckets_);
-    buckets_ = 0;
   }
 
   void swap(Buckets &other) {
     using std::swap;
     swap(logical_size_, other.logical_size_);
-    swap(buckets_, other.buckets_);
+    swap(data_, other.data_);
   }
 
   size_t logical_size() const { return logical_size_; }
@@ -331,18 +330,18 @@ public:
   bool empty() const { return logical_size() == 0; }
   Bucket<Traits> &operator[](size_t index) {
     assert(index < physical_size());
-    return buckets_[index];
+    return begin()[index];
   }
   const Bucket<Traits> &operator[](size_t index) const {
     assert(index < physical_size());
-    return buckets_[index];
+    return cbegin()[index];
   }
-  Bucket<Traits> *begin() { return buckets_; }
-  const Bucket<Traits> *begin() const { return buckets_; }
-  const Bucket<Traits> *cbegin() const { return buckets_; }
-  Bucket<Traits> *end() { return buckets_ + physical_size(); }
-  const Bucket<Traits> *end() const { return buckets_ + physical_size(); }
-  const Bucket<Traits> *cend() const { return buckets_ + physical_size(); }
+  Bucket<Traits> *begin() { return const_cast<Bucket<Traits>*>(cbegin()); }
+  const Bucket<Traits> *begin() const { return cbegin(); }
+  const Bucket<Traits> *cbegin() const { return reinterpret_cast<const Bucket<Traits>*>(data_ + buckets_offset); }
+  Bucket<Traits> *end() { return begin() + physical_size(); }
+  const Bucket<Traits> *end() const { return cend(); }
+  const Bucket<Traits> *cend() const { return cbegin() + physical_size(); }
 
   // Returns the preferred bucket number, also known as the H1 hash.
   size_t H1(size_t hash) const {
@@ -355,12 +354,16 @@ public:
   size_t H2(size_t hash) const { return hash % Traits::kH2Modulo; }
 
 private:
+  static constexpr size_t buckets_offset = 0;
+
   using value_type = typename Traits::value_type;
 
   // For computing the index from the hash.  The actual buckets vector is longer
   // (`physical_size_`) so that we can overflow simply by going off the end.
+  //
+  // We keep `logical_size_` here the header, and everything else in the data_.
   size_t logical_size_ = 0;
-  Bucket<Traits> *buckets_ = nullptr;
+  char *data_ = nullptr;
 };
 
 struct ProbeStatistics {

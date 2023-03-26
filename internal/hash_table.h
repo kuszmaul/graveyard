@@ -254,7 +254,7 @@ public:
   Buckets &operator=(Buckets &&other) = delete;
 
   ~Buckets() {
-    assert((physical_size_ == 0) == (buckets_ == nullptr));
+    assert((logical_size() == 0) == (buckets_ == nullptr));
     if (buckets_ != nullptr) {
       for (Bucket<Traits> &bucket : *this) {
         for (size_t slot = 0; slot < Traits::kSlotsPerBucket; ++slot) {

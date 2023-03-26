@@ -192,8 +192,8 @@ performance
       Answer: Makes insert slower, but doesn't help anything else.
 - [x] Implement (simple) emplace.
 - [x] Reduce the amount of duplicate code in `iterator` and `const_iterator`.
+- [x] Use vector instructions on iterator++.
 - [ ] Implement emplace for map where the mapped_type doesn't need to be constructed.
-- [ ] Use vector instructions on iterator++.
 - [ ] Is it buying anything to have a search_distance instead of an explicit
       tombstone value?
 - [ ] Reduce the high water mark when rehashing.  (We should be able to use

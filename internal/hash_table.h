@@ -709,20 +709,17 @@ private:
   friend HashTable;
   // index_ is allowed to be kSlotsPerBucket
   Iterator &SkipEmpty() {
+    // Look for a non-empty value, starting at index_ in the current bucket.
     {
       unsigned int non_empties = bucket_->FindNonEmpties();
       non_empties &= ~((1u << index_) - 1);
-      while (index_ < Iterator::traits::kSlotsPerBucket) {
-	if (bucket_->h2[index_] != Iterator::traits::kEmpty) {
-	  assert(non_empties != 0 &&
-		 absl::container_internal::TrailingZeros(non_empties) == index_);
-	  return *this;
-	}
-	++index_;
+      if (non_empties != 0) {
+	index_ = absl::container_internal::TrailingZeros(non_empties);
+	return *this;
       }
-      assert(non_empties == 0);
     }
-    unsigned int non_empties;
+    // There were none, so look for a bucket with at least one
+    // non-empty value, and set `index_` accordingly.
     while (true) {
       bool is_last =
 	bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
@@ -732,14 +729,12 @@ private:
 	// *this is the end iterator.
 	return *this;
       }
-      non_empties = bucket_->FindNonEmpties();
+      unsigned int non_empties = bucket_->FindNonEmpties();
       if (non_empties != 0) {
-	break;
+	index_ = absl::container_internal::TrailingZeros(non_empties);
+	return *this;
       }
     }
-    assert(non_empties != 0);
-    index_ = absl::container_internal::TrailingZeros(non_empties);
-    return *this;
   }
   Iterator(bucket_type *bucket, size_t index)
       : bucket_(bucket), index_(index) {}

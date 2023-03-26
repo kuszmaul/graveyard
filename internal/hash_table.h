@@ -732,15 +732,8 @@ private:
 	}
       }
       assert(non_empties != 0);
-      index_ = 0;
-      while (index_ < Iterator::traits::kSlotsPerBucket) {
-	if (bucket_->h2[index_] != Iterator::traits::kEmpty) {
-	  assert(index_ == absl::container_internal::TrailingZeros(non_empties));
-	  return *this;
-	}
-	++index_;
-      }
-      abort();
+      index_ == absl::container_internal::TrailingZeros(non_empties);
+      return *this;index_ = 0;
     }
   }
   Iterator(bucket_type *bucket, size_t index)

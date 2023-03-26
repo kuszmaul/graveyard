@@ -735,6 +735,7 @@ private:
       index_ = 0;
       while (index_ < Iterator::traits::kSlotsPerBucket) {
 	if (bucket_->h2[index_] != Iterator::traits::kEmpty) {
+	  assert(index_ == absl::container_internal::TrailingZeros(non_empties));
 	  return *this;
 	}
 	++index_;

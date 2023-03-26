@@ -355,7 +355,7 @@ public:
   const Bucket<Traits> *cbegin() const { return buckets_; }
   Bucket<Traits> *end() { return buckets_ + physical_size(); }
   const Bucket<Traits> *end() const { return buckets_ + physical_size(); }
-  const Bucket<Traits> *cend() const { return buckets_ + physical_size_; }
+  const Bucket<Traits> *cend() const { return buckets_ + physical_size(); }
 
   // Returns the preferred bucket number, also known as the H1 hash.
   size_t H1(size_t hash) const {

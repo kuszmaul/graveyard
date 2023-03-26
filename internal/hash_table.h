@@ -740,6 +740,7 @@ private:
 	}
 	++index_;
       }
+      abort();
     }
   }
   Iterator(bucket_type *bucket, size_t index)

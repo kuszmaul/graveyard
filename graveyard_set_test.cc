@@ -286,7 +286,7 @@ TEST(GraveyardSet, NoDefaultConstructor) {
       gset.insert(NoDefaultConstructor(i));
     }
   }
-  CHECK_EQ(count_existing, 0);
+  EXPECT_EQ(count_existing, 0);
 }
 
 template <class StringSet>
@@ -446,4 +446,82 @@ TEST(GraveyardSet, EmplaceHeterogeneous) {
   yobiduck::GraveyardSet<EmplacedHet, HashEmplacedHet, EqEmplacedHet> gset;
   EmplaceHetTest(aset);
   EmplaceHetTest(gset);
+}
+
+TEST(GraveyardSet, ErasesIterator1) {
+  yobiduck::GraveyardSet<std::string> gset;
+  gset.insert("a");
+  const auto &cset = gset;
+  auto it = cset.find("a");
+  EXPECT_EQ(gset.find("a"), it);
+  gset.erase(it++);
+  EXPECT_EQ(it, gset.end());
+  EXPECT_EQ(gset.size(), 0);
+  EXPECT_EQ(gset.begin(), gset.end());
+}
+
+TEST(GraveyardSet, ErasesIterator100) {
+  yobiduck::GraveyardSet<int> gset;
+  constexpr size_t kN = 100;
+  for (size_t i = 0; i < kN; ++i) {
+    gset.insert(i);
+  }
+  for (size_t i = 0; i < kN; ++i) {
+    auto it = gset.find(i);
+    gset.erase(it++);
+    EXPECT_EQ(gset.size(), kN - i - 1);
+    if (it != gset.end()) {
+      EXPECT_GT(*it, i);
+    }
+    for (size_t j = 0; j < kN; ++j) {
+      if (j <= i) {
+	EXPECT_FALSE(gset.contains(j));
+      } else {
+	EXPECT_TRUE(gset.contains(j));
+      }
+    }
+  }
+  EXPECT_EQ(gset.begin(), gset.end());
+}
+
+TEST(GraveyardSet, ErasesIteratorRange) {
+  yobiduck::GraveyardSet<int> gset;
+  yobiduck::GraveyardSet<int> to_delete;
+  constexpr size_t kN = 100;
+  for (size_t i = 0; i < kN; ++i) {
+    gset.insert(i);
+  }
+  auto start = gset.cbegin();
+  for (size_t i = 0; i < kN / 3; ++i) {
+    ++start;
+  }
+  auto end = start;
+  for (size_t i = 0; i < 2 * kN / 3; ++i) {
+    to_delete.insert(*end);
+    ++end;
+  }
+  auto end2 = gset.erase(start, end);
+  assert(end == end2);
+  EXPECT_EQ(gset.size() + to_delete.size(), kN);
+  for (size_t i = 0 ; i < kN; ++i) {
+    EXPECT_EQ(gset.contains(i), !to_delete.contains(i));
+  }
+}
+
+TEST(GraveyardSet, ErasesByValue) {
+  yobiduck::GraveyardSet<std::string> gset;
+  gset.insert("a");
+  gset.insert("b");
+  gset.insert("c");
+  gset.insert("d");
+  EXPECT_EQ(gset.erase("a"), 1);
+  EXPECT_EQ(gset.erase("a"), 0);
+  EXPECT_EQ(gset.erase(std::string("b")), 1);
+  EXPECT_EQ(gset.erase(std::string("b")), 0);
+  EXPECT_EQ(gset.erase(std::string_view("c")), 1);
+  EXPECT_EQ(gset.erase(std::string_view("c")), 0);
+  char d[] = "d";
+  EXPECT_EQ(gset.erase(d), 1);
+  EXPECT_EQ(gset.erase(d), 0);
+  EXPECT_TRUE(gset.empty());
 }

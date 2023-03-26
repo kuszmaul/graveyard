@@ -259,7 +259,7 @@ public:
       for (Bucket<Traits> &bucket : *this) {
         for (size_t slot = 0; slot < Traits::kSlotsPerBucket; ++slot) {
           if (bucket.h2[slot] != Traits::kEmpty) {
-            (&bucket.slots[slot].value)->~value_type();
+            bucket.slots[slot].value.~value_type();
           }
         }
       }
@@ -456,6 +456,15 @@ public:
   std::pair<iterator, bool> insert(const value_type &value);
   template<class ... Args>
   std::pair<iterator, bool> emplace(Args&&... args);
+  // Note: As for absl, this overload doesn't return an iterator.  
+  // If that iterator is needed, simply post increment the iterator:
+  //
+  //     set.erase(it++);
+  void erase(iterator pos);
+  void erase(const_iterator pos);
+  iterator erase(const_iterator first, const_iterator last);
+  template <class K = key_type>
+  size_t erase(const key_arg<K>& key);
   void swap(HashTable &other) noexcept;
 
   // Similarly to abseil, the API of find() has two extensions.
@@ -692,6 +701,12 @@ public:
     return SkipEmpty();
   }
 
+  Iterator operator++(int) {
+    Iterator result = *this;
+    ++*this;
+    return result;;
+  }
+
   reference operator*() { return bucket_->slots[index_].value; }
   pointer operator->() { return &bucket_->slots[index_].value; }
 
@@ -838,6 +853,45 @@ void HashTable<Traits>::swap(HashTable &other) noexcept {
   std::swap(size_, other.size_);
   buckets_.swap(other.buckets_);
 }
+
+template <class Traits>
+void HashTable<Traits>::erase(iterator pos) {
+  erase(const_iterator(pos));
+}
+
+template <class Traits>
+void HashTable<Traits>::erase(const_iterator pos) {
+  Bucket<Traits>* bucket = const_cast<Bucket<Traits>*>(pos.bucket_);
+  size_t index = pos.index_;
+  // We can assume that it's a valid iterator.
+  assert(bucket->h2[index] != Traits::kEmpty);
+  assert(size_ > 0);
+  bucket->h2[index] = Traits::kEmpty;
+  bucket->slots[index].value.~value_type();
+  --size_;
+  return;
+}
+
+template <class Traits>
+typename HashTable<Traits>::iterator HashTable<Traits>::erase(const_iterator first, const_iterator last)  {
+  while (first != last) {
+    erase(first++);
+  }
+  return iterator(const_cast<Bucket<Traits>*>(last.bucket_),
+		  last.index_);
+}
+
+template <class Traits>
+template <class K>
+size_t HashTable<Traits>::erase(const key_arg<K>& key) {
+  auto it = find(key);
+  if (it == end()) {
+    return 0;
+  }
+  erase(it);
+  return 1;
+}
+
 
 template <class Traits>
 template <class K>

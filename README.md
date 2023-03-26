@@ -208,6 +208,13 @@ performance
 
 - [x] buckets physical size should be computed, not stored (to save 8 bytes).
 
+- [x] erase
+
+- [ ] make sure that after enough inserts, rehash occurs.  (Right now,
+      a sequence of alternating erases and inserts can cause the table
+      to never get rehashed, and the graveyard properties won't be
+      maintained.)
+
 - [ ] Implement emplace for map where the mapped_type doesn't need to be constructed.
 - [ ] Is it buying anything to have a search_distance instead of an explicit
       tombstone value?
@@ -261,3 +268,5 @@ performance
 - [ ] Deal with various flavors of insert (&&) and constructors.
 - [ ] clang-tidy github.com/erenon/bazel_clang_tidy
 - [ ] Make the buckets point at an empty buckets item even when the table is empty so we can get rid of the branch that checks to see if the buckets are empty.
+
+- [ ] Make the hash vary from run to run.

@@ -716,13 +716,13 @@ private:
       ++index_;
     }
     while (true) {
-      bool is_last =
-	bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
       unsigned int non_empties;
-      index_ = 0;
       while (true) {
+	bool is_last =
+	  bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
 	++bucket_;
 	if (is_last) {
+	  index_ = 0;
 	  // *this is the end iterator.
 	  return *this;
 	}
@@ -731,6 +731,8 @@ private:
 	  break;
 	}
       }
+      assert(non_empties != 0);
+      index_ = 0;
       while (index_ < Iterator::traits::kSlotsPerBucket) {
 	if (bucket_->h2[index_] != Iterator::traits::kEmpty) {
 	  return *this;
@@ -820,6 +822,7 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
     if (matches != 0) {
       size_t idx = absl::container_internal::TrailingZeros(matches);
       bucket.h2[idx] = h2;
+      assert(h2 < Traits::kH2Modulo);
       new (&bucket.slots[idx].value) value_type(value);
       maxf(buckets_[preferred_bucket].search_distance, i + 1);
       ++size_;
@@ -922,6 +925,7 @@ void HashTable<Traits>::Validate(int line_number) const {
   for (size_t i = 0; i < buckets_.physical_size(); ++i) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (buckets_[i].h2[j] != Traits::kEmpty) {
+	assert(buckets_[i].h2[j] < Traits::kH2Modulo);
 	++actual_size;
 	size_t hash = get_hasher_ref()(buckets_[i].slots[j].value);
 	size_t h1 = buckets_.H1(hash);

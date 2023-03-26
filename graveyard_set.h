@@ -121,6 +121,9 @@ public:
   using Base::GetSuccessfulProbeLength;
 
   using Base::GetSortedBucketsIterator;
+
+  using Base::Validate;
+  using Base::ToString;
 };
 
 // TODO: Idea, keep a bit that says whether a particular slot is out of its

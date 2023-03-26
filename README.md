@@ -196,12 +196,24 @@ performance
 - [ ] Implement emplace for map where the mapped_type doesn't need to be constructed.
 - [ ] Is it buying anything to have a search_distance instead of an explicit
       tombstone value?
+
+- [ ] Reduce memory consumption for tables of capacity < 14.
+      (Allocate a table of size 0, then one with just enough space for
+      1 element, then just enough for 2 elements, then 3, then 4, then
+      5, 6, 7, 8, 10, 12, then 14.  The next one needs 3 complete
+      buckets for a logical capacity of 28.
+
 - [ ] Reduce the high water mark when rehashing.  (We should be able to use
       `madvise(.., MADV_FREE)` the pages that have been read out of, and avoid
       initializing any bucket values during construction.)  (Note that we prefer
       `MADV_FREE` over `MADV_DONTNEED`:
       https://kernelnewbies.org/Linux_4.5#Add_MADV_FREE_flag_to_madvise.282.29)
 - [ ] Where is that jitter comming from  in facebook?
+- [ ] buckets physical size should be computed, not stored (to save 8 bytes).
+
+- [ ] physical size should be 1 if logical size is 1.  But we are
+       putting the end-of-search sentinal in the last bucket.
+
 - [ ] Put as much metadata as possible into the malloced part (but not the
       `logical_bucket_count_` which is in the critical path for `find`.
 - [ ] Increase the size of `buckets_` to match the actual allocated memory.

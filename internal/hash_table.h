@@ -709,13 +709,13 @@ private:
   friend HashTable;
   // index_ is allowed to be kSlotsPerBucket
   Iterator &SkipEmpty() {
-    while (true) {
-      while (index_ < Iterator::traits::kSlotsPerBucket) {
-	if (bucket_->h2[index_] != Iterator::traits::kEmpty) {
-	  return *this;
-	}
-	++index_;
+    while (index_ < Iterator::traits::kSlotsPerBucket) {
+      if (bucket_->h2[index_] != Iterator::traits::kEmpty) {
+	return *this;
       }
+      ++index_;
+    }
+    while (true) {
       bool is_last =
 	bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
       index_ = 0;
@@ -728,6 +728,12 @@ private:
 	if (bucket_->FindNonEmpties() != 0) {
 	  break;
 	}
+      }
+      while (index_ < Iterator::traits::kSlotsPerBucket) {
+	if (bucket_->h2[index_] != Iterator::traits::kEmpty) {
+	  return *this;
+	}
+	++index_;
       }
     }
   }

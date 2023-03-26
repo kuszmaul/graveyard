@@ -302,7 +302,7 @@ public:
       // 8 extra bytes.
       size_t allocated = malloc_usable_size(buckets_);
       LOG(INFO) << "logical_size=" << logical_size_
-                << " physical_size=" << physical_size_
+                << " physical_size=" << physical
                 << " allocated bytes=" << allocated
                 << " size=" << allocated / sizeof(*buckets_) << " %"
                 << sizeof(*buckets_) << "=" << allocated % sizeof(*buckets_);
@@ -328,15 +328,16 @@ public:
 
   size_t logical_size() const { return logical_size_; }
   size_t physical_size() const { 
-    assert(logical_size_ > 0);
     // Add 4 buckets if logical_size_ > 4.
     // Add 3 buckets if logical_size_ == 4.
     // Add 2 buckets if logical_size_ == 3.
-    // Add 1 bucket if logical_bucket_count_ <= 2.
+    // Add 1 bucket if logical_size_ from 1 to 2.
+    // Add 0 bucketrs if logical_size_ == 0;
     // TODO: We'd like to add 0 buckets if the logical_bucket_count == 1.
     size_t extra_buckets = (logical_size_ > 4)    ? 4
-                           : (logical_size_ <= 2) ? 1
-                                                  : logical_size_ - 1;
+                           : (logical_size_ > 2) ? logical_size_ - 1
+                           : (logical_size_ > 0) ? 1
+                           : 0;
     assert(logical_size() + extra_buckets == physical_size_);
     return logical_size() + extra_buckets;
   }
@@ -352,8 +353,8 @@ public:
   Bucket<Traits> *begin() { return buckets_; }
   const Bucket<Traits> *begin() const { return buckets_; }
   const Bucket<Traits> *cbegin() const { return buckets_; }
-  Bucket<Traits> *end() { return buckets_ + physical_size_; }
-  const Bucket<Traits> *end() const { return buckets_ + physical_size_; }
+  Bucket<Traits> *end() { return buckets_ + physical_size(); }
+  const Bucket<Traits> *end() const { return buckets_ + physical_size(); }
   const Bucket<Traits> *cend() const { return buckets_ + physical_size_; }
 
   // Returns the preferred bucket number, also known as the H1 hash.

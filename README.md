@@ -243,10 +243,11 @@ test framework doesn't play well with IWYU.
 
 - [x] Heterogeneous lookup.
 
-- [ ] Do this (from f14)
+- [x] Do this (from f14)
     ````
     static_assert(std::is_trivial<Chunk>::value, "F14Chunk should be POD");
     ````
+
 - [ ] Make sure that after enough inserts, rehash occurs.  (Right now,
     a sequence of alternating erases and inserts can cause the table
     to never get rehashed, and the graveyard properties won't be

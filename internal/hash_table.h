@@ -122,9 +122,15 @@ struct HashTableTraits {
   static constexpr size_t rehashed_utilization_denominator = 4;
 };
 
-template <class Traits> union Item {
+template <class Traits> struct Item {
   char bytes[sizeof(typename Traits::value_type)];
-  typename Traits::value_type value;
+  // typename Traits::value_type value;
+  typename Traits::value_type& value() {
+    return *reinterpret_cast<typename Traits::value_type*>(&bytes[0]);
+  }
+  const typename Traits::value_type& value() const {
+    return *reinterpret_cast<const typename Traits::value_type*>(&bytes[0]);
+  }
 };
 
 template <class Traits> class SortedBucketsIterator;
@@ -136,20 +142,11 @@ template <class Traits> struct Bucket {
 
   using key_equal = typename Traits::key_equal;
 
-  // Bucket has no constructor or destructor since by default it's POD.
-  Bucket() = delete;
-  // Copy constructor
-  Bucket(const Bucket &) = delete;
-  // Copy assignment
-  Bucket &operator=(Bucket other) = delete;
-  // Move constructor
-  Bucket(Bucket &&other) = delete;
-  // Move assignment
-  Bucket &operator=(Bucket &&other) = delete;
-  // Destructor
-  ~Bucket() = delete;
+  // Trivial constructor, copyconstructor, copy assignment, move
+  // consgtructor, move assignment, and destructor.
 
   void Init() {
+    static_assert(std::is_trivial<Bucket>::value, "Bucket should be POD");
     search_distance = 0;
     for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i)
       h2[i] = Traits::kEmpty;
@@ -185,7 +182,7 @@ template <class Traits> struct Bucket {
     size_t matches = MatchingElementsMask(needle);
     while (matches) {
       int idx = absl::container_internal::TrailingZeros(matches);
-      if (key_eq(Traits::KeyOf(slots[idx].value), key)) {
+      if (key_eq(Traits::KeyOf(slots[idx].value()), key)) {
         return idx;
       }
       matches &= (matches - 1);
@@ -291,7 +288,7 @@ public:
       for (Bucket<Traits> &bucket : *this) {
         for (size_t slot = 0; slot < Traits::kSlotsPerBucket; ++slot) {
           if (bucket.h2[slot] != Traits::kEmpty) {
-            bucket.slots[slot].value.~value_type();
+            bucket.slots[slot].value().~value_type();
           }
         }
       }
@@ -705,8 +702,8 @@ public:
     ;
   }
 
-  reference operator*() { return bucket_->slots[index_].value; }
-  pointer operator->() { return &bucket_->slots[index_].value; }
+  reference operator*() { return bucket_->slots[index_].value(); }
+  pointer operator->() { return &bucket_->slots[index_].value(); }
 
 private:
   using traits = Traits;
@@ -830,7 +827,7 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
       size_t idx = absl::container_internal::TrailingZeros(matches);
       bucket.h2[idx] = h2;
       assert(h2 < Traits::kH2Modulo);
-      new (&bucket.slots[idx].value) value_type(value);
+      new (&bucket.slots[idx].value()) value_type(value);
       maxf(buckets_[preferred_bucket].search_distance, i + 1);
       ++size_;
       return iterator{&bucket, idx};
@@ -864,7 +861,7 @@ template <class Traits> void HashTable<Traits>::erase(const_iterator pos) {
   assert(bucket->h2[index] != Traits::kEmpty);
   assert(size_ > 0);
   bucket->h2[index] = Traits::kEmpty;
-  bucket->slots[index].value.~value_type();
+  bucket->slots[index].value().~value_type();
   --size_;
   return;
 }
@@ -1019,7 +1016,7 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
         InsertNoRehashNeededAndValueNotPresent<true>(
-            std::move(bucket.slots[j].value));
+            std::move(bucket.slots[j].value()));
         // Note that bucket.slots[j].value will be properly destructed when we
         // leave scope, since bucket.h2[j] is not empty.
       }
@@ -1058,7 +1055,7 @@ HashTable<Traits>::GetSuccessfulProbeLength(const value_type &value) const {
   for (size_t i = 0; i <= buckets_[h1].search_distance; ++i) {
     const Bucket<Traits> &bucket = buckets_[h1 + i];
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      if (bucket.h2[j] != Traits::kEmpty && bucket.slots[j].value == value) {
+      if (bucket.h2[j] != Traits::kEmpty && bucket.slots[j].value() == value) {
         return i + 1;
       }
     }

@@ -9,8 +9,10 @@
 #include <string>
 #include <utility> // for std::swap
 
+#include "absl/base/config.h"              // for ABSL_HAVE_BUILTIN
 #include "absl/container/flat_hash_set.h" // For absl::container_internal::TrailingZeros
 #include "absl/log/check.h"
+#include "absl/meta/type_traits.h"         // for void_t
 #include "internal/object_holder.h"
 
 // IWYU has some strange behavior around std::swap.  It wants to get

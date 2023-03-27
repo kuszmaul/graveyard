@@ -2,12 +2,12 @@
 #include <cstdint> // for uint64_t
 #include <fstream>
 #include <functional>  // for equal_to
+#include <set>
 #include <string>      // for string, basic_string
 #include <type_traits> // for remove_reference_t
 #include <utility>     // for pair
 #include <vector>      // for vector
 
-#include "absl/algorithm/container.h" // for c_find, ContainerIter
 #include "absl/container/flat_hash_set.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"

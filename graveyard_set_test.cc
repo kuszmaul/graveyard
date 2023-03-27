@@ -9,6 +9,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -496,7 +497,7 @@ TEST(GraveyardSet, ErasesIteratorRange) {
     ++end;
   }
   auto end2 = gset.erase(start, end);
-  assert(end == end2);
+  EXPECT_TRUE(end == end2);
   EXPECT_EQ(gset.size() + to_delete.size(), kN);
   for (size_t i = 0; i < kN; ++i) {
     EXPECT_EQ(gset.contains(i), !to_delete.contains(i));

@@ -3,6 +3,7 @@
 #include <cstddef> // for size_t, ptrdiff_t
 #include <cstdint> // for uint64_t
 #include <string>
+#include <string_view>
 #include <type_traits> // for is_same_v
 #include <utility>
 

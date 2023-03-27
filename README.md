@@ -226,11 +226,12 @@ performance
 
 - [x] Does running at a lower load factor help insertions?
       
-      Answer:  Using $1/2--7/8$ doesn't help inserts compared to $3/4--7/8$.
+    Answer: Using $1/2--7/8$ doesn't help inserts compared to
+    $3/4--7/8$.
 
-- [*] How about running at $2/3--4/5"?
+    How about running at $2/3--4/5"?
 
-      Answer: Makes insert slower, but doesn't help anything else.
+    Answer: Makes insert slower, but doesn't help anything else.
 
 - [x] Implement (simple) emplace.
 
@@ -314,9 +315,6 @@ performance
     inheritance.
 
 - [ ] Implement prehash and a two-argument find for bulk lookup.
-
-- [ ] Optimize iteration over sparse tables: Use vector instruction to
-    d next non-empty slot.
 
 - [ ] Optimize the case for iterating when a prefix of the table has
     been deleted.  F14 does it.  Why?

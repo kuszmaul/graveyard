@@ -689,7 +689,7 @@ public:
 
   // Implicit conversion from iterator to const_iterator.
   template <bool IsConst = is_const, std::enable_if_t<IsConst, bool> = true>
-  Iterator(iterator x) : bucket_(x.bucket_), index_(x.index_) {}
+  Iterator(const iterator& x) : bucket_(x.bucket_), index_(x.index_) {}
 
   Iterator &operator++() {
     ++index_;

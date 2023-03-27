@@ -130,7 +130,7 @@ template <class Traits> class SortedBucketsIterator;
 template <class Traits> struct Bucket {
   using key_type = typename Traits::key_type;
 
-  template <class K> using key_arg = typename Traits::key_arg<K>;
+  template <class K> using key_arg = typename Traits:: template key_arg<K>;
 
   using key_equal = typename Traits::key_equal;
 
@@ -394,7 +394,7 @@ public:
       typename std::allocator_traits<allocator_type>::const_pointer;
 
 public:
-  template <class K> using key_arg = typename Traits::key_arg<K>;
+  template <class K> using key_arg = typename Traits:: template key_arg<K>;
 
   HashTable();
   explicit HashTable(size_t initial_capacity, hasher const &hash = hasher(),

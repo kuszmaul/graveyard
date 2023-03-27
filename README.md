@@ -110,8 +110,6 @@ Keep includes clean with iwyu:
 $ for x in *.h *.cc internal/*.h internal/*.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c++17 -I/home/bradley/github/abseil-cpp/ -I/home/bradley/github/folly -I. -I/home/bradley/github/googletest/googlemock/include/ -I/home/bradley/github/googletest/googletest/include $x; done
 ```
 
-Don't forget `internal/*` for iwyu.
-
 (You may need to install the right version of clang.  E.g., in Ubuntu 22, `include-what-you-use` needs `sudo apt install clang-13`.)
 
 IWYU is giving some false noise and is a little bit difficult to work

@@ -122,7 +122,7 @@ struct HashTableTraits {
   static constexpr size_t rehashed_utilization_denominator = 4;
 };
 
-template <class Traits> struct Item {
+  template <class Traits> struct alignas(typename Traits::value_type) Item {
   char bytes[sizeof(typename Traits::value_type)];
   // typename Traits::value_type value;
   typename Traits::value_type& value() {

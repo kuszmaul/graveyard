@@ -275,16 +275,18 @@ test framework doesn't play well with IWYU.
 - [ ] physical size should be 1 if logical size is 1.  But we are
        putting the end-of-search sentinal in the last bucket.
 
-- [ ] Put as much metadata as possible into the malloced part (but not the
-      `logical_bucket_count_` which is in the critical path for `find`.
+- [ ] Put as much metadata as possible into the malloced part (but not
+    the `logical_bucket_count_` which is in the critical path for
+    `find`.
 
-      For example, put size into buckets_ (into the malloced memory?).
+    For example, put size into buckets_ (into the malloced memory?).
 
-      But this is a challenge.  We want to get a bunch of 64-byte
-      aligned memory, with an extra chunk of stuff at the beginning
-      (or at the endd).
-        * size
-        * counter for reference stability or graveyard maintenance.
+    But this is a challenge.  We want to get a bunch of 64-byte
+    aligned memory, with an extra chunk of stuff at the beginning (or
+    at the end).
+
+    * size
+    * counter for reference stability or graveyard maintenance.
 
 - [ ] Increase the size of `buckets_` to match the actual allocated
     memory.  This doesn't seem to make any difference for libc malloc,

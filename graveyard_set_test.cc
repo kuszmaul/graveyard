@@ -289,15 +289,14 @@ TEST(GraveyardSet, NoDefaultConstructor) {
   EXPECT_EQ(count_existing, 0);
 }
 
-template <class StringSet>
-void HeterogeneousStringTest(StringSet &set) {
+template <class StringSet> void HeterogeneousStringTest(StringSet &set) {
   auto [inserted_it, inserted] = set.insert(std::string("a"));
   std::string as = "a";
-  const char* ap = "a";
+  const char *ap = "a";
   char aa[] = "a";
   std::string_view av(as);
   std::string bs = "b";
-  const char* bp = "b";
+  const char *bp = "b";
   char ba[] = "b";
   std::string_view bv(bs);
   EXPECT_TRUE(inserted);
@@ -332,7 +331,7 @@ void HeterogeneousStringTest(StringSet &set) {
   EXPECT_THAT(set.equal_range(ap), Pair(Eq(set.find(as)), Eq(set.end())));
   EXPECT_THAT(set.equal_range(aa), Pair(Eq(set.find(as)), Eq(set.end())));
   EXPECT_THAT(set.equal_range(av), Pair(Eq(set.find(as)), Eq(set.end())));
-  
+
   EXPECT_THAT(set.equal_range(bs), Pair(Eq(set.find(bs)), Eq(set.end())));
   EXPECT_THAT(set.equal_range(bp), Pair(Eq(set.find(bs)), Eq(set.end())));
   EXPECT_THAT(set.equal_range(ba), Pair(Eq(set.find(bs)), Eq(set.end())));
@@ -355,25 +354,24 @@ TEST(GraveyardSet, Empty) {
 }
 
 class Emplaced {
- public:
+public:
   Emplaced() = delete;
-  Emplaced(int a, int b) :a_(a), b_(b) {}
- private:
-  friend bool operator==(const Emplaced& left, const Emplaced &right) {
+  Emplaced(int a, int b) : a_(a), b_(b) {}
+
+private:
+  friend bool operator==(const Emplaced &left, const Emplaced &right) {
     return left.a_ == right.a_;
   }
-  friend bool operator!=(const Emplaced& left, const Emplaced &right) {
+  friend bool operator!=(const Emplaced &left, const Emplaced &right) {
     return !(left == right);
   }
-  template <typename H>
-  friend H AbslHashValue(H h, const Emplaced &v) {
+  template <typename H> friend H AbslHashValue(H h, const Emplaced &v) {
     return H::combine(std::move(h), v.a_);
   }
   int a_, b_;
 };
 
-template <class EmplacedSet>
-void EmplaceTest(EmplacedSet &set) {
+template <class EmplacedSet> void EmplaceTest(EmplacedSet &set) {
   EXPECT_THAT(set.insert(Emplaced(1, 2)), Pair(_, true));
   EXPECT_THAT(set.emplace(3, 4), Pair(_, true));
   EXPECT_TRUE(set.contains(Emplaced(3, 5)));
@@ -393,41 +391,39 @@ TEST(GraveyardSet, Emplace) {
 // A class that needs to be emplaced and supports heterogeneous
 // lookup.
 class EmplacedHet {
- public:
+public:
   EmplacedHet() = delete;
-  EmplacedHet(int a, int b) :a_(a), b_(b) {}
- private:
+  EmplacedHet(int a, int b) : a_(a), b_(b) {}
+
+private:
   friend struct EqEmplacedHet;
   friend struct HashEmplacedHet;
-  friend bool operator==(const EmplacedHet& left, const EmplacedHet &right) {
+  friend bool operator==(const EmplacedHet &left, const EmplacedHet &right) {
     return left.a_ == right.a_;
   }
-  friend bool operator!=(const EmplacedHet& left, const EmplacedHet &right) {
+  friend bool operator!=(const EmplacedHet &left, const EmplacedHet &right) {
     return !(left == right);
   }
   int a_, b_;
 };
 struct HashEmplacedHet {
   using is_transparent = void;
-  size_t operator()(const EmplacedHet& v) const {
+  size_t operator()(const EmplacedHet &v) const {
     return absl::Hash<int>()(v.a_);
   }
-  size_t operator()(int v) const {
-    return absl::Hash<int>()(v);
-  }
+  size_t operator()(int v) const { return absl::Hash<int>()(v); }
 };
 struct EqEmplacedHet {
   using is_transparent = void;
-  bool operator()(const EmplacedHet& left, const EmplacedHet &right) const {
+  bool operator()(const EmplacedHet &left, const EmplacedHet &right) const {
     return left == right;
   }
-  bool operator()(const EmplacedHet& left, int right) const {
+  bool operator()(const EmplacedHet &left, int right) const {
     return left.a_ == right;
   }
 };
 
-template <class EmplacedSet>
-void EmplaceHetTest(EmplacedSet &set) {
+template <class EmplacedSet> void EmplaceHetTest(EmplacedSet &set) {
   EXPECT_THAT(set.insert(EmplacedHet(1, 2)), Pair(_, true));
   EXPECT_THAT(set.emplace(3, 4), Pair(_, true));
   EXPECT_TRUE(set.contains(EmplacedHet(3, 5)));
@@ -435,7 +431,6 @@ void EmplaceHetTest(EmplacedSet &set) {
   EXPECT_THAT(set.emplace(1, 6), Pair(Eq(set.find(EmplacedHet(1, 7))), false));
   EXPECT_TRUE(set.contains(3));
 }
-
 
 TEST(GraveyardSet, EmplaceHeterogeneous) {
   EXPECT_EQ(EmplacedHet(3, 4), EmplacedHet(3, 5));
@@ -475,9 +470,9 @@ TEST(GraveyardSet, ErasesIterator100) {
     }
     for (size_t j = 0; j < kN; ++j) {
       if (j <= i) {
-	EXPECT_FALSE(gset.contains(j));
+        EXPECT_FALSE(gset.contains(j));
       } else {
-	EXPECT_TRUE(gset.contains(j));
+        EXPECT_TRUE(gset.contains(j));
       }
     }
   }
@@ -503,7 +498,7 @@ TEST(GraveyardSet, ErasesIteratorRange) {
   auto end2 = gset.erase(start, end);
   assert(end == end2);
   EXPECT_EQ(gset.size() + to_delete.size(), kN);
-  for (size_t i = 0 ; i < kN; ++i) {
+  for (size_t i = 0; i < kN; ++i) {
     EXPECT_EQ(gset.contains(i), !to_delete.contains(i));
   }
 }

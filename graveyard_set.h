@@ -124,8 +124,8 @@ public:
 
   using Base::GetSortedBucketsIterator;
 
-  using Base::Validate;
   using Base::ToString;
+  using Base::Validate;
 };
 
 // TODO: Idea, keep a bit that says whether a particular slot is out of its

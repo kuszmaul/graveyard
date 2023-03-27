@@ -24,7 +24,8 @@
 #include "ordered_linear_probing_set.h"
 
 enum class Implementation {
-  // Order these from most-important-to-benchmark to least-important-to-benchmark.
+  // Order these from most-important-to-benchmark to
+  // least-important-to-benchmark.
   kGraveyard,
   kGoogle,
   kFacebook,
@@ -79,8 +80,8 @@ bool AbslParseFlag(std::string_view text,
 std::set<Implementation> FlaggedImplementations() {
   std::vector<Implementation> implementations_vector =
       absl::GetFlag(FLAGS_implementations);
-  return std::set<Implementation>(implementations_vector.begin(), 
-				  implementations_vector.end());
+  return std::set<Implementation>(implementations_vector.begin(),
+                                  implementations_vector.end());
 }
 
 struct IdentityHash {
@@ -166,7 +167,7 @@ int main(int argc, char *argv[]) {
       using Graveyard = yobiduck::GraveyardSet<uint64_t>;
       IntHashSetBenchmark<Graveyard>(
           Get_allocated_memory_size,
-	  implementation_enum_and_strings->ToString(implementation));
+          implementation_enum_and_strings->ToString(implementation));
       break;
     }
     case Implementation::kGraveyardIdentityHash: {
@@ -176,19 +177,19 @@ int main(int argc, char *argv[]) {
           implementation_enum_and_strings->ToString(implementation));
       break;
     }
-    case  Implementation::kGraveyard255: {
+    case Implementation::kGraveyard255: {
       IntHashSetBenchmark<Graveyard255>(
           Get_allocated_memory_size,
-	  implementation_enum_and_strings->ToString(implementation));
+          implementation_enum_and_strings->ToString(implementation));
       break;
     }
     case Implementation::kGraveyard3578: {
       IntHashSetBenchmark<Graveyard3578>(
           Get_allocated_memory_size,
-	  implementation_enum_and_strings->ToString(implementation));
+          implementation_enum_and_strings->ToString(implementation));
       break;
     }
-    case  Implementation::kGraveyard1278: {
+    case Implementation::kGraveyard1278: {
       IntHashSetBenchmark<Graveyard1278>(
           Get_allocated_memory_size,
           implementation_enum_and_strings->ToString(implementation));
@@ -207,7 +208,7 @@ int main(int argc, char *argv[]) {
           implementation_enum_and_strings->ToString(implementation));
       break;
     }
-    case  Implementation::kOLPIdentityHash: {
+    case Implementation::kOLPIdentityHash: {
       using OLPNoHash = OrderedLinearProbingSet<uint64_t, IdentityHash>;
       IntHashSetBenchmark<OLPNoHash>(
           // TODO: Use the facebook name for `memory_estimate()`.
@@ -215,7 +216,7 @@ int main(int argc, char *argv[]) {
           implementation_enum_and_strings->ToString(implementation));
       break;
     }
-    case Implementation::kGoogle:{
+    case Implementation::kGoogle: {
       IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
           swiss_memory_estimator,
           implementation_enum_and_strings->ToString(implementation));

@@ -123,16 +123,14 @@ TEST(GraveyardMap, AssignAndReserve) {
   LOG(INFO) << "Demangled type: " << demangled;
 #endif
 
-
-template <class StringMap>
-void HeterogeneousStringTest(StringMap &map) {
+template <class StringMap> void HeterogeneousStringTest(StringMap &map) {
   auto [inserted_it, inserted] = map.insert({std::string("a"), 42});
   std::string as = "a";
-  const char* ap = "a";
+  const char *ap = "a";
   char aa[] = "a";
   std::string_view av(as);
   std::string bs = "b";
-  const char* bp = "b";
+  const char *bp = "b";
   char ba[] = "b";
   std::string_view bv(bs);
   EXPECT_TRUE(inserted);
@@ -167,13 +165,13 @@ void HeterogeneousStringTest(StringMap &map) {
   EXPECT_THAT(map.equal_range(ap), Pair(Eq(map.find(as)), Eq(map.end())));
   EXPECT_THAT(map.equal_range(aa), Pair(Eq(map.find(as)), Eq(map.end())));
   EXPECT_THAT(map.equal_range(av), Pair(Eq(map.find(as)), Eq(map.end())));
-  
+
   EXPECT_THAT(map.equal_range(bs), Pair(Eq(map.find(bs)), Eq(map.end())));
   EXPECT_THAT(map.equal_range(bp), Pair(Eq(map.find(bs)), Eq(map.end())));
   EXPECT_THAT(map.equal_range(ba), Pair(Eq(map.find(bs)), Eq(map.end())));
   EXPECT_THAT(map.equal_range(bv), Pair(Eq(map.find(bs)), Eq(map.end())));
 
-  //EXPECT_EQ(&map[as], &map.find(as)->second);
+  // EXPECT_EQ(&map[as], &map.find(as)->second);
 }
 
 TEST(GraveyardMap, Heterogenous) {

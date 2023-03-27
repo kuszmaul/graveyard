@@ -51,24 +51,19 @@ static constexpr bool kHaveSse2 = (YOBIDUCK_HAVE_SSE2 != 0);
 inline constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }
 
 //  Support for heterogenous lookup
-template <class, class = void>
-struct IsTransparent : std::false_type {};
+template <class, class = void> struct IsTransparent : std::false_type {};
 template <class T>
 struct IsTransparent<T, absl::void_t<typename T::is_transparent>>
     : std::true_type {};
 
-template <bool is_transparent>
-struct KeyArg {
+template <bool is_transparent> struct KeyArg {
   // Transparent. Forward `K`.
-  template <typename K, typename key_type>
-  using type = K;
+  template <typename K, typename key_type> using type = K;
 };
 
-template <>
-struct KeyArg<false> {
+template <> struct KeyArg<false> {
   // Not transparent. Always use `key_type`.
-  template <typename K, typename key_type>
-  using type = key_type;
+  template <typename K, typename key_type> using type = key_type;
 };
 
 template <class KeyType, class MappedTypeOrVoid, class Hash, class KeyEqual,
@@ -85,7 +80,7 @@ struct HashTableTraits {
   static constexpr size_t kSlotsPerBucket = 14;
 
   using KeyArgImpl =
-    KeyArg<IsTransparent<key_equal>::value && IsTransparent<hasher>::value>;
+      KeyArg<IsTransparent<key_equal>::value && IsTransparent<hasher>::value>;
 
   // Alias used for heterogeneous lookup functions.
   // `key_arg<K>` evaluates to `K` when the functors are transparent and to
@@ -135,8 +130,7 @@ template <class Traits> class SortedBucketsIterator;
 template <class Traits> struct Bucket {
   using key_type = typename Traits::key_type;
 
-  template <class K>
-  using key_arg = typename Traits::key_arg<K>;
+  template <class K> using key_arg = typename Traits::key_arg<K>;
 
   using key_equal = typename Traits::key_equal;
 
@@ -253,9 +247,7 @@ public:
   // Move assignment
   Buckets &operator=(Buckets &&other) = delete;
 
-  ~Buckets() {
-    clear();
-  }
+  ~Buckets() { clear(); }
 
   // Constructs a `Buckets` that has the given logical bucket size (which must
   // be positive).
@@ -267,15 +259,14 @@ public:
     // is.  But we aren't supposed to modify those bytes (it will mess up
     // tools such as address sanitizer or valgrind).  So we realloc the
     // pointer to the actual size.
-    data_ = static_cast<char*>(std::aligned_alloc(Traits::kCacheLineSize, 
-					     physical * sizeof(Bucket<Traits>)));
+    data_ = static_cast<char *>(std::aligned_alloc(
+        Traits::kCacheLineSize, physical * sizeof(Bucket<Traits>)));
     assert(data_ != nullptr);
     for (Bucket<Traits> &bucket : *this) {
       bucket.Init();
     }
     // Set the end-of-search sentinal.
-    begin()[physical - 1].search_distance =
-        Traits::kSearchDistanceEndSentinal;
+    begin()[physical - 1].search_distance = Traits::kSearchDistanceEndSentinal;
     if (0) {
       // It turns out that for libc malloc, the extra usable size usually just
       // 8 extra bytes.
@@ -284,7 +275,8 @@ public:
                 << " physical_size=" << physical
                 << " allocated bytes=" << allocated
                 << " size=" << allocated / sizeof(Bucket<Traits>) << " %"
-                << sizeof(Bucket<Traits>) << "=" << allocated % sizeof(Bucket<Traits>);
+                << sizeof(Bucket<Traits>) << "="
+                << allocated % sizeof(Bucket<Traits>);
     }
   }
 
@@ -295,11 +287,11 @@ public:
     assert((logical_size() == 0) == (data_ == nullptr));
     if (data_ != nullptr) {
       for (Bucket<Traits> &bucket : *this) {
-	for (size_t slot = 0; slot < Traits::kSlotsPerBucket; ++slot) {
-	  if (bucket.h2[slot] != Traits::kEmpty) {
-	    bucket.slots[slot].value.~value_type();
-	  }
-	}
+        for (size_t slot = 0; slot < Traits::kSlotsPerBucket; ++slot) {
+          if (bucket.h2[slot] != Traits::kEmpty) {
+            bucket.slots[slot].value.~value_type();
+          }
+        }
       }
       free(data_);
       data_ = nullptr;
@@ -314,17 +306,17 @@ public:
   }
 
   size_t logical_size() const { return logical_size_; }
-  size_t physical_size() const { 
+  size_t physical_size() const {
     // Add 4 buckets if logical_size_ > 4.
     // Add 3 buckets if logical_size_ == 4.
     // Add 2 buckets if logical_size_ == 3.
     // Add 1 bucket if logical_size_ from 1 to 2.
     // Add 0 bucketrs if logical_size_ == 0;
     // TODO: We'd like to add 0 buckets if the logical_bucket_count == 1.
-    size_t extra_buckets = (logical_size_ > 4)    ? 4
+    size_t extra_buckets = (logical_size_ > 4)   ? 4
                            : (logical_size_ > 2) ? logical_size_ - 1
                            : (logical_size_ > 0) ? 1
-                           : 0;
+                                                 : 0;
     return logical_size() + extra_buckets;
   }
   bool empty() const { return logical_size() == 0; }
@@ -336,9 +328,12 @@ public:
     assert(index < physical_size());
     return cbegin()[index];
   }
-  Bucket<Traits> *begin() { return const_cast<Bucket<Traits>*>(cbegin()); }
+  Bucket<Traits> *begin() { return const_cast<Bucket<Traits> *>(cbegin()); }
   const Bucket<Traits> *begin() const { return cbegin(); }
-  const Bucket<Traits> *cbegin() const { return static_cast<const Bucket<Traits>*>(static_cast<const void*>(data_ + buckets_offset)); }
+  const Bucket<Traits> *cbegin() const {
+    return static_cast<const Bucket<Traits> *>(
+        static_cast<const void *>(data_ + buckets_offset));
+  }
   Bucket<Traits> *end() { return begin() + physical_size(); }
   const Bucket<Traits> *end() const { return cend(); }
   const Bucket<Traits> *cend() const { return cbegin() + physical_size(); }
@@ -398,9 +393,8 @@ public:
   using const_pointer =
       typename std::allocator_traits<allocator_type>::const_pointer;
 
- public:
-  template <class K>
-  using key_arg = typename Traits::key_arg<K>;
+public:
+  template <class K> using key_arg = typename Traits::key_arg<K>;
 
   HashTable();
   explicit HashTable(size_t initial_capacity, hasher const &hash = hasher(),
@@ -430,9 +424,10 @@ public:
     return *this;
   }
 
- private:
+private:
   template <bool is_const> class Iterator;
- public:
+
+public:
   using iterator = Iterator<false>;
   using const_iterator = Iterator<true>;
 
@@ -451,23 +446,19 @@ public:
 
   size_t size() const noexcept;
 
-  bool empty() const noexcept {
-    return size() == 0;
-  }
+  bool empty() const noexcept { return size() == 0; }
 
   void clear();
   std::pair<iterator, bool> insert(const value_type &value);
-  template<class ... Args>
-  std::pair<iterator, bool> emplace(Args&&... args);
-  // Note: As for absl, this overload doesn't return an iterator.  
+  template <class... Args> std::pair<iterator, bool> emplace(Args &&...args);
+  // Note: As for absl, this overload doesn't return an iterator.
   // If that iterator is needed, simply post increment the iterator:
   //
   //     set.erase(it++);
   void erase(iterator pos);
   void erase(const_iterator pos);
   iterator erase(const_iterator first, const_iterator last);
-  template <class K = key_type>
-  size_t erase(const key_arg<K>& key);
+  template <class K = key_type> size_t erase(const key_arg<K> &key);
   void swap(HashTable &other) noexcept;
 
   // Similarly to abseil, the API of find() has two extensions.
@@ -477,45 +468,44 @@ public:
   //
   // 2) Support C++20-style heterogeneous lookup.
 
-  template <class K = key_type>
-  size_t count(const key_arg<K>& key) const {
+  template <class K = key_type> size_t count(const key_arg<K> &key) const {
     return find(key) == end() ? 0 : 1;
   }
 
   template <class K = key_type>
-  iterator find(const key_arg<K>& key, size_t hash);
+  iterator find(const key_arg<K> &key, size_t hash);
 
   template <class K = key_type>
-  const_iterator find(const key_arg<K>& key, size_t hash) const {
-    return const_cast<HashTable*>(this)->find(key, hash);
+  const_iterator find(const key_arg<K> &key, size_t hash) const {
+    return const_cast<HashTable *>(this)->find(key, hash);
   }
 
-  template <class K = key_type>
-  iterator find(const key_arg<K>& key) {
+  template <class K = key_type> iterator find(const key_arg<K> &key) {
     PrefetchHeapBlock();
     return find(key, get_hasher_ref()(key));
   }
 
   template <class K = key_type>
-  const_iterator find(const key_arg<K>& key) const {
+  const_iterator find(const key_arg<K> &key) const {
     PrefetchHeapBlock();
     return find(key, get_hasher_ref()(key));
   }
 
-  template <class K = key_type>
-  bool contains(const key_arg<K>& key) const;
+  template <class K = key_type> bool contains(const key_arg<K> &key) const;
 
   template <class K = key_type>
-  std::pair<iterator, iterator> equal_range(const key_arg<K>& key) {
+  std::pair<iterator, iterator> equal_range(const key_arg<K> &key) {
     auto it = find(key);
-    if (it != end()) return {it, std::next(it)};
+    if (it != end())
+      return {it, std::next(it)};
     return {it, it};
   }
 
   template <class K = key_type>
-  std::pair<iterator, iterator> equal_range(const key_arg<K>& key) const {
+  std::pair<iterator, iterator> equal_range(const key_arg<K> &key) const {
     auto it = find(key);
-    if (it != end()) return {it, std::next(it)};
+    if (it != end())
+      return {it, std::next(it)};
     return {it, it};
   }
 
@@ -684,10 +674,13 @@ template <class Traits>
 template <bool is_const>
 class HashTable<Traits>::Iterator {
   using original_value_type = typename Traits::value_type;
-  using bucket_type = std::conditional_t<is_const, const Bucket<Traits>, Bucket<Traits>>;
+  using bucket_type =
+      std::conditional_t<is_const, const Bucket<Traits>, Bucket<Traits>>;
+
 public:
   using difference_type = ptrdiff_t;
-  using value_type = std::conditional_t<is_const, const original_value_type, original_value_type>;
+  using value_type = std::conditional_t<is_const, const original_value_type,
+                                        original_value_type>;
   using pointer = value_type *;
   using reference = value_type &;
   using iterator_category = std::forward_iterator_tag;
@@ -695,8 +688,7 @@ public:
   Iterator() = default;
 
   // Implicit conversion from iterator to const_iterator.
-  template <bool IsConst = is_const,
-            std::enable_if_t<IsConst, bool> = true>
+  template <bool IsConst = is_const, std::enable_if_t<IsConst, bool> = true>
   Iterator(iterator x) : bucket_(x.bucket_), index_(x.index_) {}
 
   Iterator &operator++() {
@@ -707,7 +699,8 @@ public:
   Iterator operator++(int) {
     Iterator result = *this;
     ++*this;
-    return result;;
+    return result;
+    ;
   }
 
   reference operator*() { return bucket_->slots[index_].value; }
@@ -731,25 +724,25 @@ private:
       unsigned int non_empties = bucket_->FindNonEmpties();
       non_empties &= ~((1u << index_) - 1);
       if (non_empties != 0) {
-	index_ = absl::container_internal::TrailingZeros(non_empties);
-	return *this;
+        index_ = absl::container_internal::TrailingZeros(non_empties);
+        return *this;
       }
     }
     // There were none, so look for a bucket with at least one
     // non-empty value, and set `index_` accordingly.
     while (true) {
-      bool is_last =
-	bucket_->search_distance == Iterator::traits::kSearchDistanceEndSentinal;
+      bool is_last = bucket_->search_distance ==
+                     Iterator::traits::kSearchDistanceEndSentinal;
       ++bucket_;
       if (is_last) {
-	index_ = 0;
-	// *this is the end iterator.
-	return *this;
+        index_ = 0;
+        // *this is the end iterator.
+        return *this;
       }
       unsigned int non_empties = bucket_->FindNonEmpties();
       if (non_empties != 0) {
-	index_ = absl::container_internal::TrailingZeros(non_empties);
-	return *this;
+        index_ = absl::container_internal::TrailingZeros(non_empties);
+        return *this;
       }
     }
   }
@@ -844,10 +837,11 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
 }
 
 template <class Traits>
-template<class... Args>
+template <class... Args>
 std::pair<typename HashTable<Traits>::iterator, bool>
-HashTable<Traits>::emplace(Args&&... args) {
-  // TODO: Deal with the case where we can calculate a key without constructing the value.
+HashTable<Traits>::emplace(Args &&...args) {
+  // TODO: Deal with the case where we can calculate a key without constructing
+  // the value.
   return insert(value_type(args...));
 }
 
@@ -857,14 +851,12 @@ void HashTable<Traits>::swap(HashTable &other) noexcept {
   buckets_.swap(other.buckets_);
 }
 
-template <class Traits>
-void HashTable<Traits>::erase(iterator pos) {
+template <class Traits> void HashTable<Traits>::erase(iterator pos) {
   erase(const_iterator(pos));
 }
 
-template <class Traits>
-void HashTable<Traits>::erase(const_iterator pos) {
-  Bucket<Traits>* bucket = const_cast<Bucket<Traits>*>(pos.bucket_);
+template <class Traits> void HashTable<Traits>::erase(const_iterator pos) {
+  Bucket<Traits> *bucket = const_cast<Bucket<Traits> *>(pos.bucket_);
   size_t index = pos.index_;
   // We can assume that it's a valid iterator.
   assert(bucket->h2[index] != Traits::kEmpty);
@@ -876,17 +868,17 @@ void HashTable<Traits>::erase(const_iterator pos) {
 }
 
 template <class Traits>
-typename HashTable<Traits>::iterator HashTable<Traits>::erase(const_iterator first, const_iterator last)  {
+typename HashTable<Traits>::iterator
+HashTable<Traits>::erase(const_iterator first, const_iterator last) {
   while (first != last) {
     erase(first++);
   }
-  return iterator(const_cast<Bucket<Traits>*>(last.bucket_),
-		  last.index_);
+  return iterator(const_cast<Bucket<Traits> *>(last.bucket_), last.index_);
 }
 
 template <class Traits>
 template <class K>
-size_t HashTable<Traits>::erase(const key_arg<K>& key) {
+size_t HashTable<Traits>::erase(const key_arg<K> &key) {
   auto it = find(key);
   if (it == end()) {
     return 0;
@@ -895,10 +887,10 @@ size_t HashTable<Traits>::erase(const key_arg<K>& key) {
   return 1;
 }
 
-
 template <class Traits>
 template <class K>
-typename HashTable<Traits>::iterator HashTable<Traits>::find(const key_arg<K>& key, size_t hash) {
+typename HashTable<Traits>::iterator
+HashTable<Traits>::find(const key_arg<K> &key, size_t hash) {
   if (size_ != 0) {
     const size_t preferred_bucket = buckets_.H1(hash);
     const size_t h2 = buckets_.H2(hash);
@@ -911,7 +903,7 @@ typename HashTable<Traits>::iterator HashTable<Traits>::find(const key_arg<K>& k
       Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
       size_t idx = bucket.FindElement(h2, key, get_key_eq_ref());
       if (idx < Traits::kSlotsPerBucket) {
-	return iterator{&bucket, idx};
+        return iterator{&bucket, idx};
       }
     }
   }
@@ -920,7 +912,7 @@ typename HashTable<Traits>::iterator HashTable<Traits>::find(const key_arg<K>& k
 
 template <class Traits>
 template <class K>
-bool HashTable<Traits>::contains(const key_arg<K>& value) const {
+bool HashTable<Traits>::contains(const key_arg<K> &value) const {
   return find(value) != end();
 }
 
@@ -966,7 +958,7 @@ void HashTable<Traits>::Validate(int line_number) const {
   }
   if (buckets_.physical_size() > 0) {
     CHECK_EQ(buckets_[buckets_.physical_size() - 1].search_distance,
-	     Traits::kSearchDistanceEndSentinal);
+             Traits::kSearchDistanceEndSentinal);
   }
   // Verify that each hashed object is a good place (not before its
   // preferred bucket or after that bucket's search distance).
@@ -976,16 +968,16 @@ void HashTable<Traits>::Validate(int line_number) const {
   for (size_t i = 0; i < buckets_.physical_size(); ++i) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (buckets_[i].h2[j] != Traits::kEmpty) {
-	assert(buckets_[i].h2[j] < Traits::kH2Modulo);
-	++actual_size;
-	size_t hash = get_hasher_ref()(buckets_[i].slots[j].value);
-	size_t h1 = buckets_.H1(hash);
-	CHECK_LE(h1, i);
-	CHECK_LT(h1, buckets_.logical_size());
-	CHECK_LT((i - h1), buckets_[h1].search_distance)
-	  << "Object is not within search distance: bucket=" << i
-	  << " slot=" << j << " h1=" << h1 << " line=" << line_number
-	  << " in " << ToString();
+        assert(buckets_[i].h2[j] < Traits::kH2Modulo);
+        ++actual_size;
+        size_t hash = get_hasher_ref()(buckets_[i].slots[j].value);
+        size_t h1 = buckets_.H1(hash);
+        CHECK_LE(h1, i);
+        CHECK_LT(h1, buckets_.logical_size());
+        CHECK_LT((i - h1), buckets_[h1].search_distance)
+            << "Object is not within search distance: bucket=" << i
+            << " slot=" << j << " h1=" << h1 << " line=" << line_number
+            << " in " << ToString();
       }
     }
   }

@@ -26,8 +26,7 @@ class GraveyardMap
       yobiduck::internal::HashTableTraits<Key, T, Hash, KeyEqual, Allocator>;
   using Base = yobiduck::internal::HashTable<Traits>;
 
-  template <class K>
-  using key_arg = typename Traits::key_arg<K>;
+  template <class K> using key_arg = typename Traits::key_arg<K>;
 
 public:
   // The order as found in
@@ -84,8 +83,7 @@ public:
 
   using Base::insert;
 
-  template <class K = key_type>
-  T& operator[](const key_arg<K>& key) {
+  template <class K = key_type> T &operator[](const key_arg<K> &key) {
     return Traits::KeyOf(&*try_emplace(key).first);
   }
 

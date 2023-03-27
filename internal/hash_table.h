@@ -267,7 +267,7 @@ public:
     // is.  But we aren't supposed to modify those bytes (it will mess up
     // tools such as address sanitizer or valgrind).  So we realloc the
     // pointer to the actual size.
-    data_ = static_cast<char*>(aligned_alloc(Traits::kCacheLineSize, 
+    data_ = static_cast<char*>(std::aligned_alloc(Traits::kCacheLineSize, 
 					     physical * sizeof(Bucket<Traits>)));
     assert(data_ != nullptr);
     for (Bucket<Traits> &bucket : *this) {
@@ -338,7 +338,7 @@ public:
   }
   Bucket<Traits> *begin() { return const_cast<Bucket<Traits>*>(cbegin()); }
   const Bucket<Traits> *begin() const { return cbegin(); }
-  const Bucket<Traits> *cbegin() const { return reinterpret_cast<const Bucket<Traits>*>(data_ + buckets_offset); }
+  const Bucket<Traits> *cbegin() const { return static_cast<const Bucket<Traits>*>(static_cast<const void*>(data_ + buckets_offset)); }
   Bucket<Traits> *end() { return begin() + physical_size(); }
   const Bucket<Traits> *end() const { return cend(); }
   const Bucket<Traits> *cend() const { return cbegin() + physical_size(); }

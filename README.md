@@ -336,3 +336,6 @@ test framework doesn't play well with IWYU.
 - [ ] Make the hash vary from run to run.
 
 - [ ] Deamortized rehashing.  Need a benchmark and an implementation.
+
+- [ ] Measure high-water RSS mark.  To reset the high water mark, write
+    "5" to `/proc/[id]/clear_refs`.

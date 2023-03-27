@@ -246,12 +246,13 @@ performance
 - [x] Heterogeneous lookup.
 
 - [ ] Do this (from f14)
-       static_assert(std::is_trivial<Chunk>::value, "F14Chunk should be POD");
-
-- [ ] make sure that after enough inserts, rehash occurs.  (Right now,
-      a sequence of alternating erases and inserts can cause the table
-      to never get rehashed, and the graveyard properties won't be
-      maintained.)  *graveyard maintenance*.
+    ````
+    static_assert(std::is_trivial<Chunk>::value, "F14Chunk should be POD");
+    ````
+- [ ] Make sure that after enough inserts, rehash occurs.  (Right now,
+    a sequence of alternating erases and inserts can cause the table
+    to never get rehashed, and the graveyard properties won't be
+    maintained.)  *graveyard maintenance*.
 
 - [ ] Implement emplace for map where the mapped_type doesn't need to be constructed.
 
@@ -294,11 +295,11 @@ performance
     std::pair<const key_type, mapped_type>`.  The F14 comment
     (F14Policy.h at `moveValue`. outlines three possibilities:
 
-        1.  Proxy iterator
+    1.  Proxy iterator
 
-        2.  Pointless key copy when moving items during rehash
+    2.  Pointless key copy when moving items during rehash
 
-        3.  Undefined-behavior hack.
+    3.  Undefined-behavior hack.
 
     F14 uses the undefined-behavior hack for maps.
     

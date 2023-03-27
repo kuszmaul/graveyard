@@ -212,17 +212,17 @@ test framework doesn't play well with IWYU.
 
 - [x] Does H2 computing %255 vs %128 make any difference?  128 makes insert faster.
 
-- [x] Convert to 128 (and take advantage of the fact that that it's one less
-      SIMD instruction to look for an empty slot.)
+- [x] Convert to 128 (and take advantage of the fact that that it's
+    one less SIMD instruction to look for an empty slot.)
 
-- [x] Maybe just swap one element to a previous bucket when the hash ordering has been inverted.
+- [x] Maybe just swap one element to a previous bucket when the hash
+    ordering has been inverted.
 
 - [x] Have the benchmark enforce that the scaling governer is `performance`: 
 
-```shell
-$ cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-performance
-```
+    ```shell
+    $ cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor performance
+    ```
 
 - [x] Does running at a lower load factor help insertions?
       

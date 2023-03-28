@@ -12,7 +12,6 @@
 #include "absl/base/config.h"              // for ABSL_HAVE_BUILTIN
 #include "absl/container/flat_hash_set.h" // For absl::container_internal::TrailingZeros
 #include "absl/log/check.h"
-#include "absl/meta/type_traits.h"         // for void_t
 #include "internal/object_holder.h"
 
 // IWYU has some strange behavior around std::swap.  It wants to get
@@ -55,7 +54,7 @@ inline constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }
 //  Support for heterogenous lookup
 template <class, class = void> struct IsTransparent : std::false_type {};
 template <class T>
-struct IsTransparent<T, absl::void_t<typename T::is_transparent>>
+struct IsTransparent<T, std::void_t<typename T::is_transparent>>
     : std::true_type {};
 
 template <bool is_transparent> struct KeyArg {

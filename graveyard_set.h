@@ -14,6 +14,10 @@ namespace yobiduck {
 // does).  In particular the special case of `key_type = std::string`
 // is automatically heterogeneous (supporting lookups of
 // `std::string`, `char*`, and `std::string_view`.
+
+// All iterators and pointers are invalidated after a new element is
+// inserted.
+
 template <class T, class Hash = absl::container_internal::hash_default_hash<T>,
           class KeyEqual = absl::container_internal::hash_default_eq<T>,
           class Allocator = std::allocator<T>>

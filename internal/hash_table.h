@@ -9,7 +9,6 @@
 #include <string>
 #include <utility> // for std::swap
 
-#include "absl/container/flat_hash_set.h" // For absl::container_internal::TrailingZeros
 #include "absl/log/check.h"
 #include "internal/object_holder.h"
 
@@ -49,6 +48,18 @@ static constexpr bool kHaveSse2 = (YOBIDUCK_HAVE_SSE2 != 0);
 
 // Returns the ceiling of (a/b).
 inline constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }
+
+// Return the number of trailing zeros
+template <typename T>
+static constexpr uint32_t CountTrailingZeros(T x) {
+  assert(x != 0);
+  static_assert(sizeof(x) == sizeof(unsigned int) || sizeof(x) == sizeof(unsigned long long));
+  if constexpr (sizeof(x) == 4) {
+    return __builtin_ctz(x);
+  } else {
+    return __builtin_ctzll(x);
+  }
+}
 
 //  Support for heterogenous lookup
 template <class, class = void> struct IsTransparent : std::false_type {};
@@ -179,7 +190,7 @@ template <class Traits> struct Bucket {
                      const key_equal &key_eq) const {
     size_t matches = MatchingElementsMask(needle);
     while (matches) {
-      int idx = absl::container_internal::TrailingZeros(matches);
+      int idx = CountTrailingZeros(matches);
       if (key_eq(Traits::KeyOf(slots[idx].value()), key)) {
         return idx;
       }
@@ -203,7 +214,7 @@ template <class Traits> struct Bucket {
     } else {
       matches = MatchingElementsMask(Traits::kEmpty);
     }
-    return matches ? absl::container_internal::TrailingZeros(matches)
+    return matches ? CountTrailingZeros(matches)
                    : Traits::kSlotsPerBucket;
   }
 
@@ -722,7 +733,7 @@ private:
       unsigned int non_empties = bucket_->FindNonEmpties();
       non_empties &= ~((1u << index_) - 1);
       if (non_empties != 0) {
-        index_ = absl::container_internal::TrailingZeros(non_empties);
+        index_ = CountTrailingZeros(non_empties);
         return *this;
       }
     }
@@ -739,7 +750,7 @@ private:
       }
       unsigned int non_empties = bucket_->FindNonEmpties();
       if (non_empties != 0) {
-        index_ = absl::container_internal::TrailingZeros(non_empties);
+        index_ = CountTrailingZeros(non_empties);
         return *this;
       }
     }
@@ -823,7 +834,7 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
       }
     }
     if (matches != 0) {
-      size_t idx = absl::container_internal::TrailingZeros(matches);
+      size_t idx = CountTrailingZeros(matches);
       bucket.h2[idx] = h2;
       assert(h2 < Traits::kH2Modulo);
       new (&bucket.slots[idx].value()) value_type(value);

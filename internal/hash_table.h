@@ -9,7 +9,6 @@
 #include <string>
 #include <utility> // for std::swap
 
-#include "absl/base/config.h"              // for ABSL_HAVE_BUILTIN
 #include "absl/container/flat_hash_set.h" // For absl::container_internal::TrailingZeros
 #include "absl/log/check.h"
 #include "internal/object_holder.h"
@@ -567,10 +566,11 @@ private:
   // cache misses. This is intended to overlap with execution of calculating the
   // hash for a key.
   void PrefetchHeapBlock() const {
-#if ABSL_HAVE_BUILTIN(__builtin_prefetch) || defined(__GNUC__)
     // This is safe even if `buckets_.begin() == nullptr`.
+
+    // Portability note: This should be #ifdef'd away for systems that
+    // don't have `__builtin_prefetch`.
     __builtin_prefetch(buckets_.begin(), 0, 1);
-#endif
   }
 
   // Checks that `*this` is valid.  Requires that a rehash or initial

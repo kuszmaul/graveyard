@@ -103,4 +103,46 @@ const typename Table::value_type &FindOrDie(const Table &table,
   }
   return *it;
 }
+
+const auto *implementation_enum_and_strings =
+    EnumsAndStrings<Implementation>::Create(
+        {{Implementation::kGraveyard, "graveyard"},
+         {Implementation::kGoogle, "google"},
+         {Implementation::kFacebook, "facebook"},
+         {Implementation::kOLP, "OLP"},
+         {Implementation::kGraveyardIdentityHash, "graveyard-idhash"},
+         {Implementation::kGoogleIdentityHash, "google-idhash"},
+         {Implementation::kFacebookIdentityHash, "facebook-idhash"},
+         {Implementation::kOLPIdentityHash, "OLP-idhash"},
+         {Implementation::kGraveyard3578, "graveyard3578"},
+         {Implementation::kGraveyard1278, "graveyard1278"},
+         {Implementation::kGraveyard2345, "graveyard2345"},
+         {Implementation::kGraveyard255, "graveyard255"}});
 } // namespace
+
+ABSL_FLAG(std::vector<Implementation>, implementations,
+          implementation_enum_and_strings->Enums(),
+          "comma-separated list of hash table implementations to benchmark");
+
+std::string AbslUnparseFlag(std::vector<Implementation> implementations) {
+  return AbslUnparseVectorEnumFlag(*implementation_enum_and_strings,
+                                   implementations);
+}
+
+bool AbslParseFlag(std::string_view text,
+                   std::vector<Implementation> *implementations,
+                   std::string *error) {
+  return AbslParseVectorEnumFlag(*implementation_enum_and_strings, text,
+                                 implementations, error);
+}
+
+std::set<Implementation> FlaggedImplementations() {
+  std::vector<Implementation> implementations_vector =
+      absl::GetFlag(FLAGS_implementations);
+  return std::set<Implementation>(implementations_vector.begin(),
+                                  implementations_vector.end());
+}
+
+std::string_view ImplementationString(Implementation implementation) {
+  return implementation_enum_and_strings->ToString(implementation);
+}

@@ -7,7 +7,6 @@ cc_binary(
         ":hash_benchmark",
         ":graveyard_set",
         ":ordered_linear_probing_set",
-        "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",

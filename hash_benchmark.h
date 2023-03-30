@@ -17,6 +17,8 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "benchmark.h"
+#include "enums_flag.h"
+#include "enum_print.h"
 
 ABSL_DECLARE_FLAG(size_t, size_growth);
 enum class Operation { kInsert, kReservedInsert, kFound, kNotFound };
@@ -43,6 +45,12 @@ enum class Implementation {
   kGraveyard255,  // H2 computed modulo 255 (rather than 128)
 };
 ABSL_DECLARE_FLAG(absl::flat_hash_set<Implementation>, implementations);
+
+extern const EnumsAndStrings<Implementation> *implementation_enum_and_strings;
+
+bool AbslParseFlag(std::string_view text, Implementation *implementation, std::string *error);
+
+std::string AbslUnparseFlag(Implementation implementation);
 
 // Return the --implementation
 std::set<Implementation> FlaggedImplementations();

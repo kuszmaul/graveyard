@@ -34,7 +34,7 @@ std::string AbslUnparseFlag(absl::flat_hash_set<Operation> operations) {
 bool AbslParseFlag(std::string_view text, absl::flat_hash_set<Operation> *operations,
                    std::string *error) {
   return AbslParseSetEnumFlag(*operation_enum_and_strings, text, operations,
-                                 error);
+			      error);
 }
 
 bool OperationIsFlagged(Operation operation) {
@@ -100,8 +100,9 @@ const typename Table::value_type &FindOrDie(const Table &table,
   }
   return *it;
 }
+} // namespace
 
-const auto *implementation_enum_and_strings =
+const EnumsAndStrings<Implementation> *implementation_enum_and_strings =
     EnumsAndStrings<Implementation>::Create(
         {{Implementation::kGraveyard, "graveyard"},
          {Implementation::kGoogle, "google"},
@@ -115,7 +116,13 @@ const auto *implementation_enum_and_strings =
          {Implementation::kGraveyard1278, "graveyard1278"},
          {Implementation::kGraveyard2345, "graveyard2345"},
          {Implementation::kGraveyard255, "graveyard255"}});
-} // namespace
+
+bool AbslParseFlag(std::string_view text, Implementation *implementation, std::string *error) {
+  return AbslParseEnumFlag(*implementation_enum_and_strings, text, implementation, error);
+}
+std::string AbslUnparseFlag(Implementation implementation) {
+  return AbslUnparseEnumFlag(*implementation_enum_and_strings, implementation);
+}
 
 ABSL_FLAG(absl::flat_hash_set<Implementation>, implementations,
           implementation_enum_and_strings->Enums(),

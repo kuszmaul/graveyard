@@ -7,6 +7,7 @@
 #include <functional>
 
 #include "absl/flags/flag.h"
+#include "absl/log/check.h"
 #include "absl/strings/string_view.h" // for string_view
 
 ABSL_FLAG(size_t, number_of_trials, 5, "Number of trials.  Must be positive.");
@@ -15,11 +16,21 @@ namespace {
 inline uint64_t operator-(struct timespec a, struct timespec b) {
   return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;
 }
+
+void VerifyPerformanceGovernor() {
+  std::ifstream infile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
+  std::string line;
+  CHECK(std::getline(infile, line));
+  CHECK_EQ(line, "performance")
+      << "CPU governor wrong, fix as \"echo performance | sudo tee "
+         "/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor\"";
+}
 } // namespace
 
 void Benchmark(std::ofstream &output,
                std::function<void(size_t count, size_t trial)> setup,
                std::function<size_t()> fun, const std::vector<size_t> &counts) {
+  VerifyPerformanceGovernor();
   const size_t kNumberOfTrials = absl::GetFlag(FLAGS_number_of_trials);
   const double kNInverse = 1.0 / kNumberOfTrials;
   for (size_t count : counts) {
@@ -53,3 +64,4 @@ void Benchmark(std::ofstream &output,
            << 2 * standard_deviation << std::endl;
   }
 }
+

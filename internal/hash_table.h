@@ -50,10 +50,10 @@ static constexpr bool kHaveSse2 = (YOBIDUCK_HAVE_SSE2 != 0);
 inline constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }
 
 // Return the number of trailing zeros
-template <typename T>
-static constexpr uint32_t CountTrailingZeros(T x) {
+template <typename T> static constexpr uint32_t CountTrailingZeros(T x) {
   assert(x != 0);
-  static_assert(sizeof(x) == sizeof(unsigned int) || sizeof(x) == sizeof(unsigned long long));
+  static_assert(sizeof(x) == sizeof(unsigned int) ||
+                sizeof(x) == sizeof(unsigned long long));
   if constexpr (sizeof(x) == 4) {
     return __builtin_ctz(x);
   } else {
@@ -131,14 +131,14 @@ struct HashTableTraits {
   static constexpr size_t rehashed_utilization_denominator = 4;
 };
 
-  template <class Traits> struct alignas(typename Traits::value_type) Item {
+template <class Traits> struct alignas(typename Traits::value_type) Item {
   char bytes[sizeof(typename Traits::value_type)];
   // typename Traits::value_type value;
-  typename Traits::value_type& value() {
-    return *reinterpret_cast<typename Traits::value_type*>(&bytes[0]);
+  typename Traits::value_type &value() {
+    return *reinterpret_cast<typename Traits::value_type *>(&bytes[0]);
   }
-  const typename Traits::value_type& value() const {
-    return *reinterpret_cast<const typename Traits::value_type*>(&bytes[0]);
+  const typename Traits::value_type &value() const {
+    return *reinterpret_cast<const typename Traits::value_type *>(&bytes[0]);
   }
 };
 
@@ -147,7 +147,7 @@ template <class Traits> class SortedBucketsIterator;
 template <class Traits> struct Bucket {
   using key_type = typename Traits::key_type;
 
-  template <class K> using key_arg = typename Traits:: template key_arg<K>;
+  template <class K> using key_arg = typename Traits::template key_arg<K>;
 
   using key_equal = typename Traits::key_equal;
 
@@ -214,8 +214,7 @@ template <class Traits> struct Bucket {
     } else {
       matches = MatchingElementsMask(Traits::kEmpty);
     }
-    return matches ? CountTrailingZeros(matches)
-                   : Traits::kSlotsPerBucket;
+    return matches ? CountTrailingZeros(matches) : Traits::kSlotsPerBucket;
   }
 
   // Returns a bit mask containing the non-empty slot numbers in this bucket.
@@ -402,7 +401,7 @@ public:
       typename std::allocator_traits<allocator_type>::const_pointer;
 
 public:
-  template <class K> using key_arg = typename Traits:: template key_arg<K>;
+  template <class K> using key_arg = typename Traits::template key_arg<K>;
 
   HashTable();
   explicit HashTable(size_t initial_capacity, hasher const &hash = hasher(),
@@ -698,7 +697,7 @@ public:
 
   // Implicit conversion from iterator to const_iterator.
   template <bool IsConst = is_const, std::enable_if_t<IsConst, bool> = true>
-  Iterator(const iterator& x) : bucket_(x.bucket_), index_(x.index_) {}
+  Iterator(const iterator &x) : bucket_(x.bucket_), index_(x.index_) {}
 
   Iterator &operator++() {
     ++index_;

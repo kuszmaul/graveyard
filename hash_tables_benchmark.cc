@@ -136,18 +136,8 @@ public:
 using Int64Traits2345 = Traits2345<Int64Traits>;
 using Graveyard2345 = yobiduck::internal::HashTable<Int64Traits2345>;
 
-void VerifyPerformanceGovernor() {
-  std::ifstream infile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
-  std::string line;
-  CHECK(std::getline(infile, line));
-  CHECK_EQ(line, "performance")
-      << "CPU governor wrong, fix as \"echo performance | sudo tee "
-         "/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor\"";
-}
-
 int main(int argc, char *argv[]) {
   absl::ParseCommandLine(argc, argv);
-  VerifyPerformanceGovernor();
   // The difference between these two is the 'g' vs. the 'G'.  The lower-case
   // 'g' is for F14. The upper-case 'G' is for google-style naming used in
   // `GraveyardSet`.

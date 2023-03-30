@@ -1,6 +1,5 @@
 #include <cstddef> // for size_t
 #include <cstdint> // for uint64_t
-#include <fstream>
 #include <functional>  // for equal_to
 #include <set>
 #include <string>      // for string, basic_string
@@ -12,7 +11,6 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/hash/hash.h"           // for Hash
-#include "absl/log/check.h"           // for GetReferenceableValue, Che...
 #include "absl/strings/string_view.h" // for string_view
 #include "enum_print.h"
 #include "enums_flag.h"

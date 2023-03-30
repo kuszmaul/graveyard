@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <string>                      // for getline, string
 
 #include "absl/flags/flag.h"
 #include "absl/log/check.h"

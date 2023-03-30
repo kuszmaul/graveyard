@@ -59,10 +59,10 @@ public:
   const std::vector<std::pair<EnumType, absl::string_view>> &Pairs() const {
     return pairs_;
   }
-  std::vector<EnumType> Enums() const {
-    std::vector<EnumType> result;
+  absl::flat_hash_set<EnumType> Enums() const {
+    absl::flat_hash_set<EnumType> result;
     for (const auto &[e, s] : pairs_) {
-      result.push_back(e);
+      result.insert(e);
     }
     return result;
   }

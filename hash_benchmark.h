@@ -11,6 +11,7 @@
 #include <string_view> // for string_view
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/flags/declare.h"
 #include "absl/flags/flag.h"
 #include "absl/log/check.h"
@@ -19,7 +20,35 @@
 
 ABSL_DECLARE_FLAG(size_t, size_growth);
 enum class Operation { kInsert, kReservedInsert, kFound, kNotFound };
-ABSL_DECLARE_FLAG(std::vector<Operation>, operations);
+ABSL_DECLARE_FLAG(absl::flat_hash_set<Operation>, operations);
+
+enum class Implementation {
+  // Order these from most-important-to-benchmark to
+  // least-important-to-benchmark.
+  kGraveyard,
+  kGoogle,
+  kFacebook,
+  kOLP,
+  kGraveyardIdentityHash,
+  kGoogleIdentityHash,
+  kFacebookIdentityHash,
+  kOLPIdentityHash,
+  // Graveyard variants
+  kGraveyard3578, // Fill the table to 7/8 then rehash to 3/5 full (instead of
+                  // 3/4 full) to reduce number of rehashes.
+  kGraveyard1278, // Fill the table to 7/8 then rehash to 1/2 full (instead of
+                  // 3/4 full) to reduce number of rehashes.
+  kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of
+                  // 3/4 full) to reduce number of rehashes.
+  kGraveyard255,  // H2 computed modulo 255 (rather than 128)
+};
+ABSL_DECLARE_FLAG(absl::flat_hash_set<Implementation>, implementations);
+
+// Return the --implementation
+std::set<Implementation> FlaggedImplementations();
+
+std::string_view ImplementationString(Implementation implementation);
+
 
 // These functions don't return a flat-hash-set since the sort order will be
 // correlated and make the flat hash set look much faster than it is.  The
@@ -155,31 +184,5 @@ void IntHashSetBenchmark(
         sizes);
   }
 }
-
-enum class Implementation {
-  // Order these from most-important-to-benchmark to
-  // least-important-to-benchmark.
-  kGraveyard,
-  kGoogle,
-  kFacebook,
-  kOLP,
-  kGraveyardIdentityHash,
-  kGoogleIdentityHash,
-  kFacebookIdentityHash,
-  kOLPIdentityHash,
-  // Graveyard variants
-  kGraveyard3578, // Fill the table to 7/8 then rehash to 3/5 full (instead of
-                  // 3/4 full) to reduce number of rehashes.
-  kGraveyard1278, // Fill the table to 7/8 then rehash to 1/2 full (instead of
-                  // 3/4 full) to reduce number of rehashes.
-  kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of
-                  // 3/4 full) to reduce number of rehashes.
-  kGraveyard255,  // H2 computed modulo 255 (rather than 128)
-};
-
-// Return the --implementation
-std::set<Implementation> FlaggedImplementations();
-
-std::string_view ImplementationString(Implementation implementation);
 
 #endif // HASH_BENCHMARK_H_

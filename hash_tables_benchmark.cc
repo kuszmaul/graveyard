@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
     using table_type = std::remove_reference_t<decltype(table)>;
     return table.capacity() * (1 + sizeof(typename table_type::value_type));
   };
-  for (Implementation implementation : FlaggedImplementations()) {
+  for (Implementation implementation : absl::GetFlag(FLAGS_implementations)) {
     switch (implementation) {
     case Implementation::kGraveyard: {
       using Graveyard = yobiduck::GraveyardSet<uint64_t>;

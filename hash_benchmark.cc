@@ -4,7 +4,6 @@
 #include <random>
 #include <string_view>
 #include <utility> // for pair, move
-#include <vector>
 
 #include "absl/algorithm/container.h"     // for c_find, ContainerIter
 #include "absl/container/flat_hash_set.h" // for flat_hash_set, BitMask
@@ -25,23 +24,22 @@ const auto *operation_enum_and_strings = EnumsAndStrings<Operation>::Create(
 ABSL_FLAG(size_t, size_growth, 20,
           "For benchmarking tables of various sizes, increase the size by "
           "size/size_growth");
-ABSL_FLAG(std::vector<Operation>, operations,
+ABSL_FLAG(absl::flat_hash_set<Operation>, operations,
           operation_enum_and_strings->Enums(),
           "comma-separated list of operations to benchmark");
 
-std::string AbslUnparseFlag(std::vector<Operation> operations) {
-  return AbslUnparseVectorEnumFlag(*operation_enum_and_strings, operations);
+std::string AbslUnparseFlag(absl::flat_hash_set<Operation> operations) {
+  return AbslUnparseSetEnumFlag(*operation_enum_and_strings, operations);
 }
 
-bool AbslParseFlag(std::string_view text, std::vector<Operation> *operations,
+bool AbslParseFlag(std::string_view text, absl::flat_hash_set<Operation> *operations,
                    std::string *error) {
-  return AbslParseVectorEnumFlag(*operation_enum_and_strings, text, operations,
+  return AbslParseSetEnumFlag(*operation_enum_and_strings, text, operations,
                                  error);
 }
 
 bool OperationIsFlagged(Operation operation) {
-  std::vector<Operation> operations_vector = absl::GetFlag(FLAGS_operations);
-  return absl::c_find(operations_vector, operation) != operations_vector.end();
+  return absl::GetFlag(FLAGS_operations).contains(operation);
 }
 
 std::string FileNameForHashSetBenchmark(Operation operation,
@@ -120,27 +118,20 @@ const auto *implementation_enum_and_strings =
          {Implementation::kGraveyard255, "graveyard255"}});
 } // namespace
 
-ABSL_FLAG(std::vector<Implementation>, implementations,
+ABSL_FLAG(absl::flat_hash_set<Implementation>, implementations,
           implementation_enum_and_strings->Enums(),
           "comma-separated list of hash table implementations to benchmark");
 
-std::string AbslUnparseFlag(std::vector<Implementation> implementations) {
-  return AbslUnparseVectorEnumFlag(*implementation_enum_and_strings,
+std::string AbslUnparseFlag(absl::flat_hash_set<Implementation> implementations) {
+  return AbslUnparseSetEnumFlag(*implementation_enum_and_strings,
                                    implementations);
 }
 
 bool AbslParseFlag(std::string_view text,
-                   std::vector<Implementation> *implementations,
+                   absl::flat_hash_set<Implementation> *implementations,
                    std::string *error) {
-  return AbslParseVectorEnumFlag(*implementation_enum_and_strings, text,
-                                 implementations, error);
-}
-
-std::set<Implementation> FlaggedImplementations() {
-  std::vector<Implementation> implementations_vector =
-      absl::GetFlag(FLAGS_implementations);
-  return std::set<Implementation>(implementations_vector.begin(),
-                                  implementations_vector.end());
+  return AbslParseSetEnumFlag(*implementation_enum_and_strings, text,
+			      implementations, error);
 }
 
 std::string_view ImplementationString(Implementation implementation) {

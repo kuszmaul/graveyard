@@ -9,18 +9,19 @@
 #include <string_view>
 #include <vector> // for vector
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h" // for StrAppend, StrCat
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "enum_print.h"
 
 template <class EnumType>
-bool AbslParseVectorEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
-                             std::string_view text,
-                             std::vector<EnumType> *parsed,
-                             std::string *error) {
+bool AbslParseSetEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
+			  std::string_view text,
+			  absl::flat_hash_set<EnumType> *parsed,
+			  std::string *error) {
   std::vector<std::string_view> op_strings = absl::StrSplit(text, ",");
-  std::vector<EnumType> result;
+  absl::flat_hash_set<EnumType> result;
   const size_t number_of_enums = enums_and_strings.Pairs().size();
   for (std::string_view op_string : op_strings) {
     std::optional<EnumType> op = enums_and_strings.ToEnum(op_string);
@@ -37,7 +38,7 @@ bool AbslParseVectorEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
       }
       return false;
     }
-    result.push_back(*op);
+    result.insert(*op);
   }
   *parsed = std::move(result);
   return true;
@@ -45,8 +46,8 @@ bool AbslParseVectorEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
 
 template <class EnumType>
 std::string
-AbslUnparseVectorEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
-                          std::vector<EnumType> operations) {
+AbslUnparseSetEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
+		       absl::flat_hash_set<EnumType> operations) {
   return absl::StrJoin(operations, ",", enums_and_strings.Formatter());
 }
 

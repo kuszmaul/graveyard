@@ -148,6 +148,8 @@ cc_binary(
     name = "amortization_benchmark",
     srcs = ["amortization_benchmark.cc"],
     deps = [":hash_benchmark",
+            ":graveyard_set",
+            "@folly//folly/container:F14Set",
             "@com_google_absl//absl/flags:flag",
     	    "@com_google_absl//absl/flags:parse",
 ],

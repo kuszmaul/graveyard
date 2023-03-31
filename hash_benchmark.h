@@ -17,7 +17,6 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "benchmark.h"
-#include "enums_flag.h"
 #include "enum_print.h"
 
 ABSL_DECLARE_FLAG(size_t, size_growth);

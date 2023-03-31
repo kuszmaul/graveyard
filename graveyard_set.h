@@ -4,7 +4,7 @@
 #include <memory> // for allocator
 
 #include "absl/container/flat_hash_set.h" // For hash_default_hash (TODO: use internal/hash_function_defaults.h
-#include "internal/hash_table.h"
+#include "internal/hash_table.h"  // IWYU pragma: export
 
 namespace yobiduck {
 

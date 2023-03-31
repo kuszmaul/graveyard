@@ -1,6 +1,8 @@
 #ifndef BENCHMARK_H_
 #define BENCHMARK_H_
 
+#include <time.h>
+
 #include <cstddef>
 #include <fstream>
 #include <functional>
@@ -23,5 +25,16 @@ void Benchmark(std::ofstream &output,
                std::function<void(size_t count, size_t trial)> setup,
                std::function<size_t()> fun, // returns memory size
                const std::vector<size_t> &counts);
+
+static inline constexpr uint64_t operator-(timespec a, timespec b) {
+  return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;
+}
+
+static inline timespec GetTime() {
+  timespec result;
+  clock_gettime(CLOCK_MONOTONIC, &result);
+  return result;
+}
+
 
 #endif // BENCHMARK_H_

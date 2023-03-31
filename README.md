@@ -116,6 +116,38 @@ IWYU is giving some false noise and is a little bit difficult to work
 with.  It's confused about what std::swap includes.  Also the google
 test framework doesn't play well with IWYU.
 
+## Amortization
+
+```
+bradley@bradley-laptop:~/github/graveyard$ bazel build -c opt ... && bazel-bin/amortization_benchmark 
+Loading: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: 16 targets (0 packages loaded, 0 targets configured)
+INFO: Analyzed 16 targets (0 packages loaded, 0 targets configured).
+INFO: Found 16 targets...
+bazel: Entering directory `/home/bradley/.cache/bazel/_bazel_bradley/9c77e745fbeb00862aa543f29e225d72/execroot/__main__/'
+[0 / 4] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+[2 / 4] [Prepa] Linking amortization_benchmark
+bazel: Leaving directory `/home/bradley/.cache/bazel/_bazel_bradley/9c77e745fbeb00862aa543f29e225d72/execroot/__main__/'
+INFO: Elapsed time: 1.766s, Critical Path: 1.70s
+INFO: 3 processes: 1 internal, 2 linux-sandbox.
+INFO: Build completed successfully, 3 total actions
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1680299036.309151  138108 amortization_benchmark.cc:199] Fast: 222ns Slow: 1.37431s ratio=6.19058e+06
+I0000 00:00:1680299036.309192  138108 amortization_benchmark.cc:200] Before: Resident 2056 maxrss=3004
+I0000 00:00:1680299036.309195  138108 amortization_benchmark.cc:201] After:  Resident 2363132 maxrss=3542580
+I0000 00:00:1680299036.309197  138108 amortization_benchmark.cc:202] Reset:  Resident 3832 maxrss=3832
+I0000 00:00:1680299050.477143  138108 amortization_benchmark.cc:199] Fast: 239ns Slow: 1.21779s ratio=5.09535e+06
+I0000 00:00:1680299050.477165  138108 amortization_benchmark.cc:200] Before: Resident 3832 maxrss=3832
+I0000 00:00:1680299050.477168  138108 amortization_benchmark.cc:201] After:  Resident 2101316 maxrss=3166056
+I0000 00:00:1680299050.477170  138108 amortization_benchmark.cc:202] Reset:  Resident 4164 maxrss=4164
+I0000 00:00:1680299063.394475  138108 amortization_benchmark.cc:199] Fast: 123ns Slow: 980.467ms ratio=7.97127e+06
+I0000 00:00:1680299063.394497  138108 amortization_benchmark.cc:200] Before: Resident 4164 maxrss=4164
+I0000 00:00:1680299063.394499  138108 amortization_benchmark.cc:201] After:  Resident 1194644 maxrss=2214896
+I0000 00:00:1680299063.394501  138108 amortization_benchmark.cc:202] Reset:  Resident 4164 maxrss=4164
+```
+
 ## Things to boast about
 
 - [ ] Small number of bytes for empty table (only 16 bytes)?  Compare
@@ -124,6 +156,10 @@ test framework doesn't play well with IWYU.
       index without first accessing any of the heap-allocated memory.
 
 - [ ] Small number of bytes for small table?  Compare to F14 and Absl.  (Not yet done?)
+
+- [ ] Deamortized (to do)
+
+- [ ] Low peak-watermark (lower than just because the tables are smaller, also due to the deamortization approach.)
 
 ## TODO
 

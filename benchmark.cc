@@ -14,9 +14,6 @@
 ABSL_FLAG(size_t, number_of_trials, 5, "Number of trials.  Must be positive.");
 
 namespace {
-inline uint64_t operator-(struct timespec a, struct timespec b) {
-  return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;
-}
 
 void VerifyPerformanceGovernor() {
   std::ifstream infile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor");
@@ -40,12 +37,10 @@ void Benchmark(std::ofstream &output,
     size_t memory_size = 0;
     for (size_t trial = 0; trial < kNumberOfTrials; ++trial) {
       setup(count, trial);
-      struct timespec start;
-      clock_gettime(CLOCK_MONOTONIC, &start);
+      timespec start = GetTime();
       memory_size = fun();
       DoNotOptimize(memory_size);
-      struct timespec end;
-      clock_gettime(CLOCK_MONOTONIC, &end);
+      struct timespec end = GetTime();
       uint64_t elapsed = end - start;
       x_sum += elapsed;
       x_squared_sum += elapsed * elapsed;

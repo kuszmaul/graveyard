@@ -262,6 +262,8 @@ public:
 
   // Constructs a `Buckets` that has the given logical bucket size (which must
   // be positive).
+  //
+  // The buckets aren't initialized.
   explicit Buckets(size_t logical_size) : logical_size_(logical_size) {
     assert(logical_size_ > 0);
     size_t physical = physical_size();
@@ -273,11 +275,6 @@ public:
     data_ = static_cast<char *>(std::aligned_alloc(
         Traits::kCacheLineSize, physical * sizeof(Bucket<Traits>)));
     assert(data_ != nullptr);
-    for (Bucket<Traits> &bucket : *this) {
-      bucket.Init();
-    }
-    // Set the end-of-search sentinal.
-    begin()[physical - 1].search_distance = Traits::kSearchDistanceEndSentinal;
     if (0) {
       // It turns out that for libc malloc, the extra usable size usually just
       // 8 extra bytes.
@@ -619,6 +616,15 @@ private:
   iterator InsertNoRehashNeededAndValueNotPresent(const value_type &value,
                                                   size_t preferred_bucket,
                                                   size_t h2);
+
+  // Inserts a value.  Works well if the values are inserted in
+  // (roughly) ascending order.  All the buckets starting at
+  // `first_uninitialized_bucket` are uninitialized.  Used during
+  // rehash (and TODO: use during copy).
+  void InsertAscending(const value_type& value, size_t &first_uninitialized_bucket);
+  // Finish the rehash or copy by initializing all the remaining
+  // uninitialized buckets.
+  void FinishInsertAscending(size_t first_uninitialized_bucket);
 
   // The number of present items in all the buckets combined.
   // Todo: Put `size_` into buckets_ (in the memory).
@@ -1016,6 +1022,52 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
   ValidateUnderDebugging(line_number);
 }
 
+// TODO: This `value` argument shouldn't be `const value_type &`, it
+// should just be `value_type`, but there is a bug in the map code
+// that makes that fail.
+
+template <class Traits>
+void HashTable<Traits>::InsertAscending(const value_type& value, size_t &first_uninitialized_bucket) {
+  const key_type &key = Traits::KeyOf(value);
+  const size_t hash = get_hasher_ref()(key);
+  const size_t preferred_bucket = buckets_.H1(hash);
+  const size_t h2 = buckets_.H2(hash);
+  size_t bucket_to_try = preferred_bucket;
+  while (true) {
+    assert(bucket_to_try <= buckets_.physical_size());
+    Bucket<Traits>& bucket = buckets_[bucket_to_try];
+    while (bucket_to_try >= first_uninitialized_bucket) {
+      buckets_[first_uninitialized_bucket].Init();
+      ++first_uninitialized_bucket;
+    }
+    size_t matches = bucket.FindEmpties();
+    // remove graveyard tombstone
+    matches &= ~(bucket_to_try % 2);
+    if (matches != 0) {
+      size_t idx = CountTrailingZeros(matches);
+      assert(bucket.h2[idx] == Traits::kEmpty);
+      bucket.h2[idx] = h2;
+      assert(h2 < Traits::kH2Modulo);
+      new (&bucket.slots[idx].value()) value_type(std::move(value));
+      maxf(buckets_[preferred_bucket].search_distance, bucket_to_try - preferred_bucket + 1);
+      // TODO: Factor out the ++size_.
+      ++size_;
+      return;
+    }
+    ++bucket_to_try;
+  }
+}
+
+template <class Traits>
+void HashTable<Traits>::FinishInsertAscending(size_t first_uninitialized_bucket) {
+  while (first_uninitialized_bucket < buckets_.physical_size()) {
+    buckets_[first_uninitialized_bucket].Init();
+    ++first_uninitialized_bucket;
+  }
+  // Set the end-of-search sentinal.
+  buckets_[first_uninitialized_bucket - 1].search_distance = Traits::kSearchDistanceEndSentinal;
+}
+
 template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
   if (slot_count == 0) {
     slot_count = ceil(size() * Traits::full_utilization_denominator,
@@ -1024,17 +1076,18 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
   buckets.swap(buckets_);
   size_ = 0;
+  size_t first_uninitialized_bucket = 0;
   for (Bucket<Traits> &bucket : buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
-        InsertNoRehashNeededAndValueNotPresent<true>(
-            std::move(bucket.slots[j].value()));
+	InsertAscending(std::move(bucket.slots[j].value()), first_uninitialized_bucket);
         // Note that bucket.slots[j].value will be properly destructed when we
         // leave scope, since bucket.h2[j] is not empty.
       }
     }
   }
+  FinishInsertAscending(first_uninitialized_bucket);
   // CheckValidityAfterRehash(__LINE__);
 }
 

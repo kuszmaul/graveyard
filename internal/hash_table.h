@@ -199,22 +199,26 @@ template <class Traits> struct Bucket {
     return Traits::kSlotsPerBucket;
   }
 
-  // Returns an empty slot number in this bucket, if it exists.  Else
-  // returns Traits::kSlotsPerBucket.
-  size_t FindEmpty() const {
-    size_t matches;
+  // Returns an integer bitmask indicating which slots are empty.
+  unsigned int FindEmpties() const {
     if constexpr (kHaveSse2 && Traits::kH2Modulo == 128) {
       static_assert(Traits::kEmpty > 128);
       // We can special case in the event that the empty value is the only H2
       // value with bit 7 set.
       __m128i h2s = _mm_loadu_si128(reinterpret_cast<const __m128i *>(&h2[0]));
-      int mask = _mm_movemask_epi8(h2s);
-      mask &= (1 << Traits::kSlotsPerBucket) - 1;
-      matches = mask;
+      unsigned int empties = _mm_movemask_epi8(h2s);
+      empties &= (1 << Traits::kSlotsPerBucket) - 1;
+      return empties;
     } else {
-      matches = MatchingElementsMask(Traits::kEmpty);
+      return MatchingElementsMask(Traits::kEmpty);
     }
-    return matches ? CountTrailingZeros(matches) : Traits::kSlotsPerBucket;
+  }
+
+  // Returns an empty slot number in this bucket, if it exists.  Else
+  // returns Traits::kSlotsPerBucket.
+  size_t FindEmpty() const {
+    unsigned int empties = FindEmpties();
+    return empties ? CountTrailingZeros(empties) : Traits::kSlotsPerBucket;
   }
 
   // Returns a bit mask containing the non-empty slot numbers in this bucket.

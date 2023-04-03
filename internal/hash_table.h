@@ -2,8 +2,12 @@
 #define _GRAVEYARD_INTERNAL_HASH_TABLE_H
 
 #include <malloc.h>
+#include <sys/mman.h>
+#include <sys/resource.h>
 
 #include <algorithm>
+#include <cstdio>
+#include <fstream>
 #include <new>
 #include <sstream>
 #include <string>
@@ -257,6 +261,14 @@ public:
   Buckets(Buckets &&other) = delete;
   // Move assignment
   Buckets &operator=(Buckets &&other) = delete;
+
+  // Deallocate the memory in this.  Requires that none of the slots
+  // contain values.
+  void Deallocate() {
+    free(data_);
+    data_ = nullptr;
+    logical_size_ = 0;
+  }
 
   ~Buckets() { clear(); }
 
@@ -618,10 +630,11 @@ private:
                                                   size_t h2);
 
   // Inserts a value.  Works well if the values are inserted in
-  // (roughly) ascending order.  All the buckets starting at
-  // `first_uninitialized_bucket` are uninitialized.  Used during
-  // rehash (and TODO: use during copy).
+  // (roughly) ascending order.  All the buckets starting at, and
+  // following, `first_uninitialized_bucket` are uninitialized.  Used
+  // during rehash (and TODO: use during copy).
   void InsertAscending(const value_type& value, size_t &first_uninitialized_bucket);
+
   // Finish the rehash or copy by initializing all the remaining
   // uninitialized buckets.
   void FinishInsertAscending(size_t first_uninitialized_bucket);
@@ -656,6 +669,10 @@ HashTable<Traits>::HashTable(const HashTable &other, const allocator_type &a)
                 a) {
   for (const auto &v : other) {
     // TODO: We could save recomputing h2 possibly.
+    //
+    // TODO: For construction, don't include the graveyard tombstone?
+    // The table is sized to be just right, so the next insert is
+    // likely to cause a rehash.
     InsertNoRehashNeededAndValueNotPresent<true>(v);
   }
 }
@@ -834,6 +851,7 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
+    // TODO: Use FindEmpty
     size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
     if constexpr (keep_graveyard_tombstones) {
       // Keep the first slot free in all the odd-numbered buckets.
@@ -1022,6 +1040,34 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
   ValidateUnderDebugging(line_number);
 }
 
+// TODO: This code is repeated from the amortization benchmark
+struct MemoryStats {
+  // All units are in KiloBytes
+  size_t size, resident, shared, text, lib, data, dt; 
+  size_t max_resident;
+};
+
+// TODO: This code is repeated from the amortization benchmark
+MemoryStats GetMemoryStats() {
+  struct MemoryStats result;
+  std::ifstream statfile("/proc/self/statm", std::ifstream::in);
+  std::string data;
+  std::getline(statfile, data);
+  int n [[maybe_unused]] = sscanf(data.c_str(), "%lu %lu %lu %lu %lu %lu %lu",
+		 &result.size, &result.resident, &result.shared, &result.text, &result.lib, &result.data, &result.dt);
+  assert(n == 7);
+  result.size *= 4;
+  result.resident *= 4;
+  result.shared *= 4;
+  result.text *= 4;
+  result.lib *= 4;
+  result.dt *= 4;
+  struct rusage r_usage;
+  getrusage(RUSAGE_SELF, &r_usage);
+  result.max_resident = r_usage.ru_maxrss;
+  return result;
+}
+
 // TODO: This `value` argument shouldn't be `const value_type &`, it
 // should just be `value_type`, but there is a bug in the map code
 // that makes that fail.
@@ -1073,21 +1119,55 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
     slot_count = ceil(size() * Traits::full_utilization_denominator,
                       Traits::full_utilization_numerator);
   }
+  {
+    MemoryStats stats = GetMemoryStats();
+    std::cerr << "new size=" << slot_count << " just before buckets allocation: " << stats.resident << " " << stats.max_resident << std::endl;
+  }
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
+  {
+    MemoryStats stats = GetMemoryStats();
+    std::cerr << " just after buckets allocation: " << stats.resident << " " << stats.max_resident << std::endl;
+  }
   buckets.swap(buckets_);
   size_ = 0;
+  size_t bucket_number = 0;
   size_t first_uninitialized_bucket = 0;
   for (Bucket<Traits> &bucket : buckets) {
+    // Periodically release the memory for the buckets that we no longer need.
+    if (bucket_number % (1ul << 15) == 0) {
+      uintptr_t start = reinterpret_cast<uintptr_t>(buckets.begin());
+      uintptr_t here   = reinterpret_cast<uintptr_t>(&bucket);
+      uintptr_t start_rounded_up= (start + 4095) / 4096 * 4096;
+      uintptr_t here_rounded_down = here / 4096 * 4096;
+      if (start_rounded_up < here_rounded_down) {
+	uintptr_t len = here_rounded_down - start_rounded_up;
+	LOG(INFO) << "begin=" << buckets.begin() << " here=" << &bucket << " start_rounded_up=" << std::hex << start_rounded_up << " len=" << std::hex << len;
+	MemoryStats stats = GetMemoryStats();
+	LOG(INFO) << "before madvise: " << stats.resident << " " << stats.max_resident;
+	if (madvise(reinterpret_cast<void*>(start_rounded_up), len, MADV_DONTNEED)) {
+	  perror("DONTNEED failed");
+	}
+	LOG(INFO) << "madvise(" << std::hex << start_rounded_up << ", " << std::dec << len << ", MADV_DONTNEED)";
+	LOG(INFO) << "after madvise: " << stats.resident << " " << stats.max_resident;
+      }
+    }
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
 	InsertAscending(std::move(bucket.slots[j].value()), first_uninitialized_bucket);
-        // Note that bucket.slots[j].value will be properly destructed when we
-        // leave scope, since bucket.h2[j] is not empty.
+	// Destroy the value so that we can destroy the bucket without
+	// running a bunch of destructors.
+	bucket.slots[j].value().~value_type();
       }
     }
+    ++bucket_number;
   }
   FinishInsertAscending(first_uninitialized_bucket);
+  {
+    MemoryStats stats = GetMemoryStats();
+    std::cerr << "just before buckets deallocation: " << stats.resident << " " << stats.max_resident << std::endl;
+  }
+  buckets.Deallocate();
   // CheckValidityAfterRehash(__LINE__);
 }
 

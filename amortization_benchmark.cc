@@ -166,6 +166,7 @@ std::string DurationString(uint64_t time_in_ns) {
 template <class Table>
 void MeasureRehash() {
   MemoryStats memory_before = GetMemoryStats();
+  MemoryStats memory_just_before;
   MemoryStats memory_after;
   timespec start_fast, end_fast, start_slow, end_slow;
   {
@@ -180,11 +181,15 @@ void MeasureRehash() {
       s.insert(i);
     }
     start_fast = GetTime();
+    LOG(INFO) << "inserting " << i;
     s.insert(i);
     end_fast = GetTime();
     ++i;
+    // This is the rehash that takes a long time
     size_t just_before_rehash = s.capacity();
     start_slow = GetTime();
+    memory_just_before = GetMemoryStats();
+    LOG(INFO) << "inserting " << i;
     s.insert(i);
     end_slow = GetTime();
     size_t just_after_rehash = s.capacity();
@@ -198,6 +203,7 @@ void MeasureRehash() {
   uint64_t slow_time = end_slow - start_slow;
   LOG(INFO) << "Fast: " << DurationString(fast_time) << " Slow: " << DurationString(slow_time) << " ratio=" << static_cast<double>(slow_time) / fast_time;
   LOG(INFO) << "Before: Resident " << memory_before.resident << " maxrss=" << memory_before.max_resident;
+  LOG(INFO) << "JustBe: Resident " << memory_just_before.resident << " maxrss=" << memory_just_before.max_resident;
   LOG(INFO) << "After:  Resident " << memory_after.resident << " maxrss=" << memory_after.max_resident;
   LOG(INFO) << "Reset:  Resident " << resetted.resident << " maxrss=" << resetted.max_resident;
 }
@@ -211,8 +217,8 @@ int main(int argc, char *argv[]) {
     FindRehashPoints<FacebookSet>();
     FindRehashPoints<GraveyardSet>();
   } else {
-    MeasureRehash<GoogleSet>();
-    MeasureRehash<FacebookSet>();
+    //MeasureRehash<GoogleSet>();
+    //MeasureRehash<FacebookSet>();
     MeasureRehash<GraveyardSet>();
   }
 }

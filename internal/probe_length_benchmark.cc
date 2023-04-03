@@ -5,7 +5,6 @@
 
 #include "absl/hash/hash.h" // for Hash
 #include "graveyard_set.h"
-#include "internal/hash_table.h" // for ProbeStatistics, Buckets
 
 int main() {
   constexpr size_t kSize = 10'000'000;

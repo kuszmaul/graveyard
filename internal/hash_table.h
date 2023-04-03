@@ -2,8 +2,10 @@
 #define _GRAVEYARD_INTERNAL_HASH_TABLE_H
 
 #include <malloc.h>
+#include <sys/mman.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <new>
 #include <sstream>
 #include <string>
@@ -257,6 +259,14 @@ public:
   Buckets(Buckets &&other) = delete;
   // Move assignment
   Buckets &operator=(Buckets &&other) = delete;
+
+  // Deallocate the memory in this.  Requires that none of the slots
+  // contain values.
+  void Deallocate() {
+    free(data_);
+    data_ = nullptr;
+    logical_size_ = 0;
+  }
 
   ~Buckets() { clear(); }
 
@@ -618,10 +628,12 @@ private:
                                                   size_t h2);
 
   // Inserts a value.  Works well if the values are inserted in
-  // (roughly) ascending order.  All the buckets starting at
-  // `first_uninitialized_bucket` are uninitialized.  Used during
-  // rehash (and TODO: use during copy).
-  void InsertAscending(const value_type& value, size_t &first_uninitialized_bucket);
+  // (roughly) ascending order.  All the buckets starting at, and
+  // following, `first_uninitialized_bucket` are uninitialized.  Used
+  // during rehash (and TODO: use during copy).
+  void InsertAscending(const value_type &value,
+                       size_t &first_uninitialized_bucket);
+
   // Finish the rehash or copy by initializing all the remaining
   // uninitialized buckets.
   void FinishInsertAscending(size_t first_uninitialized_bucket);
@@ -656,6 +668,10 @@ HashTable<Traits>::HashTable(const HashTable &other, const allocator_type &a)
                 a) {
   for (const auto &v : other) {
     // TODO: We could save recomputing h2 possibly.
+    //
+    // TODO: For construction, don't include the graveyard tombstone?
+    // The table is sized to be just right, so the next insert is
+    // likely to cause a rehash.
     InsertNoRehashNeededAndValueNotPresent<true>(v);
   }
 }
@@ -834,6 +850,7 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
+    // TODO: Use FindEmpty
     size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
     if constexpr (keep_graveyard_tombstones) {
       // Keep the first slot free in all the odd-numbered buckets.
@@ -1027,7 +1044,8 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
 // that makes that fail.
 
 template <class Traits>
-void HashTable<Traits>::InsertAscending(const value_type& value, size_t &first_uninitialized_bucket) {
+void HashTable<Traits>::InsertAscending(const value_type &value,
+                                        size_t &first_uninitialized_bucket) {
   const key_type &key = Traits::KeyOf(value);
   const size_t hash = get_hasher_ref()(key);
   const size_t preferred_bucket = buckets_.H1(hash);
@@ -1035,7 +1053,7 @@ void HashTable<Traits>::InsertAscending(const value_type& value, size_t &first_u
   size_t bucket_to_try = preferred_bucket;
   while (true) {
     assert(bucket_to_try <= buckets_.physical_size());
-    Bucket<Traits>& bucket = buckets_[bucket_to_try];
+    Bucket<Traits> &bucket = buckets_[bucket_to_try];
     while (bucket_to_try >= first_uninitialized_bucket) {
       buckets_[first_uninitialized_bucket].Init();
       ++first_uninitialized_bucket;
@@ -1049,7 +1067,8 @@ void HashTable<Traits>::InsertAscending(const value_type& value, size_t &first_u
       bucket.h2[idx] = h2;
       assert(h2 < Traits::kH2Modulo);
       new (&bucket.slots[idx].value()) value_type(std::move(value));
-      maxf(buckets_[preferred_bucket].search_distance, bucket_to_try - preferred_bucket + 1);
+      maxf(buckets_[preferred_bucket].search_distance,
+           bucket_to_try - preferred_bucket + 1);
       // TODO: Factor out the ++size_.
       ++size_;
       return;
@@ -1059,13 +1078,15 @@ void HashTable<Traits>::InsertAscending(const value_type& value, size_t &first_u
 }
 
 template <class Traits>
-void HashTable<Traits>::FinishInsertAscending(size_t first_uninitialized_bucket) {
+void HashTable<Traits>::FinishInsertAscending(
+    size_t first_uninitialized_bucket) {
   while (first_uninitialized_bucket < buckets_.physical_size()) {
     buckets_[first_uninitialized_bucket].Init();
     ++first_uninitialized_bucket;
   }
   // Set the end-of-search sentinal.
-  buckets_[first_uninitialized_bucket - 1].search_distance = Traits::kSearchDistanceEndSentinal;
+  buckets_[first_uninitialized_bucket - 1].search_distance =
+      Traits::kSearchDistanceEndSentinal;
 }
 
 template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
@@ -1076,18 +1097,37 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
   buckets.swap(buckets_);
   size_ = 0;
+  size_t bucket_number = 0;
   size_t first_uninitialized_bucket = 0;
   for (Bucket<Traits> &bucket : buckets) {
+    // Periodically release the memory for the buckets that we no longer need.
+    if (bucket_number % (1ul << 15) == 0) {
+      uintptr_t start = reinterpret_cast<uintptr_t>(buckets.begin());
+      uintptr_t here = reinterpret_cast<uintptr_t>(&bucket);
+      uintptr_t start_rounded_up = (start + 4095) / 4096 * 4096;
+      uintptr_t here_rounded_down = here / 4096 * 4096;
+      if (start_rounded_up < here_rounded_down) {
+        uintptr_t len = here_rounded_down - start_rounded_up;
+        if (madvise(reinterpret_cast<void *>(start_rounded_up), len,
+                    MADV_DONTNEED)) {
+          perror("DONTNEED failed");
+        }
+      }
+    }
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
-	InsertAscending(std::move(bucket.slots[j].value()), first_uninitialized_bucket);
-        // Note that bucket.slots[j].value will be properly destructed when we
-        // leave scope, since bucket.h2[j] is not empty.
+        InsertAscending(std::move(bucket.slots[j].value()),
+                        first_uninitialized_bucket);
+        // Destroy the value so that we can destroy the bucket without
+        // running a bunch of destructors.
+        bucket.slots[j].value().~value_type();
       }
     }
+    ++bucket_number;
   }
   FinishInsertAscending(first_uninitialized_bucket);
+  buckets.Deallocate();
   // CheckValidityAfterRehash(__LINE__);
 }
 

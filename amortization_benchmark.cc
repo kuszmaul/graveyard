@@ -19,17 +19,24 @@
 
 #include <sys/resource.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
+#include <iomanip>
 #include <iostream>
 #include <string>
+#include <time.h>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/hash/hash.h"                // for Hash
+#include "absl/log/check.h"                // for GetReferenceableValue, CHE...
 #include "absl/log/log.h"                  // for LogMessage, ABSL_LOGGING_I...
+#include "absl/strings/str_cat.h"          // for StrCat
 #include "absl/strings/string_view.h"      // for operator<<, string_view
+#include "benchmark.h"                     // for GetTime, operator-
 #include "folly/container/F14Set.h"
 #include "graveyard_set.h"
 #include "hash_benchmark.h"
@@ -56,21 +63,27 @@ constexpr std::string_view kTableName<FacebookSet> = "FacebookSet";
 template<>
 constexpr std::string_view kTableName<GraveyardSet> = "GraveyardSet";
 
-template <class Table>
-constexpr size_t kRehashPoint = 0;
-
 // These magic numbers are gotten by running
 // ```
 // $ bazel-bin/amortization_benchmark --find_rehash_points
 // ```
 // and then copying the output to replace the following 6 lines.
 
+template <class Table>
+constexpr size_t kRehashPoint = 0;
 // GoogleSet: rehashed at 117440512 from 134217727 to 268435455
 template<> constexpr size_t kRehashPoint<GoogleSet> = 117440512;
 // FacebookSet: rehashed at 100663296 from 117440512 to 234881024
 template<> constexpr size_t kRehashPoint<FacebookSet> = 100663296;
 // GraveyardSet: rehashed at 100000008 from 114285780 to 133333410
 template<> constexpr size_t kRehashPoint<GraveyardSet> = 100000008;
+
+// Does the implementation provide a low high-water mark?
+template <class Table>
+constexpr bool kExpectLowHighWater = 0;
+template<> constexpr bool kExpectLowHighWater<GoogleSet> = false;
+template<> constexpr bool kExpectLowHighWater<FacebookSet> = false;
+template<> constexpr bool kExpectLowHighWater<GraveyardSet> = true;
 
 struct MemoryStats {
   // All units are in KiloBytes
@@ -165,8 +178,18 @@ std::string DurationString(uint64_t time_in_ns) {
 
 template <class Table>
 void MeasureRehash() {
-  MemoryStats memory_before = GetMemoryStats();
-  MemoryStats memory_after;
+  // We measure the memory statistics several times:
+  //
+  // Before doing anything
+  MemoryStats memory_at_beginning = GetMemoryStats();
+  // Just before doing an insert that doesn't rehash (a "noncritical
+  // insert").
+  MemoryStats memory_before_noncritical_insert;
+  // Just after the noncritical insert before we do an insert that
+  // rehashes.
+  MemoryStats memory_before_critical_insert;
+  // After the critical insert.
+  MemoryStats memory_after_critical_insert;
   timespec start_fast, end_fast, start_slow, end_slow;
   {
     Table s;
@@ -179,27 +202,56 @@ void MeasureRehash() {
     for (; i < kRehashPoint<Table> - 1; ++i) {
       s.insert(i);
     }
+    // This rehash shouldn't take long
+    memory_before_noncritical_insert = GetMemoryStats();
     start_fast = GetTime();
     s.insert(i);
     end_fast = GetTime();
     ++i;
+    // This is the rehash that takes a long time
     size_t just_before_rehash = s.capacity();
     start_slow = GetTime();
+    memory_before_critical_insert = GetMemoryStats();
     s.insert(i);
     end_slow = GetTime();
     size_t just_after_rehash = s.capacity();
     CHECK_EQ(initial_capacity, just_before_rehash);
     CHECK_LT(just_before_rehash, just_after_rehash);
-    memory_after = GetMemoryStats();
+    memory_after_critical_insert = GetMemoryStats();
+    auto ratio = [](double a, double b) { return a / b; };
+    if (kExpectLowHighWater<Table>) {
+      // For the graveyard table, the critical rehash shouldn't have used much memory.
+      //
+      // The max didn't get much bigger.
+      CHECK_LT(ratio(memory_after_critical_insert.max_resident, memory_after_critical_insert.resident), 1.05);
+      // The resident memory didn't grow much in the critical insert.
+      CHECK_LT(ratio(memory_after_critical_insert.resident , memory_before_critical_insert.resident), 1.2);
+    } else {
+      // For the non-graveyard tables, the critical rehash uses nearly
+      // 3/2 as much memory.
+      CHECK_GT(ratio(memory_after_critical_insert.max_resident, memory_after_critical_insert.resident), 1.45);
+      // And the resident memory grows by nearly a factor of two.
+      CHECK_GT(ratio(memory_after_critical_insert.resident , memory_before_critical_insert.resident), 1.85);
+    }
   } 
   ResetMaxRss();
   MemoryStats resetted = GetMemoryStats();
   uint64_t fast_time = end_fast - start_fast;
   uint64_t slow_time = end_slow - start_slow;
-  LOG(INFO) << "Fast: " << DurationString(fast_time) << " Slow: " << DurationString(slow_time) << " ratio=" << static_cast<double>(slow_time) / fast_time;
-  LOG(INFO) << "Before: Resident " << memory_before.resident << " maxrss=" << memory_before.max_resident;
-  LOG(INFO) << "After:  Resident " << memory_after.resident << " maxrss=" << memory_after.max_resident;
-  LOG(INFO) << "Reset:  Resident " << resetted.resident << " maxrss=" << resetted.max_resident;
+  LOG(INFO) << kTableName<Table>;
+  LOG(INFO) << " Fast: " << DurationString(fast_time) << " Slow: " << DurationString(slow_time) << " ratio=" << static_cast<double>(slow_time) / fast_time;
+  auto show_memory = [](std::string when, const MemoryStats& stats) {
+    constexpr size_t kWidth = 20;
+    if (when.size() < kWidth) {
+      when.append(kWidth - when.size(), ' ');
+    }
+    LOG(INFO) << " " << when << " rss = " << std::setw(7) << stats.resident << " maxrss = " << std::setw(7) << stats.max_resident << " ratio=" << stats.max_resident * 1.0 / stats.resident;
+  };
+  show_memory("Beginning:", memory_at_beginning);
+  show_memory("Before Noncritical:", memory_before_noncritical_insert);
+  show_memory("Before critical:", memory_before_critical_insert);
+  show_memory("After critical:", memory_after_critical_insert);
+  show_memory("After destruction:", resetted);
 }
 
 

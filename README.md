@@ -402,3 +402,7 @@ I0000 00:00:1680523430.074642  250787 amortization_benchmark.cc:242]  After dest
 - [ ] Minimize high-water mark.
 
 - [ ] deamortize rehash
+
+- [ ] It's not about parallelism.
+
+- [ ] Measure workloads under high load factor.  Find evidence that graveyard makes a difference.

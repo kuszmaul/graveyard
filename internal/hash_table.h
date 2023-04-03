@@ -3,11 +3,9 @@
 
 #include <malloc.h>
 #include <sys/mman.h>
-#include <sys/resource.h>
 
 #include <algorithm>
 #include <cstdio>
-#include <fstream>
 #include <new>
 #include <sstream>
 #include <string>
@@ -1040,34 +1038,6 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
   ValidateUnderDebugging(line_number);
 }
 
-// TODO: This code is repeated from the amortization benchmark
-struct MemoryStats {
-  // All units are in KiloBytes
-  size_t size, resident, shared, text, lib, data, dt; 
-  size_t max_resident;
-};
-
-// TODO: This code is repeated from the amortization benchmark
-MemoryStats GetMemoryStats() {
-  struct MemoryStats result;
-  std::ifstream statfile("/proc/self/statm", std::ifstream::in);
-  std::string data;
-  std::getline(statfile, data);
-  int n [[maybe_unused]] = sscanf(data.c_str(), "%lu %lu %lu %lu %lu %lu %lu",
-		 &result.size, &result.resident, &result.shared, &result.text, &result.lib, &result.data, &result.dt);
-  assert(n == 7);
-  result.size *= 4;
-  result.resident *= 4;
-  result.shared *= 4;
-  result.text *= 4;
-  result.lib *= 4;
-  result.dt *= 4;
-  struct rusage r_usage;
-  getrusage(RUSAGE_SELF, &r_usage);
-  result.max_resident = r_usage.ru_maxrss;
-  return result;
-}
-
 // TODO: This `value` argument shouldn't be `const value_type &`, it
 // should just be `value_type`, but there is a bug in the map code
 // that makes that fail.
@@ -1119,15 +1089,7 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
     slot_count = ceil(size() * Traits::full_utilization_denominator,
                       Traits::full_utilization_numerator);
   }
-  {
-    MemoryStats stats = GetMemoryStats();
-    std::cerr << "new size=" << slot_count << " just before buckets allocation: " << stats.resident << " " << stats.max_resident << std::endl;
-  }
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
-  {
-    MemoryStats stats = GetMemoryStats();
-    std::cerr << " just after buckets allocation: " << stats.resident << " " << stats.max_resident << std::endl;
-  }
   buckets.swap(buckets_);
   size_ = 0;
   size_t bucket_number = 0;
@@ -1141,14 +1103,9 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
       uintptr_t here_rounded_down = here / 4096 * 4096;
       if (start_rounded_up < here_rounded_down) {
 	uintptr_t len = here_rounded_down - start_rounded_up;
-	LOG(INFO) << "begin=" << buckets.begin() << " here=" << &bucket << " start_rounded_up=" << std::hex << start_rounded_up << " len=" << std::hex << len;
-	MemoryStats stats = GetMemoryStats();
-	LOG(INFO) << "before madvise: " << stats.resident << " " << stats.max_resident;
 	if (madvise(reinterpret_cast<void*>(start_rounded_up), len, MADV_DONTNEED)) {
 	  perror("DONTNEED failed");
 	}
-	LOG(INFO) << "madvise(" << std::hex << start_rounded_up << ", " << std::dec << len << ", MADV_DONTNEED)";
-	LOG(INFO) << "after madvise: " << stats.resident << " " << stats.max_resident;
       }
     }
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
@@ -1163,10 +1120,6 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
     ++bucket_number;
   }
   FinishInsertAscending(first_uninitialized_bucket);
-  {
-    MemoryStats stats = GetMemoryStats();
-    std::cerr << "just before buckets deallocation: " << stats.resident << " " << stats.max_resident << std::endl;
-  }
   buckets.Deallocate();
   // CheckValidityAfterRehash(__LINE__);
 }

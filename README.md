@@ -118,22 +118,9 @@ test framework doesn't play well with IWYU.
 
 ## Amortization
 
-```
-bradley@bradley-laptop:~/github/graveyard$ bazel build -c opt ... && bazel-bin/amortization_benchmark 
-Loading: 
-Loading: 
-Loading: 0 packages loaded
-Analyzing: 16 targets (0 packages loaded, 0 targets configured)
-INFO: Analyzed 16 targets (0 packages loaded, 0 targets configured).
-INFO: Found 16 targets...
-bazel: Entering directory `/home/bradley/.cache/bazel/_bazel_bradley/9c77e745fbeb00862aa543f29e225d72/execroot/__main__/'
-[0 / 4] [Prepa] BazelWorkspaceStatusAction stable-status.txt
-[2 / 4] [Prepa] Linking amortization_benchmark
-bazel: Leaving directory `/home/bradley/.cache/bazel/_bazel_bradley/9c77e745fbeb00862aa543f29e225d72/execroot/__main__/'
-INFO: Elapsed time: 1.766s, Critical Path: 1.70s
-INFO: 3 processes: 1 internal, 2 linux-sandbox.
-INFO: Build completed successfully, 3 total actions
-WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+```shell
+$ bazel build -c opt ... && bazel-bin/amortization_benchmark 
+...
 I0000 00:00:1680299036.309151  138108 amortization_benchmark.cc:199] Fast: 222ns Slow: 1.37431s ratio=6.19058e+06
 I0000 00:00:1680299036.309192  138108 amortization_benchmark.cc:200] Before: Resident 2056 maxrss=3004
 I0000 00:00:1680299036.309195  138108 amortization_benchmark.cc:201] After:  Resident 2363132 maxrss=3542580
@@ -160,6 +147,39 @@ I0000 00:00:1680299063.394501  138108 amortization_benchmark.cc:202] Reset:  Res
 - [ ] Deamortized (to do)
 
 - [ ] Low peak-watermark (lower than just because the tables are smaller, also due to the deamortization approach.)
+
+This benchmark shows that Facebook and Google not only double the
+amount of memory on a single insert (because they double the table
+size) but also, after a rehash, the high-water mark is about 3/2 as
+large as the resident memory.  For graveyard, the table grows by less
+than 20% on a rehash, and the high-water mark is less than 1% higher
+than than the resident memroy.
+
+```shell
+$ bazel build -c opt ... && bazel-bin/amortization_benchmark 
+...
+I0000 00:00:1680523403.627286  250787 amortization_benchmark.cc:235] GoogleSet
+I0000 00:00:1680523403.627307  250787 amortization_benchmark.cc:236]  Fast: 331ns Slow: 1.38009s ratio=4.16946e+06
+I0000 00:00:1680523403.627329  250787 amortization_benchmark.cc:242]  Beginning:           rss =    2116 maxrss =    3012 ratio=1.42344
+I0000 00:00:1680523403.627335  250787 amortization_benchmark.cc:242]  Before Noncritical:  rss = 1183216 maxrss = 1183216 ratio=1
+I0000 00:00:1680523403.627347  250787 amortization_benchmark.cc:242]  Before critical:     rss = 1183480 maxrss = 1183480 ratio=1
+I0000 00:00:1680523403.627350  250787 amortization_benchmark.cc:242]  After critical:      rss = 2363192 maxrss = 3542640 ratio=1.49909
+I0000 00:00:1680523403.627352  250787 amortization_benchmark.cc:242]  After destruction:   rss =    3892 maxrss =    3892 ratio=1
+I0000 00:00:1680523416.774276  250787 amortization_benchmark.cc:235] FacebookSet
+I0000 00:00:1680523416.774288  250787 amortization_benchmark.cc:236]  Fast: 177ns Slow: 1.1987s ratio=6.77233e+06
+I0000 00:00:1680523416.774300  250787 amortization_benchmark.cc:242]  Beginning:           rss =    3892 maxrss =    3892 ratio=1
+I0000 00:00:1680523416.774305  250787 amortization_benchmark.cc:242]  Before Noncritical:  rss = 1052796 maxrss = 1052796 ratio=1
+I0000 00:00:1680523416.774307  250787 amortization_benchmark.cc:242]  Before critical:     rss = 1052796 maxrss = 1052796 ratio=1
+I0000 00:00:1680523416.774309  250787 amortization_benchmark.cc:242]  After critical:      rss = 2101384 maxrss = 3166116 ratio=1.50668
+I0000 00:00:1680523416.774312  250787 amortization_benchmark.cc:242]  After destruction:   rss =    4232 maxrss =    4232 ratio=1
+I0000 00:00:1680523430.074609  250787 amortization_benchmark.cc:235] GraveyardSet
+I0000 00:00:1680523430.074621  250787 amortization_benchmark.cc:236]  Fast: 133ns Slow: 1.03245s ratio=7.76275e+06
+I0000 00:00:1680523430.074631  250787 amortization_benchmark.cc:242]  Beginning:           rss =    4232 maxrss =    4232 ratio=1
+I0000 00:00:1680523430.074635  250787 amortization_benchmark.cc:242]  Before Noncritical:  rss = 1024588 maxrss = 1024588 ratio=1
+I0000 00:00:1680523430.074638  250787 amortization_benchmark.cc:242]  Before critical:     rss = 1024588 maxrss = 1024588 ratio=1
+I0000 00:00:1680523430.074640  250787 amortization_benchmark.cc:242]  After critical:      rss = 1194712 maxrss = 1198700 ratio=1.00334
+I0000 00:00:1680523430.074642  250787 amortization_benchmark.cc:242]  After destruction:   rss =    4232 maxrss =    4232 ratio=1
+```
 
 ## TODO
 
@@ -283,6 +303,8 @@ I0000 00:00:1680299063.394501  138108 amortization_benchmark.cc:202] Reset:  Res
     ````
     static_assert(std::is_trivial<Chunk>::value, "F14Chunk should be POD");
     ````
+
+- [x] Lower high-water mark.
 
 - [ ] Make sure that after enough inserts, rehash occurs.  (Right now,
     a sequence of alternating erases and inserts can cause the table

@@ -5,4 +5,139 @@
 \begin{document}
 \maketitle
 
+What are the requirements for a practical C++ hash table?
+\begin{itemize}
+\item Near-compatability with the C++ standard library hash table
+  containers (\texttt{std::unordered\_set} and
+  \texttt{std::unordered\_map}).  These are templated (parameterized)
+  tables in which the user can specify a key, a hash function, and an
+  equality function.  The tables support heterogeneous lookup (which
+  allows you to construct something that can be hashed or compared to
+  a key without actually constructing a key).  The stability
+  properties can weaker.
+    
+\item Slightly weaker stability requirements than the C++ standard library containers.  This is about what happens to pointers to objects in the table.  In the standard library containers, you can get the pointer to an object that is stored in the table. Stability is the issue of how long that pointer remains valid.  For example, in the standard library
+  \begin{itemize}
+    \item If you destroy the table, any pointers into the table become invalid.
+    \item There is also an \textit{iterator} that lets you step
+      through all the values in a table.  An iterator value may
+      reference a value in the table.  If you destroy the table, any
+      existing iterators become invalid.
+    \item If you erase an element from the table, then iterators and
+      pointers that currently reference that element become invalid.
+      Other iterators and pointers remain valid.
+    \item If the table is rehashed (e.g., because it got too big),
+      then all iterators become invalid, but all pointers remain valid.
+   \end{itemize}
+
+  In order to accommodate open-addressed hash tables, both Google and
+  Facebook have adopted the modification to those rules:
+  \begin{itemize}
+  \item  If a table is rehashed, then its pointers also become invalid.
+  \end{itemize}
+
+   For example, the following code can result in undefined behavior
+   (which means that your computer may crash or that all your files
+   could be erased, among other things).
+\begin{verbatim}
+   // Define a set of integers
+   flat_hash_map<int, int> table;
+   
+   table[42] += table[43];
+\end{verbatim}
+This can crash using the Google/Facebook tables, since
+\texttt{table[42]} implicitly inserts a \texttt{42} into the table if
+it isn't already there, and then `table[43]` implicitl inserts a
+\texttt{43} into the table if isn't there.  (The order in which those
+two inserts is performed is implementation-defined.  GCC does it in
+one order, whereas Clang does it in the other).  The problem is that
+the second insert may cause the table to rehash, invalidating the
+pointer returned by the first insert, so when the \texttt{+=} operator
+runs, it may be passed an invalid pointer.
+
+  In order to prevent a table from being rehashed, people use the
+  \texttt{reserve(n)} function, which guarantees that the hash table
+  can hold $n$ values without rehashing (by rehashing the table
+  immediately if necessary).  For example, if you write
+\begin{verbatim}
+  table.reserve(table.size() + 2);
+  table[42] += table[43];
+\end{verbatim}
+  then you know that the table can absorb two more insertions without
+  rehashing, and hence you know that the table won't be rehashed even
+  if both 42 and 43 end up being inserted
+
+  Note: Erasing from the table doesn't give you any credit.  If you
+  reserve (table.size()+2) then erase one element, and then insert
+  three, your table may get rehashed on the third insert.  The
+  guarantee is ``No rehash will occur during the next \texttt{n -
+    table.size()} insertions.''
+
+\item Performance (cache locality).  One of the points of using these
+  tables is to reduce the number of cache misses.  A chained hash
+  table would have many cache misses for a lookup, whereas these
+  tables use open addressing to try to reduce the number of cache
+  misses.
+
+\item Memory parsimony: Chained hash tables also have to pay memory
+  for the pointers in the linked lists.  These tables try to save that
+  memory by using open addressing.  The Google hash table can run at
+  up to 7/8 full.  Unfortunately, in practice the Google hash tables
+  run more like at 55\% to 65\% full, since when it rehashes it
+  doubles the table size (it uses power-of-two table sizes) and
+  reduces the load to 7/16 full.  This ought to produce a table that
+  runs at 62\% full (if Benford's rule applies, you expect the
+  geometric mean of the low- and hi- load factor.)  The calculations
+  for the Facebook table are similar.
+
+\item Not a requirement: Fine-grained parallelism.  Many authors data
+  structures in the literature provide fine-grained lock-free
+  parallelism, for example.  This is useless in a systems context,
+  since there is no way to compose operations on that data structure
+  with other operations to produce an atomic operation.  Real systems
+  generally employ mutex locks, and require that the data structure be
+  thread-compatible: that is, operations marked \texttt{const} may be
+  called concurrently, and other operations need synchronization, such
+  as a mutex, which is generally not part of the data structure.
+
+\item Header-only: This isn't a requirement on the API, but an
+  implementation that can be used as a set of headers is easier to
+  integrate than an implementation that requirs building libraries and
+  integrating them into a build system.  For example, the Facebook
+  hash table uses CMake, and the Google table uses Bazel.  If you
+  aren't already using the right build system, good luck.  A
+  header-only library works by installing some header files to a
+  directory and adding that directory to your compiler's search path.
+\end{itemize}
+
+Explain tombstones and graveyards.
+
+Our table:
+\begin{itemize}
+\item Runs at 3/4 to 7/8 full (81\% on average if you believe in
+  Benford's rule).  In our benchmarks, we use about 30\% less memory
+  than the Facebook or Google tables.
+\item Performance is about the same as the Facebook or Google tables.
+\item High-water memory is 33\% lower.
+\item Deamortized inserts to reduce the tail latencies.  (By 6 orders
+  of magnitude).
+\item Graveyard tombstones.
+\end{itemize}
+
+Results?
+\begin{itemize}
+  \item Graveyard tombstones show value at very high load factors (TODO).  At
+    lower load factors, the difference is less significant.  
+  \item How many tombstones do you need?  The theory says to do something like this:
+    \begin{itemize}
+    \item Rehash the table when it's 92.5\% full down to 90\% full.
+    \item Make 5\% of the rehashed table be evenly-spaced graveyard
+      tombstones, the other 5\% empty slots occur whereever there are
+      holes after the insertion from the rehash.
+    \end{itemize}
+    We probably don't need so many graveyard tombstones, partly since
+    rehashing is so fast compared to insertions.  We found that X\%
+    was enough.
+\end{itemize}
+
 \end{document}

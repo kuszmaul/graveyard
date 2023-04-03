@@ -19,18 +19,24 @@
 
 #include <sys/resource.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <time.h>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/hash/hash.h"                // for Hash
+#include "absl/log/check.h"                // for GetReferenceableValue, CHE...
 #include "absl/log/log.h"                  // for LogMessage, ABSL_LOGGING_I...
+#include "absl/strings/str_cat.h"          // for StrCat
 #include "absl/strings/string_view.h"      // for operator<<, string_view
+#include "benchmark.h"                     // for GetTime, operator-
 #include "folly/container/F14Set.h"
 #include "graveyard_set.h"
 #include "hash_benchmark.h"

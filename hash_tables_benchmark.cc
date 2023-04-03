@@ -12,7 +12,6 @@
 #include "folly/lang/Bits.h" // for findLastSet
 #include "graveyard_set.h"
 #include "hash_benchmark.h"      // for IntHashSetBenchmark
-#include "internal/hash_table.h" // for Buckets, HashTable<>::cons...
 #include "ordered_linear_probing_set.h"
 
 struct IdentityHash {

@@ -649,8 +649,8 @@ private:
   //
   // If `is_rehash` then buckets is destroyed.  In that case, this
   // code may move the values from `buckets` instead of copying them.
-  template <bool is_rehash>
-  void RehashOrCopyFrom(Buckets<Traits> &buckets);
+  void RehashFrom(Buckets<Traits> &buckets);
+  void CopyFrom(const Buckets<Traits> &buckets);
 
   // The number of present items in all the buckets combined.
   // Todo: Put `size_` into buckets_ (in the memory).
@@ -1107,8 +1107,23 @@ void HashTable<Traits>::FinishInsertAscending(
 }
 
 template <class Traits>
-template <bool is_rehash>
-void HashTable<Traits>::RehashOrCopyFrom(Buckets<Traits> &buckets) {
+void HashTable<Traits>::CopyFrom(const Buckets<Traits> &buckets) {
+  size_t bucket_number = 0;
+  size_t first_uninitialized_bucket = 0;
+  for (Bucket<Traits> &bucket : buckets) {
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      if (bucket.h2[j] != Traits::kEmpty) {
+        // TODO: We could save recomputing h2 possibly.
+	InsertAscending</*insert_tombstones=*/false>(bucket.slots[j].value, first_uninitialized_bucket);
+      }
+    }
+    ++bucket_number;
+  }
+  FinishInsertAscending(first_uninitialized_bucket);
+}
+
+template <class Traits>
+void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
   size_t bucket_number = 0;
   size_t first_uninitialized_bucket = 0;
   for (Bucket<Traits> &bucket : buckets) {
@@ -1129,24 +1144,17 @@ void HashTable<Traits>::RehashOrCopyFrom(Buckets<Traits> &buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
-	if constexpr (is_rehash) {
-	  InsertAscending</*insert_tombstones*/true>(std::move(bucket.slots[j].value()),
-			  first_uninitialized_bucket);
-	  // Destroy the value so that we can destroy the bucket without
-	  // running a bunch of destructors.
-	  bucket.slots[j].value().~value_type();
-	} else {
-	  InsertAscending</*insert_tombstones=*/false>(bucket.slots[j].value, first_uninitialized_bucket);
-	}
+	InsertAscending</*insert_tombstones*/true>(std::move(bucket.slots[j].value()),
+						   first_uninitialized_bucket);
+	// Destroy the value so that we can destroy the bucket without
+	// running a bunch of destructors.
+	bucket.slots[j].value().~value_type();
       }
     }
     ++bucket_number;
   }
   FinishInsertAscending(first_uninitialized_bucket);
-  if constexpr (is_rehash) {
-    buckets.Deallocate();
-  }
-
+  buckets.Deallocate();
 }
 
 template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
@@ -1157,7 +1165,7 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
   buckets.swap(buckets_);
   // Leaves size_ unmodified.
-  RehashOrCopyFrom<true>(buckets);
+  RehashFrom(buckets);
   // CheckValidityAfterRehash(__LINE__);
 }
 

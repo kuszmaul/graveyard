@@ -66,6 +66,19 @@ public:
 using Int64Traits2345 = Traits2345<Int64Traits>;
 using Graveyard2345 = yobiduck::internal::HashTable<Int64Traits2345>;
 
+template <class Traits> class Traits9092 : public Traits {
+public:
+  // 92.5 percent load when full
+  static constexpr size_t full_utilization_numerator = 37;
+  static constexpr size_t full_utilization_denominator = 40;
+  // 90.0% percent load after rehash
+  static constexpr size_t rehashed_utilization_numerator = 9;
+  static constexpr size_t rehashed_utilization_denominator = 10;
+};
+using Int64Traits9092 = Traits9092<Int64Traits>;
+using Graveyard9092 = yobiduck::internal::HashTable<Int64Traits9092>;
+
+
 int main(int argc, char *argv[]) {
   absl::ParseCommandLine(argc, argv);
   // The difference between these two is the 'g' vs. the 'G'.  The lower-case
@@ -117,6 +130,12 @@ int main(int argc, char *argv[]) {
     }
     case Implementation::kGraveyard2345: {
       IntHashSetBenchmark<Graveyard2345>(
+          Get_allocated_memory_size,
+          ImplementationString(implementation));
+      break;
+    }
+    case Implementation::kGraveyard9092: {
+      IntHashSetBenchmark<Graveyard9092>(
           Get_allocated_memory_size,
           ImplementationString(implementation));
       break;

@@ -41,6 +41,9 @@ enum class Implementation {
                   // 3/4 full) to reduce number of rehashes.
   kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of
                   // 3/4 full) to reduce number of rehashes.
+  kGraveyard9092, // Fill to 92.5% full then hash to 90%
+		  // full. Eventually we want 5% graveyard tombstones,
+		  // but for now it's still 3.6% graveyard.
   kGraveyard255,  // H2 computed modulo 255 (rather than 128)
 };
 ABSL_DECLARE_FLAG(absl::flat_hash_set<Implementation>, implementations);

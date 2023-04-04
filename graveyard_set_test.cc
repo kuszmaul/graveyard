@@ -523,3 +523,26 @@ TEST(GraveyardSet, ErasesByValue) {
   EXPECT_EQ(gset.erase(d), 0);
   EXPECT_TRUE(gset.empty());
 }
+
+TEST(GraveyardSet, Copy) {
+  GraveyardSet<std::string> set;
+  std::string a = "a";
+  set.insert(a);
+  std::string a_long = "a b c d e f g h i j k l m n o p q r s";
+  set.insert(a_long);
+  {
+    GraveyardSet<std::string> set2 = set;
+    // Need an operator== to do this
+    // EXPECT_TRUE(set == set2);
+    EXPECT_TRUE(set.contains(a));
+    EXPECT_TRUE(set.contains(a_long));
+    EXPECT_TRUE(set2.contains(a));
+    EXPECT_TRUE(set2.contains(a_long));
+  }
+  EXPECT_TRUE(set.contains(a));
+  EXPECT_TRUE(set.contains(a_long));
+  {
+    GraveyardSet<std::string> set2;
+    set2 = set;
+  }
+}

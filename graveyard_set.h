@@ -62,8 +62,8 @@ public:
   //  GraveyardSet(const GraveyardSet &set);
   using Base::Base;
 
-  // Copy and Move assignment
-  using Base::operator=;
+  // Copy and Move assignment (don't need to do "using?")
+  // using Base::operator=;
 
   using Base::clear;
 

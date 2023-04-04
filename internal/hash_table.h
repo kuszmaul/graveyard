@@ -632,7 +632,7 @@ private:
   // Inserts a value.  Works well if the values are inserted in
   // (roughly) ascending order.  All the buckets starting at, and
   // following, `first_uninitialized_bucket` are uninitialized.  Used
-  // during rehash (and TODO: use during copy).
+  // during rehash (and TODO: use during copy).  Doesn't update `size_`.
   template <bool insert_tombstones>
   void InsertAscending(const value_type &value,
                        size_t &first_uninitialized_bucket);
@@ -1088,7 +1088,6 @@ void HashTable<Traits>::InsertAscending(const value_type &value,
       maxf(buckets_[preferred_bucket].search_distance,
            bucket_to_try - preferred_bucket + 1);
       // TODO: Factor out the ++size_.
-      ++size_;
       return;
     }
     ++bucket_to_try;
@@ -1110,7 +1109,6 @@ void HashTable<Traits>::FinishInsertAscending(
 template <class Traits>
 template <bool is_rehash>
 void HashTable<Traits>::RehashOrCopyFrom(Buckets<Traits> &buckets) {
-  assert(size_ == 0);
   size_t bucket_number = 0;
   size_t first_uninitialized_bucket = 0;
   for (Bucket<Traits> &bucket : buckets) {
@@ -1158,7 +1156,7 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
   }
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
   buckets.swap(buckets_);
-  size_ = 0;
+  // Leaves size_ unmodified.
   RehashOrCopyFrom<true>(buckets);
   // CheckValidityAfterRehash(__LINE__);
 }

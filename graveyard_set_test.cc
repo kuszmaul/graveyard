@@ -26,8 +26,10 @@ using testing::Pair;
 using testing::UnorderedElementsAre;
 using testing::UnorderedElementsAreArray;
 
+using yobiduck::GraveyardSet;
+
 TEST(GraveyardSet, Types) {
-  using IntSet = yobiduck::GraveyardSet<uint64_t>;
+  using IntSet = GraveyardSet<uint64_t>;
   static_assert(std::is_same_v<IntSet::key_type, uint64_t>);
   static_assert(std::is_same_v<IntSet::value_type, uint64_t>);
   static_assert(std::is_same_v<IntSet::size_type, size_t>);
@@ -43,7 +45,7 @@ TEST(GraveyardSet, Types) {
 }
 
 TEST(GraveyardSet, Basic) {
-  yobiduck::GraveyardSet<uint64_t> set;
+  GraveyardSet<uint64_t> set;
   EXPECT_EQ(set.size(), 0ul);
   EXPECT_TRUE(!set.contains(0l));
   EXPECT_THAT(set.insert(0ul), Pair(_, true));
@@ -52,14 +54,14 @@ TEST(GraveyardSet, Basic) {
 }
 
 TEST(GraveyardSet, EmptyIterator) {
-  yobiduck::GraveyardSet<uint64_t> set;
+  GraveyardSet<uint64_t> set;
   EXPECT_TRUE(set.begin() == set.end());
 }
 
 TEST(GraveyardSet, EmptyConstIterator) {
-  yobiduck::GraveyardSet<uint64_t> set;
+  GraveyardSet<uint64_t> set;
   EXPECT_TRUE(set.cbegin() == set.cend());
-  const yobiduck::GraveyardSet<uint64_t> *cset = &set;
+  const GraveyardSet<uint64_t> *cset = &set;
   EXPECT_TRUE(cset->cbegin() == cset->cend());
   EXPECT_TRUE(cset->begin() == cset->end());
   EXPECT_TRUE(cset->cbegin() == cset->end());
@@ -69,10 +71,10 @@ TEST(GraveyardSet, EmptyConstIterator) {
 }
 
 TEST(GraveyardSet, IteratorOneElement) {
-  yobiduck::GraveyardSet<uint64_t> set;
+  GraveyardSet<uint64_t> set;
   EXPECT_THAT(set.insert(100ul), Pair(_, true));
   EXPECT_TRUE(set.contains(100ul));
-  yobiduck::GraveyardSet<uint64_t>::iterator it;
+  GraveyardSet<uint64_t>::iterator it;
   it = set.begin();
   EXPECT_TRUE(it != set.end());
   ++it;
@@ -83,7 +85,7 @@ TEST(GraveyardSet, IteratorOneElement) {
 TEST(GraveyardSet, RandomInserts) {
   absl::BitGen bitgen;
   const size_t j = 1000;
-  yobiduck::GraveyardSet<uint64_t> set;
+  GraveyardSet<uint64_t> set;
   absl::flat_hash_set<uint64_t> fset;
   for (size_t i = 0; i < j; ++i) {
     {
@@ -100,7 +102,7 @@ TEST(GraveyardSet, RandomInserts) {
 }
 
 TEST(GraveyardSet, Rehash0) {
-  yobiduck::GraveyardSet<uint64_t> set;
+  GraveyardSet<uint64_t> set;
   constexpr size_t N = 1000;
   set.reserve(N);
   for (size_t i = 0; i < N / 2; ++i) {
@@ -134,7 +136,7 @@ template <class KeyType> size_t ExpectedCapacityAfterRehash(size_t size) {
 } // namespace
 
 TEST(GraveyardSet, Reserve) {
-  yobiduck::GraveyardSet<uint64_t> set;
+  GraveyardSet<uint64_t> set;
   set.reserve(1000);
   set.insert(100u);
   EXPECT_EQ(set.size(), 1);
@@ -145,9 +147,9 @@ TEST(GraveyardSet, Reserve) {
 }
 
 TEST(GraveyardSet, AssignAndReserve) {
-  yobiduck::GraveyardSet<uint64_t> set;
+  GraveyardSet<uint64_t> set;
   for (size_t i = 1000; i < 2000; ++i) {
-    set = yobiduck::GraveyardSet<uint64_t>();
+    set = GraveyardSet<uint64_t>();
     set.reserve(1000);
   }
 }
@@ -187,7 +189,7 @@ TEST(GraveyardSet, UserDefinedHashAndEq) {
     }
   }
   {
-    yobiduck::GraveyardSet<UnhashableInt, UnhashableIntHasher,
+    GraveyardSet<UnhashableInt, UnhashableIntHasher,
                            UnhashableIntEqual>
         set;
     EXPECT_TRUE(!set.contains(UnhashableInt{0}));
@@ -217,7 +219,7 @@ inline uint64_t operator-(struct timespec a, struct timespec b) {
 
 TEST(GraveyardSet, RehashTime) {
   constexpr size_t kSize = 1000000;
-  yobiduck::GraveyardSet<size_t> set;
+  GraveyardSet<size_t> set;
   set.reserve(kSize);
   for (size_t i = 0; i < kSize; ++i) {
     set.insert(i);
@@ -279,7 +281,7 @@ TEST(GraveyardSet, NoDefaultConstructor) {
     NoDefaultConstructor v2 = v;
     CHECK_EQ(v, v2);
     absl::flat_hash_set<NoDefaultConstructor> aset;
-    yobiduck::GraveyardSet<NoDefaultConstructor> gset;
+    GraveyardSet<NoDefaultConstructor> gset;
     aset.insert(v);
     gset.insert(v);
     for (int i = 100; i < 200; i++) {
@@ -342,13 +344,13 @@ template <class StringSet> void HeterogeneousStringTest(StringSet &set) {
 TEST(GraveyardSet, Heterogeneous) {
   // Does it work the same for `graveyard_set` and `flat_hash_set`?
   absl::flat_hash_set<std::string> aset;
-  yobiduck::GraveyardSet<std::string> gset;
+  GraveyardSet<std::string> gset;
   HeterogeneousStringTest(aset);
   HeterogeneousStringTest(gset);
 }
 
 TEST(GraveyardSet, Empty) {
-  yobiduck::GraveyardSet<std::string> gset;
+  GraveyardSet<std::string> gset;
   EXPECT_TRUE(gset.empty());
   gset.insert("a");
   EXPECT_FALSE(gset.empty());
@@ -384,7 +386,7 @@ TEST(GraveyardSet, Emplace) {
   EXPECT_EQ(Emplaced(3, 4), Emplaced(3, 5));
   EXPECT_NE(Emplaced(3, 3), Emplaced(4, 3));
   absl::flat_hash_set<Emplaced> aset;
-  yobiduck::GraveyardSet<Emplaced> gset;
+  GraveyardSet<Emplaced> gset;
   EmplaceTest(aset);
   EmplaceTest(gset);
 }
@@ -439,13 +441,13 @@ TEST(GraveyardSet, EmplaceHeterogeneous) {
   EXPECT_TRUE(EqEmplacedHet()(EmplacedHet(3, 5), 3));
   EXPECT_EQ(HashEmplacedHet()(EmplacedHet(3, 4)), HashEmplacedHet()(3));
   absl::flat_hash_set<EmplacedHet, HashEmplacedHet, EqEmplacedHet> aset;
-  yobiduck::GraveyardSet<EmplacedHet, HashEmplacedHet, EqEmplacedHet> gset;
+  GraveyardSet<EmplacedHet, HashEmplacedHet, EqEmplacedHet> gset;
   EmplaceHetTest(aset);
   EmplaceHetTest(gset);
 }
 
 TEST(GraveyardSet, ErasesIterator1) {
-  yobiduck::GraveyardSet<std::string> gset;
+  GraveyardSet<std::string> gset;
   gset.insert("a");
   const auto &cset = gset;
   auto it = cset.find("a");
@@ -457,7 +459,7 @@ TEST(GraveyardSet, ErasesIterator1) {
 }
 
 TEST(GraveyardSet, ErasesIterator100) {
-  yobiduck::GraveyardSet<int> gset;
+  GraveyardSet<int> gset;
   constexpr size_t kN = 100;
   for (size_t i = 0; i < kN; ++i) {
     gset.insert(i);
@@ -481,8 +483,8 @@ TEST(GraveyardSet, ErasesIterator100) {
 }
 
 TEST(GraveyardSet, ErasesIteratorRange) {
-  yobiduck::GraveyardSet<int> gset;
-  yobiduck::GraveyardSet<int> to_delete;
+  GraveyardSet<int> gset;
+  GraveyardSet<int> to_delete;
   constexpr size_t kN = 100;
   for (size_t i = 0; i < kN; ++i) {
     gset.insert(i);
@@ -505,7 +507,7 @@ TEST(GraveyardSet, ErasesIteratorRange) {
 }
 
 TEST(GraveyardSet, ErasesByValue) {
-  yobiduck::GraveyardSet<std::string> gset;
+  GraveyardSet<std::string> gset;
   gset.insert("a");
   gset.insert("b");
   gset.insert("c");

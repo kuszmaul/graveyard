@@ -131,6 +131,8 @@ struct HashTableTraits {
   static constexpr size_t full_utilization_denominator = 8;
   static constexpr size_t rehashed_utilization_numerator = 3;
   static constexpr size_t rehashed_utilization_denominator = 4;
+
+  static constexpr bool insert_graveyard_tombstones = true;
 };
 
 template <class Traits> struct alignas(typename Traits::value_type) Item {
@@ -613,7 +615,7 @@ private:
     size_t hash;
   };
 
-  // Insert `value` into `*this`.  Requires that `value` is not already in
+  // Inserts `value` into `*this`.  Requires that `value` is not already in
   // `*this` and that the table does not need rehashing.
   //
   // TODO: We can probably save the recompution of h2 if we are careful.
@@ -631,12 +633,24 @@ private:
   // (roughly) ascending order.  All the buckets starting at, and
   // following, `first_uninitialized_bucket` are uninitialized.  Used
   // during rehash (and TODO: use during copy).
+  template <bool insert_tombstones>
   void InsertAscending(const value_type &value,
                        size_t &first_uninitialized_bucket);
 
-  // Finish the rehash or copy by initializing all the remaining
+  // Finishes the rehash or copy by initializing all the remaining
   // uninitialized buckets.
   void FinishInsertAscending(size_t first_uninitialized_bucket);
+
+  // Arrange for the values in `buckets` to be inserted into `*this`
+  // (incrementing `size_` for every insert).
+  //
+  // Requires: `*this` is empty.  Thus, this code can assume that
+  // there are no duplicates in `buckets`.
+  //
+  // If `is_rehash` then buckets is destroyed.  In that case, this
+  // code may move the values from `buckets` instead of copying them.
+  template <bool is_rehash>
+  void RehashOrCopyFrom(Buckets<Traits> &buckets);
 
   // The number of present items in all the buckets combined.
   // Todo: Put `size_` into buckets_ (in the memory).
@@ -852,7 +866,7 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
     Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
     // TODO: Use FindEmpty
     size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
-    if constexpr (keep_graveyard_tombstones) {
+    if constexpr (Traits::insert_graveyard_tombstones && keep_graveyard_tombstones) {
       // Keep the first slot free in all the odd-numbered buckets.
       if ((preferred_bucket + i) % 2 == 1) {
         assert(matches & 1ul);
@@ -1044,6 +1058,7 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
 // that makes that fail.
 
 template <class Traits>
+template <bool insert_tombstones>
 void HashTable<Traits>::InsertAscending(const value_type &value,
                                         size_t &first_uninitialized_bucket) {
   const key_type &key = Traits::KeyOf(value);
@@ -1059,8 +1074,11 @@ void HashTable<Traits>::InsertAscending(const value_type &value,
       ++first_uninitialized_bucket;
     }
     size_t matches = bucket.FindEmpties();
-    // remove graveyard tombstone
-    matches &= ~(bucket_to_try % 2);
+    if constexpr (Traits::insert_graveyard_tombstones &&
+		  insert_tombstones) {
+      // remove graveyard tombstone
+      matches &= ~(bucket_to_try % 2);
+    }
     if (matches != 0) {
       size_t idx = CountTrailingZeros(matches);
       assert(bucket.h2[idx] == Traits::kEmpty);
@@ -1089,14 +1107,10 @@ void HashTable<Traits>::FinishInsertAscending(
       Traits::kSearchDistanceEndSentinal;
 }
 
-template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
-  if (slot_count == 0) {
-    slot_count = ceil(size() * Traits::full_utilization_denominator,
-                      Traits::full_utilization_numerator);
-  }
-  Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
-  buckets.swap(buckets_);
-  size_ = 0;
+template <class Traits>
+template <bool is_rehash>
+void HashTable<Traits>::RehashOrCopyFrom(Buckets<Traits> &buckets) {
+  assert(size_ == 0);
   size_t bucket_number = 0;
   size_t first_uninitialized_bucket = 0;
   for (Bucket<Traits> &bucket : buckets) {
@@ -1117,17 +1131,35 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
-        InsertAscending(std::move(bucket.slots[j].value()),
-                        first_uninitialized_bucket);
-        // Destroy the value so that we can destroy the bucket without
-        // running a bunch of destructors.
-        bucket.slots[j].value().~value_type();
+	if constexpr (is_rehash) {
+	  InsertAscending</*insert_tombstones*/true>(std::move(bucket.slots[j].value()),
+			  first_uninitialized_bucket);
+	  // Destroy the value so that we can destroy the bucket without
+	  // running a bunch of destructors.
+	  bucket.slots[j].value().~value_type();
+	} else {
+	  InsertAscending</*insert_tombstones=*/false>(bucket.slots[j].value, first_uninitialized_bucket);
+	}
       }
     }
     ++bucket_number;
   }
   FinishInsertAscending(first_uninitialized_bucket);
-  buckets.Deallocate();
+  if constexpr (is_rehash) {
+    buckets.Deallocate();
+  }
+
+}
+
+template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
+  if (slot_count == 0) {
+    slot_count = ceil(size() * Traits::full_utilization_denominator,
+                      Traits::full_utilization_numerator);
+  }
+  Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
+  buckets.swap(buckets_);
+  size_ = 0;
+  RehashOrCopyFrom<true>(buckets);
   // CheckValidityAfterRehash(__LINE__);
 }
 

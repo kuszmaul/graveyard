@@ -44,8 +44,10 @@ enum class Implementation {
   kGraveyard9092, // Fill to 92.5% full then hash to 90%
 		  // full. Eventually we want 5% graveyard tombstones,
 		  // but for now it's still 3.6% graveyard.
+  kGraveyard9092NoGraveyard, // Same as 9092, except no graveyard tombstones.
   kGraveyard255,  // H2 computed modulo 255 (rather than 128)
 };
+// TODO: Make this a set, not an unordered set.
 ABSL_DECLARE_FLAG(absl::flat_hash_set<Implementation>, implementations);
 
 extern const EnumsAndStrings<Implementation> *implementation_enum_and_strings;

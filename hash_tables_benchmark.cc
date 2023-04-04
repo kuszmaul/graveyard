@@ -78,6 +78,13 @@ public:
 using Int64Traits9092 = Traits9092<Int64Traits>;
 using Graveyard9092 = yobiduck::internal::HashTable<Int64Traits9092>;
 
+template <class Traits> class Traits9092NoGraveyard : public Traits9092<Traits> {
+public:
+  static constexpr bool insert_graveyard_tombstones = false;
+};
+using Int64Traits9092NoGraveyard = Traits9092NoGraveyard<Int64Traits>;
+using Graveyard9092NoGraveyard = yobiduck::internal::HashTable<Int64Traits9092NoGraveyard>;
+
 
 int main(int argc, char *argv[]) {
   absl::ParseCommandLine(argc, argv);
@@ -136,6 +143,12 @@ int main(int argc, char *argv[]) {
     }
     case Implementation::kGraveyard9092: {
       IntHashSetBenchmark<Graveyard9092>(
+          Get_allocated_memory_size,
+          ImplementationString(implementation));
+      break;
+    }
+    case Implementation::kGraveyard9092NoGraveyard: {
+      IntHashSetBenchmark<Graveyard9092NoGraveyard>(
           Get_allocated_memory_size,
           ImplementationString(implementation));
       break;

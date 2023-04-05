@@ -431,10 +431,7 @@ public:
   HashTable &operator=(const HashTable &other) {
     clear();
     reserve(other.size());
-    for (const value_type &value : other) {
-      insert(value); // TODO: Optimize this given that we know `value` is not
-                     // in `*this`.
-    }
+    CopyFrom(other.buckets_);
     return *this;
   }
 
@@ -615,16 +612,15 @@ private:
     size_t hash;
   };
 
-  // Inserts `value` into `*this`.  Requires that `value` is not already in
-  // `*this` and that the table does not need rehashing.
+  // Inserts `value` into `*this`.  Requires that `value` is not
+  // already in `*this` and that the table does not need rehashing.
+  // We don't maintain tombstones.
   //
   // TODO: We can probably save the recompution of h2 if we are careful.
-  template <bool keep_graveyard_tombstones>
   void InsertNoRehashNeededAndValueNotPresent(const value_type &value);
 
   // An overload of `InsertNoRehashNeededAndValueNotPresent` that has already
   // computed the preferred bucket and h2.
-  template <bool keep_graveyard_tombstones>
   iterator InsertNoRehashNeededAndValueNotPresent(const value_type &value,
                                                   size_t preferred_bucket,
                                                   size_t h2);
@@ -680,14 +676,14 @@ template <class Traits>
 HashTable<Traits>::HashTable(const HashTable &other, const allocator_type &a)
     : HashTable(other.size(), other.get_hasher_ref(), other.get_key_eq_ref(),
                 a) {
-  for (const auto &v : other) {
-    // TODO: We could save recomputing h2 possibly.
-    //
-    // TODO: For construction, don't include the graveyard tombstone?
-    // The table is sized to be just right, so the next insert is
-    // likely to cause a rehash.
-    InsertNoRehashNeededAndValueNotPresent<true>(v);
-  }
+  // We don't insert graveyard tombstones, since we have sized the
+  // table to be just right.
+  //
+  // TODO: We could conceivably squeeze the table even more, and
+  // reduce the table size by the number of tombstones we didn't
+  // place
+  size_ = other.size_;
+  CopyFrom(other.buckets_);
 }
 
 template <class Traits>
@@ -836,27 +832,24 @@ HashTable<Traits>::insert(const value_type &value) {
       return {iterator{&bucket, idx}, false};
     }
   }
-  return {InsertNoRehashNeededAndValueNotPresent<false>(value, preferred_bucket,
-                                                        h2),
+  return {InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket,
+						 h2),
           true};
 }
 
 template <class Traits>
-template <bool keep_graveyard_tombstones>
 void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
     const value_type &value) {
   const key_type &key = Traits::KeyOf(value);
   const size_t hash = get_hasher_ref()(key);
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
-  InsertNoRehashNeededAndValueNotPresent<keep_graveyard_tombstones>(
-      value, preferred_bucket, h2);
+  InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket, h2);
 }
 
 void maxf(uint8_t &v1, uint8_t v2) { v1 = std::max(v1, v2); }
 
 template <class Traits>
-template <bool keep_graveyard_tombstones>
 typename HashTable<Traits>::iterator
 HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
     const value_type &value, size_t preferred_bucket, size_t h2) {
@@ -866,13 +859,6 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
     Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
     // TODO: Use FindEmpty
     size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
-    if constexpr (Traits::insert_graveyard_tombstones && keep_graveyard_tombstones) {
-      // Keep the first slot free in all the odd-numbered buckets.
-      if ((preferred_bucket + i) % 2 == 1) {
-        assert(matches & 1ul);
-        matches &= ~1ul;
-      }
-    }
     if (matches != 0) {
       size_t idx = CountTrailingZeros(matches);
       bucket.h2[idx] = h2;
@@ -1110,11 +1096,11 @@ template <class Traits>
 void HashTable<Traits>::CopyFrom(const Buckets<Traits> &buckets) {
   size_t bucket_number = 0;
   size_t first_uninitialized_bucket = 0;
-  for (Bucket<Traits> &bucket : buckets) {
+  for (const Bucket<Traits> &bucket : buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
-	InsertAscending</*insert_tombstones=*/false>(bucket.slots[j].value, first_uninitialized_bucket);
+	InsertAscending</*insert_tombstones=*/false>(bucket.slots[j].value(), first_uninitialized_bucket);
       }
     }
     ++bucket_number;

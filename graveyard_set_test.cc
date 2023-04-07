@@ -547,15 +547,10 @@ TEST(GraveyardSet, Copy) {
 
     GraveyardSet<std::string> set3;
     set3.insert("foo");
-    LOG(INFO) << "Copying";
     set2 = set3;
-    LOG(INFO) << "Copied";
     EXPECT_EQ(set2.size(), 1);
-    LOG(INFO) << "OK1";
     EXPECT_TRUE(set2.contains("foo"));
-    LOG(INFO) << "OK2";
     set2.Validate();
-    LOG(INFO) << "Validated";
   }
   EXPECT_TRUE(set.contains(a));
   EXPECT_TRUE(set.contains(a_long));
@@ -577,7 +572,6 @@ class AllocatedInt {
   }
   // Copy constructor
   AllocatedInt (const AllocatedInt& other) :value_(other.value_) {
-    LOG(INFO) << "Copied";
     CHECK(live.contains(value_));
     ++live.find(value_)->second;
   }

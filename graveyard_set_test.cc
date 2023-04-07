@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/hash/hash.h"
 #include "absl/log/check.h"
 #include "absl/random/random.h"
@@ -530,14 +531,31 @@ TEST(GraveyardSet, Copy) {
   set.insert(a);
   std::string a_long = "a b c d e f g h i j k l m n o p q r s";
   set.insert(a_long);
+  std::string b = "bbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  set.insert(b);
   {
     GraveyardSet<std::string> set2 = set;
     // Need an operator== to do this
     // EXPECT_TRUE(set == set2);
+    EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains(a));
     EXPECT_TRUE(set.contains(a_long));
+    EXPECT_TRUE(set.contains(b));
     EXPECT_TRUE(set2.contains(a));
     EXPECT_TRUE(set2.contains(a_long));
+    EXPECT_TRUE(set2.contains(b));
+
+    GraveyardSet<std::string> set3;
+    set3.insert("foo");
+    LOG(INFO) << "Copying";
+    set2 = set3;
+    LOG(INFO) << "Copied";
+    EXPECT_EQ(set2.size(), 1);
+    LOG(INFO) << "OK1";
+    EXPECT_TRUE(set2.contains("foo"));
+    LOG(INFO) << "OK2";
+    set2.Validate();
+    LOG(INFO) << "Validated";
   }
   EXPECT_TRUE(set.contains(a));
   EXPECT_TRUE(set.contains(a_long));
@@ -545,4 +563,65 @@ TEST(GraveyardSet, Copy) {
     GraveyardSet<std::string> set2;
     set2 = set;
   }
+}
+
+// A class that notices if its destructors don't run.
+
+int next_live = 0;
+absl::flat_hash_map<int, size_t> live;
+class AllocatedInt {
+ public:
+  AllocatedInt() :value_(next_live) {
+    live.insert({value_, 1});
+    ++next_live;
+  }
+  // Copy constructor
+  AllocatedInt (const AllocatedInt& other) :value_(other.value_) {
+    LOG(INFO) << "Copied";
+    CHECK(live.contains(value_));
+    ++live.find(value_)->second;
+  }
+  ~AllocatedInt() {
+    CHECK(live.contains(value_));
+    auto it = live.find(value_);
+    EXPECT_GT(it->second, 0);
+    --it->second;
+    if (it->second == 0) {
+      live.erase(it);
+    }
+  }
+  static bool IsAllDestructed() {
+    return live.empty();
+  }
+ private:
+  template <typename H>
+  friend H AbslHashValue(H h, const AllocatedInt &i) {
+    return H::combine(std::move(h), i.value_);
+  }
+  friend bool operator==(const AllocatedInt &a, const AllocatedInt &b) {
+    return a.value_ == b.value_;
+  }
+  int value_;
+};
+
+// Tests to make sure that when we do a copy (`set2 = set`) that any
+// values in `set2` are actually destructed.
+TEST(GraveyardSet, CopyDestructsSource) {
+  {
+    absl::flat_hash_set<AllocatedInt> set;
+    EXPECT_TRUE(AllocatedInt::IsAllDestructed());
+    set.insert(AllocatedInt());
+    absl::flat_hash_set<AllocatedInt> set2;
+    set2.insert(AllocatedInt());
+    set2 = set;
+  }
+  {
+    GraveyardSet<AllocatedInt> set;
+    EXPECT_TRUE(AllocatedInt::IsAllDestructed());
+    set.insert(AllocatedInt());
+    GraveyardSet<AllocatedInt> set2;
+    set2.insert(AllocatedInt());
+    set2 = set;
+  }
+  EXPECT_TRUE(AllocatedInt::IsAllDestructed());
 }

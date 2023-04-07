@@ -428,13 +428,8 @@ public:
   // Move constructor
   HashTable(HashTable &&other) : HashTable() { swap(other); }
 
-  // Copy assignment
-  HashTable &operator=(const HashTable &other) {
-    clear();
-    reserve(other.size());
-    CopyFrom(other.buckets_);
-    return *this;
-  }
+  // Copy assignment not using copy-and-swap idiom.
+  HashTable &operator=(const HashTable &other);
 
   // Move assignment
   HashTable &operator=(HashTable &&other) {
@@ -677,14 +672,25 @@ template <class Traits>
 HashTable<Traits>::HashTable(const HashTable &other, const allocator_type &a)
     : HashTable(other.size(), other.get_hasher_ref(), other.get_key_eq_ref(),
                 a) {
-  // We don't insert graveyard tombstones, since we have sized the
-  // table to be just right.
+  // Tombstones help future inserts.  We don't insert graveyard
+  // tombstones, since, having sized `*this` to be just right, we
+  // won't be able to do any more inserts with rehashing anyway.
   //
   // TODO: We could conceivably squeeze the table even more, and
   // reduce the table size by the number of tombstones we didn't
   // place
   size_ = other.size_;
   CopyFrom(other.buckets_);
+}
+
+template <class Traits>
+HashTable<Traits>& HashTable<Traits>::operator=(const HashTable &other)
+{
+  clear();
+  reserve(other.size_);
+  size_ = other.size_;
+  CopyFrom(other.buckets_);
+  return *this;
 }
 
 template <class Traits>
@@ -966,7 +972,7 @@ template <class Traits> std::string HashTable<Traits>::ToString() const {
       if (bucket->h2[j] == Traits::kEmpty) {
         result << "_";
       } else {
-        result << bucket->slots[j].value;
+        result << bucket->slots[j].value();
       }
     }
   }
@@ -1006,7 +1012,7 @@ void HashTable<Traits>::Validate(int line_number) const {
       if (buckets_[i].h2[j] != Traits::kEmpty) {
         assert(buckets_[i].h2[j] < Traits::kH2Modulo);
         ++actual_size;
-        size_t hash = get_hasher_ref()(buckets_[i].slots[j].value);
+        size_t hash = get_hasher_ref()(buckets_[i].slots[j].value());
         size_t h1 = buckets_.H1(hash);
         CHECK_LE(h1, i);
         CHECK_LT(h1, buckets_.logical_size());

@@ -126,7 +126,7 @@ template <class KeyType> size_t ExpectedCapacityAfterRehash(size_t size) {
       yobiduck::internal::ceil(slots_needed, Traits::kSlotsPerBucket);
   // We have a minor DRY problem here: This magic formula also appears
   // in hash_table.h.
-  size_t extra_buckets = (logical_buckets_needed > 4) ? 4
+  size_t extra_buckets = (logical_buckets_needed > 5) ? 5
                          : (logical_buckets_needed <= 2)
                              ? 1
                              : logical_buckets_needed - 1;
@@ -142,7 +142,7 @@ TEST(GraveyardSet, Reserve) {
   EXPECT_EQ(set.size(), 1);
   // There's a tradeoff between making the test easy to read and avoiding the
   // use of inscrutable magic numbers.  So we'll do it both ways.
-  EXPECT_EQ(ExpectedCapacityAfterRehash<uint64_t>(1000), 86 * 14);
+  EXPECT_EQ(ExpectedCapacityAfterRehash<uint64_t>(1000), 87 * 14);
   EXPECT_EQ(set.capacity(), ExpectedCapacityAfterRehash<uint64_t>(1000));
 }
 

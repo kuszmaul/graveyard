@@ -327,13 +327,14 @@ public:
 
   size_t logical_size() const { return logical_size_; }
   size_t physical_size() const {
-    // Add 4 buckets if logical_size_ > 4.
+    // Add 5 buckets if logical_size_ >= 6.
+    // Add 4 buckets if logical_size_ == 5.
     // Add 3 buckets if logical_size_ == 4.
     // Add 2 buckets if logical_size_ == 3.
     // Add 1 bucket if logical_size_ from 1 to 2.
     // Add 0 bucketrs if logical_size_ == 0;
     // TODO: We'd like to add 0 buckets if the logical_bucket_count == 1.
-    size_t extra_buckets = (logical_size_ > 4)   ? 4
+    size_t extra_buckets = (logical_size_ >= 6)  ? 5
                            : (logical_size_ > 2) ? logical_size_ - 1
                            : (logical_size_ > 0) ? 1
                                                  : 0;
@@ -1043,6 +1044,8 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
 // should just be `value_type`, but there is a bug in the map code
 // that makes that fail.
 
+// TODO: It looks like we lost the bubble.
+
 template <class Traits>
 template <bool insert_tombstones>
 void HashTable<Traits>::InsertAscending(const value_type &value,
@@ -1053,7 +1056,9 @@ void HashTable<Traits>::InsertAscending(const value_type &value,
   const size_t h2 = buckets_.H2(hash);
   size_t bucket_to_try = preferred_bucket;
   while (true) {
-    assert(bucket_to_try <= buckets_.physical_size());
+    // TODO: Do something better if this CHECK fails.
+    CHECK_LT(bucket_to_try, buckets_.physical_size());
+    assert(bucket_to_try < buckets_.physical_size());
     Bucket<Traits> &bucket = buckets_[bucket_to_try];
     while (bucket_to_try >= first_uninitialized_bucket) {
       buckets_[first_uninitialized_bucket].Init();

@@ -406,3 +406,8 @@ I0000 00:00:1680523430.074642  250787 amortization_benchmark.cc:242]  After dest
 - [ ] It's not about parallelism.
 
 - [ ] Measure workloads under high load factor.  Find evidence that graveyard makes a difference.
+
+- [ ] Bubble sort pass went away.  Reimplement it.
+
+- [ ] Wrap on overflow?  It's looking like we should...  Currently
+    adding 5 buckets to large tables, but even that might not be enough.

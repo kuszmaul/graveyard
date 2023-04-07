@@ -833,7 +833,7 @@ HashTable<Traits>::insert(const value_type &value) {
     }
   }
   return {InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket,
-						 h2),
+                                                 h2),
           true};
 }
 
@@ -1061,7 +1061,7 @@ void HashTable<Traits>::InsertAscending(const value_type &value,
     }
     size_t matches = bucket.FindEmpties();
     if constexpr (Traits::insert_graveyard_tombstones &&
-		  insert_tombstones) {
+                  insert_tombstones) {
       // remove graveyard tombstone
       matches &= ~(bucket_to_try % 2);
     }
@@ -1100,7 +1100,7 @@ void HashTable<Traits>::CopyFrom(const Buckets<Traits> &buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
-	InsertAscending</*insert_tombstones=*/false>(bucket.slots[j].value(), first_uninitialized_bucket);
+        InsertAscending</*insert_tombstones=*/false>(bucket.slots[j].value(), first_uninitialized_bucket);
       }
     }
     ++bucket_number;
@@ -1130,11 +1130,11 @@ void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
-	InsertAscending</*insert_tombstones*/true>(std::move(bucket.slots[j].value()),
-						   first_uninitialized_bucket);
-	// Destroy the value so that we can destroy the bucket without
-	// running a bunch of destructors.
-	bucket.slots[j].value().~value_type();
+        InsertAscending</*insert_tombstones*/true>(std::move(bucket.slots[j].value()),
+                                                   first_uninitialized_bucket);
+        // Destroy the value so that we can destroy the bucket without
+        // running a bunch of destructors.
+        bucket.slots[j].value().~value_type();
       }
     }
     ++bucket_number;

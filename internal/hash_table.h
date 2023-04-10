@@ -110,14 +110,6 @@ struct HashTableTraits {
     }
   }
 
-  static key_type &KeyOf(value_type &value) {
-    if constexpr (std::is_same<mapped_type_or_void, void>::value) {
-      return value;
-    } else {
-      return value.first;
-    }
-  }
-
   // H2 Value for empty slots
   static constexpr uint8_t kEmpty = 255;
   static constexpr uint8_t kSearchDistanceEndSentinal = 255;
@@ -626,7 +618,7 @@ private:
   // following, `first_uninitialized_bucket` are uninitialized.  Used
   // during rehash (and TODO: use during copy).  Doesn't update `size_`.
   template <bool insert_tombstones>
-  void InsertAscending(const value_type &value,
+  void InsertAscending(value_type value,
                        size_t &first_uninitialized_bucket);
 
   // Finishes the rehash or copy by initializing all the remaining
@@ -1054,7 +1046,7 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
 
 template <class Traits>
 template <bool insert_tombstones>
-void HashTable<Traits>::InsertAscending(const value_type &value,
+void HashTable<Traits>::InsertAscending(value_type value,
                                         size_t &first_uninitialized_bucket) {
   const key_type &key = Traits::KeyOf(value);
   const size_t hash = get_hasher_ref()(key);
@@ -1141,6 +1133,12 @@ void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
+        //
+        // TODO: When value_type is `pair<const K, V>`, this std::move
+        // doesn't have any effect, resulting in a copy.  We'd like to
+        // have the key type be a `pair<K, V>` that we cast to
+        // `pair<const K, V>&`.  That can only be done if the pair has
+        // standard layout and the offsets of `K` and `V`.
         InsertAscending</*insert_tombstones*/true>(std::move(bucket.slots[j].value()),
                                                    first_uninitialized_bucket);
         // Destroy the value so that we can destroy the bucket without

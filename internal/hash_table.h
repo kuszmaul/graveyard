@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <new>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility> // for std::swap

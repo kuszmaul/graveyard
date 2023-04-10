@@ -1,6 +1,7 @@
 #include <cstddef> // for size_t
 #include <cstdint> // for uint64_t
 #include <functional>  // for equal_to
+#include <optional>
 #include <type_traits> // for remove_reference_t
 #include <vector>      // for vector
 

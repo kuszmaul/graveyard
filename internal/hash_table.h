@@ -620,8 +620,7 @@ private:
   // following, `first_uninitialized_bucket` are uninitialized.  Used
   // during rehash (and TODO: use during copy).  Doesn't update `size_`.
   template <bool insert_tombstones>
-  void InsertAscending(value_type value,
-                       size_t &first_uninitialized_bucket);
+  void InsertAscending(value_type value, size_t &first_uninitialized_bucket);
 
   // Finishes the rehash or copy by initializing all the remaining
   // uninitialized buckets.
@@ -678,8 +677,7 @@ HashTable<Traits>::HashTable(const HashTable &other, const allocator_type &a)
 }
 
 template <class Traits>
-HashTable<Traits>& HashTable<Traits>::operator=(const HashTable &other)
-{
+HashTable<Traits> &HashTable<Traits>::operator=(const HashTable &other) {
   clear();
   reserve(other.size_);
   size_ = other.size_;
@@ -833,8 +831,7 @@ HashTable<Traits>::insert(const value_type &value) {
       return {iterator{&bucket, idx}, false};
     }
   }
-  return {InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket,
-                                                 h2),
+  return {InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket, h2),
           true};
 }
 
@@ -1113,7 +1110,8 @@ void HashTable<Traits>::CopyFrom(const Buckets<Traits> &buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty) {
         // TODO: We could save recomputing h2 possibly.
-        InsertAscending</*insert_tombstones=*/false>(bucket.slots[j].value(), first_uninitialized_bucket);
+        InsertAscending</*insert_tombstones=*/false>(
+            bucket.slots[j].value(), first_uninitialized_bucket);
       }
     }
     ++bucket_number;
@@ -1149,8 +1147,8 @@ void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
         // have the key type be a `pair<K, V>` that we cast to
         // `pair<const K, V>&`.  That can only be done if the pair has
         // standard layout and the offsets of `K` and `V`.
-        InsertAscending</*insert_tombstones*/true>(std::move(bucket.slots[j].value()),
-                                                   first_uninitialized_bucket);
+        InsertAscending</*insert_tombstones*/ true>(
+            std::move(bucket.slots[j].value()), first_uninitialized_bucket);
         // Destroy the value so that we can destroy the bucket without
         // running a bunch of destructors.
         bucket.slots[j].value().~value_type();

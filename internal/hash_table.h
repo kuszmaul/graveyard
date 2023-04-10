@@ -80,6 +80,13 @@ template <> struct KeyArg<false> {
   template <typename K, typename key_type> using type = key_type;
 };
 
+struct NullRehashCallback {
+  template <class Table>
+  void operator()(Table& table, size_t slot_count) {
+    table.rehash_internal(slot_count);
+  }
+};
+
 template <class KeyType, class MappedTypeOrVoid, class Hash, class KeyEqual,
           class Allocator>
 struct HashTableTraits {
@@ -128,6 +135,11 @@ struct HashTableTraits {
   // When rehashing, add a tombstone every `kTombstonePeriod` slots.
   // Set this to `std::limits<size_t>::max()` for no tombstones.
   static constexpr std::optional<size_t> kTombstonePeriod = 28;
+
+  // When rehashing, construct a rehash_callback, which is a functor,
+  // and call it with the table and the size.  This allows code to
+  // instrument a table just before or just after a rehash.
+  using rehash_callback = NullRehashCallback;
 };
 
 template <class Traits> struct alignas(typename Traits::value_type) Item {
@@ -557,6 +569,11 @@ public:
   // it can be slow, `rehash()` doesn't guarantee, for example, that
   // if the table grows, it grows by at least a constant factor.
   void rehash(size_t count);
+ private:
+  void rehash_internal(size_t count);
+  friend typename Traits::rehash_callback;
+
+ public:
 
   void reserve(size_t count);
 
@@ -1162,6 +1179,12 @@ void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
 }
 
 template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
+  typename Traits::rehash_callback callback{};
+  callback(*this, slot_count);
+}
+
+template <class Traits> void HashTable<Traits>::rehash_internal(size_t slot_count) {
+  LOG(INFO) << "rehash internal " << slot_count << " from " << size();
   if (slot_count == 0) {
     slot_count = ceil(size() * Traits::full_utilization_denominator,
                       Traits::full_utilization_numerator);

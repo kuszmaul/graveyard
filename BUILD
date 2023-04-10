@@ -146,6 +146,12 @@ cc_binary(
 )
 
 cc_binary(
+    name = "vary_graveyard_density",
+    srcs = ["vary_graveyard_density.cc"],
+    deps = [":graveyard_set",],
+)
+
+cc_binary(
     name = "amortization_benchmark",
     srcs = ["amortization_benchmark.cc"],
     deps = [":hash_benchmark",

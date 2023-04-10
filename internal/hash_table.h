@@ -124,7 +124,9 @@ struct HashTableTraits {
   static constexpr size_t rehashed_utilization_numerator = 3;
   static constexpr size_t rehashed_utilization_denominator = 4;
 
-  static constexpr bool insert_graveyard_tombstones = true;
+  // When rehashing, add a tombstone every `kTombstonePeriod` slots.
+  // Set this to `std::limits<size_t>::max()` for no tombstones.
+  static constexpr size_t kTombstonePeriod = 28;
 };
 
 template <class Traits> struct alignas(typename Traits::value_type) Item {
@@ -1063,10 +1065,18 @@ void HashTable<Traits>::InsertAscending(value_type value,
       ++first_uninitialized_bucket;
     }
     size_t matches = bucket.FindEmpties();
-    if constexpr (Traits::insert_graveyard_tombstones &&
-                  insert_tombstones) {
-      // remove graveyard tombstone
-      matches &= ~(bucket_to_try % 2);
+    if constexpr (insert_tombstones && Traits::kTombstonePeriod < std::numeric_limits<size_t>::max()) {
+      size_t global_slot_number = bucket_to_try * Traits::kSlotsPerBucket;
+      size_t mod_period = global_slot_number % Traits::kTombstonePeriod;
+      static_assert(Traits::kSlotsPerBucket < Traits::kTombstonePeriod);
+      if (mod_period >= Traits::kTombstonePeriod - Traits::kSlotsPerBucket) {
+        // Leave a tombstone in the last bucket of the ones in the
+        // same period.
+        // Assert that we haven't filled the tombstone already.
+        assert(matches % 2 == 1);
+        // remove one possible empty tombstone from the empty list.
+        matches -= 1;
+      }
     }
     if (matches != 0) {
       size_t idx = CountTrailingZeros(matches);

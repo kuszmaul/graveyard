@@ -1223,7 +1223,8 @@ template <class Traits>
 size_t
 HashTable<Traits>::GetSuccessfulProbeLength(const value_type &value) const {
   const size_t h1 = buckets_.H1(get_hasher_ref()(value));
-  for (size_t i = 0; i <= buckets_[h1].search_distance; ++i) {
+  size_t search_distance = buckets_[h1].search_distance;
+  for (size_t i = 0; i <= search_distance; ++i) {
     const Bucket<Traits> &bucket = buckets_[h1 + i];
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j] != Traits::kEmpty && bucket.slots[j].value() == value) {
@@ -1243,7 +1244,18 @@ ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
   }
   double unsuccess_sum = 0;
   for (size_t i = 0; i < buckets_.logical_size(); ++i) {
-    unsuccess_sum += buckets_[i].search_distance + 1;
+    unsuccess_sum += buckets_[i].search_distance;
+  }
+  for (size_t i = 0; i < buckets_.physical_size(); ++i) {
+    const Bucket<Traits> &bucket = buckets_[i];
+    size_t mask = 0;
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      mask *= 2ul;
+      if (bucket.h2[j] != Traits::kEmpty) {
+        ++mask;
+      }
+    }
+    // LOG(INFO) << "Bucket " << i << ":" << std::bitset<Traits::kSlotsPerBucket>{mask};
   }
   return {success_sum / size(), unsuccess_sum / buckets_.logical_size()};
 }

@@ -9,12 +9,12 @@ struct RehashCallback {
   template <class Table>
   void operator()(Table& table, size_t slot_count) {
     ProbeStatistics pre_stats = table.GetProbeStatistics();
-    LOG(INFO) << "rehash: " << slot_count << " Probe stats: " << pre_stats.successful << " " << pre_stats.unsuccessful;
+    LOG(INFO) << "rehash: " << slot_count << " Probe stats: s=" << pre_stats.successful << " u=" << pre_stats.unsuccessful << " i=" << pre_stats.insert;
     LOG(INFO) << " size=" << table.size() << " capacity=" << table.capacity();
     ++rehash_count;
     table.rehash_internal(slot_count);
     ProbeStatistics post_stats = table.GetProbeStatistics();
-    LOG(INFO) << "rehashed: " << slot_count << " Probe stats: " << post_stats.successful << " " << post_stats.unsuccessful;
+    LOG(INFO) << "rehashed: " << slot_count << " Probe stats: s=" << post_stats.successful << " u=" << post_stats.unsuccessful << " i=" << post_stats.insert;
     LOG(INFO) << " size=" << table.size() << " capacity=" << table.capacity();
 
   }
@@ -44,11 +44,14 @@ template <class Traits> class LogRehashTraits : public Traits {
 };
 #endif
 
-// Even with these parameters the probe lengths are hardly affected:
-//  With:    rehash:   108112 Probe stats: 1.00328 1.04362
-//           rehashed: 108112 Probe stats: 1.00719 1.08973
-//  Without: rehash: 108112 Probe stats: 1.00325 1.04322
-//           rehashed: 108112 Probe stats: 1.00041 1.00531
+// Even with these relatively-high load parameters the probe lengths
+// are hardly affected.  (Removing the tombstones hurts lookups a
+// little and helps inserts a little).
+//
+//  With(40): rehash:   108112 Probe stats: s=1.00331 u=1.04402 i=1.49781
+//            rehashed: 108112 Probe stats: s=1.00494 u=1.06215 i=1.13816
+//  Without:  rehash:   108112 Probe stats: s=1.00344 u=1.04575 i=1.49169
+//            rehashed: 108112 Probe stats: s=1.00035 u=1.00453 i=1.16833
 //
 // ("rehash" is before rehash.  rehashed is after.  Note that
 // rehashing with tombstones increased the table size and increased
@@ -69,7 +72,10 @@ template <class Traits> class LogRehashTraits : public Traits {
   static constexpr size_t rehashed_utilization_numerator = 37;
   static constexpr size_t rehashed_utilization_denominator = 40;
 
-  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+  // Without:
+  // static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+  // With(40):
+  static constexpr std::optional<size_t> kTombstonePeriod = 40;
 };
 
 using GraveyardInstrumented = yobiduck::internal::HashTable<LogRehashTraits<Int64Traits>>;

@@ -15,7 +15,8 @@ int main() {
   for (size_t i = 0; i < kSize * 7 / 8; ++i) {
     set.insert(uniform_dist(e1));
   }
-  auto [success, unsuccess] = set.GetProbeStatistics();
+  auto [success, unsuccess, insert] = set.GetProbeStatistics();
   std::cout << "Success   = " << success << std::endl;
   std::cout << "Unsuccess = " << unsuccess << std::endl;
+  std::cout << "Insert    = " << insert << std::endl;
 }

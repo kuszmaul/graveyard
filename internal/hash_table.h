@@ -390,8 +390,20 @@ private:
 };
 
 struct ProbeStatistics {
+  // How many buckets do we look in, on average, for a successful
+  // lookup?  To compute this, we iterate over all the keys currently
+  // in the table and determine their average distance to their
+  // preferred bucket.
   double successful;
+  // How many buckets do we look in, on average, for an unsuccessful
+  // lookup?  To compute this, we take the average, over all logical
+  // buckets, of the search distance.
   double unsuccessful;
+  // How many buckets do we look in, on average, for an insert of a
+  // new value?  To compute this, we iterate over all the logical
+  // buckets and take the average distance (measured in buckets) to
+  // the first empty slot.
+  double insert;
 };
 
 // The hash table
@@ -579,6 +591,7 @@ public:
 
   ProbeStatistics GetProbeStatistics() const;
   size_t GetSuccessfulProbeLength(const value_type &value) const;
+  size_t GetInsertProbeLength(const size_t logical_bucket_number) const;
 
   using hash_sorted_iterator = SortedBucketsIterator<Traits>;
   hash_sorted_iterator GetSortedBucketsIterator() {
@@ -1236,6 +1249,21 @@ HashTable<Traits>::GetSuccessfulProbeLength(const value_type &value) const {
 }
 
 template <class Traits>
+size_t
+HashTable<Traits>::GetInsertProbeLength(const size_t logical_bucket_number) const {
+  for(size_t i = 0; true; ++i) {
+    const size_t bucket_number = logical_bucket_number + i;
+    CHECK_LT(bucket_number, buckets_.physical_size());
+    const Bucket<Traits> &bucket = buckets_[bucket_number];
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      if (bucket.h2[j] == Traits::kEmpty) {
+        return i + 1;
+      }
+    }
+  }
+}
+
+template <class Traits>
 ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
   // Sum up the lengths for successful searches
   double success_sum = 0;
@@ -1243,8 +1271,10 @@ ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
     success_sum += GetSuccessfulProbeLength(value);
   }
   double unsuccess_sum = 0;
+  double insert_sum = 0;
   for (size_t i = 0; i < buckets_.logical_size(); ++i) {
     unsuccess_sum += buckets_[i].search_distance;
+    insert_sum += GetInsertProbeLength(i);
   }
   for (size_t i = 0; i < buckets_.physical_size(); ++i) {
     const Bucket<Traits> &bucket = buckets_[i];
@@ -1257,7 +1287,10 @@ ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
     }
     // LOG(INFO) << "Bucket " << i << ":" << std::bitset<Traits::kSlotsPerBucket>{mask};
   }
-  return {success_sum / size(), unsuccess_sum / buckets_.logical_size()};
+  return {.successful = success_sum / size(),
+          .unsuccessful = unsuccess_sum / buckets_.logical_size(),
+          .insert = insert_sum / buckets_.logical_size()
+  };
 }
 
 } // namespace yobiduck::internal

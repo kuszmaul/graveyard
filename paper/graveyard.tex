@@ -153,4 +153,8 @@ Experiments to run:
 
 One bubble-sort step: prove that it is pretty good.
 
+Hover workload: It looks like for a 3/4 full table, after doing t.size() hovers, the unsuccessful search cost has gone up from 1.018 probes to 1.276 probes.
+For a 90\% full table, the unsuccessful search cost quickly rises from 1.2 to 1.6 after 10\%, then 2.2 after another 10\%.
+Conclusion:  You should rehash after doing N hovers if you would have rehashed after doing N inserts.
+
 \end{document}

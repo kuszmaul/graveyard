@@ -152,6 +152,12 @@ cc_binary(
 )
 
 cc_binary(
+    name = "hover_probe_lengths",
+    srcs = ["hover_probe_lengths.cc"],
+    deps = [":graveyard_set",],
+)
+
+cc_binary(
     name = "amortization_benchmark",
     srcs = ["amortization_benchmark.cc"],
     deps = [":hash_benchmark",

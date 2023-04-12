@@ -1083,6 +1083,11 @@ void HashTable<Traits>::InsertAscending(value_type value,
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
   size_t bucket_to_try = preferred_bucket;
+  if (insert_tombstones && Traits::kTombstonePeriod.has_value()) {
+    LOG(INFO) << "Inserting tombstones";
+  } else {
+    LOG(INFO) << "Not inserting tombstones";
+  }
   while (true) {
     // TODO: Do something better if this CHECK fails.
     CHECK_LT(bucket_to_try, buckets_.physical_size());
@@ -1152,6 +1157,7 @@ void HashTable<Traits>::CopyFrom(const Buckets<Traits> &buckets) {
 
 template <class Traits>
 void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
+  LOG(INFO) << "Rehash from size=" << size();
   size_t bucket_number = 0;
   size_t first_uninitialized_bucket = 0;
   for (Bucket<Traits> &bucket : buckets) {

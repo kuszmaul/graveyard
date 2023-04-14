@@ -232,8 +232,12 @@ void MeasureIncreasingLoad(std::mt19937_64 generator) {
             << " no-tombstones-found-mean no-tombstones-found-sigma no-tombstones-notfound-mean no-tombstones-notfound-sigma no-tombstones-findempty-mean no-tombstones-findempty-sigma"
             << " graveyard-found-mean graveyard-found-sigma graveyard-notfound-mean graveyard-notfound-sigma graveyard-findempty-mean graveyard-findempty-sigma"
             << std::endl;
+  std::vector<Ratio> fills;
   for (size_t i = 90; i <= 99; ++i) {
-    Ratio fillto = Ratio{i, 100};
+    fills.push_back(Ratio{i, 100});
+  }
+  fills.push_back(Ratio{199, 200});
+  for (Ratio fillto : fills) {
     Ratio remaining = Ratio{1} - fillto;
     Ratio tombstones = remaining * Ratio{1, 2};
     Ratio additional = remaining * Ratio{1, 4};

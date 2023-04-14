@@ -166,7 +166,7 @@ Hover workload: It looks like for a 3/4 full table, after doing t.size() hovers,
 For a 90\% full table, the unsuccessful search cost quickly rises from 1.2 to 1.6 after 10\%, then 2.2 after another 10\%.
 Conclusion:  You should rehash after doing N hovers if you would have rehashed after doing N inserts.
 
-\section{Experiments}
+\section{Experiment 1}
 
 Hypothesis: Query-Optimized Graveyard hashing scales well to very high
 load factors.
@@ -259,6 +259,42 @@ without ordering, lookup would be quadratic.)  This isn't really
 \end{center}
 \caption{How query-optimized graveyard hashing scales as the load factor increases.}
 \figlabel{probelengths}
+\end{figure}
+
+\section{Experiment 2}
+
+The second experiment is to vary the number of tombstones that are put
+in during rehashing.  The theory \cite{BenderKuKu22} says that if you
+are going to insert $k$ values between rehashing, then you should put
+in $ck$ tombstones for some constant greater than one.  Increasing $c$
+makes lookups slower, since during rehash fewer slots were available,
+and the values get spread around further as though the load factor was
+higher.  (TODO: Write the expression down.)  But it makes subsequent
+inserts faster, since there are more empty slots in which to insert.
+(We cannot raise $c$ so high that all the free slots are used).
+
+For our first guess we set $c=2$.  This experiment shows the tradeoff
+as we vary $c$, called the \textit{graveyard factor}.
+
+\figref{varytombstones} shows the tradeofff.  We have heard that for
+most hash tables, lookups are the dominant operation (perhaps
+accounting for 60\% to 90\% of the operations), so the choice of
+$c=2$, where lookups are about 3 times faster than inserts looks
+pretty good.  If we lower $c$ to, say $5/3$, then the ratio is about
+$6$ and the choice is good only when lookups are 90\% or more of the
+operations.  (TODO: Is there a visualization of this tradeoff?)  If we
+raise $c$ to, say $3$ then lookups become more expensive than inserts.
+We conclude that $2$ is about right.
+
+\begin{figure}
+  \begin{center}
+  \includegraphics[width=75mm]{experiments/vary-tombstones}
+  \end{center}
+  \caption{Increasing the graveyard factor makes lookups slower and
+    inserts faster, in a table that is filled to 98\% full, rehashed
+    with tombstones, and then 0.5\% more keys are added.  The table is
+    10,000,000 elements.}
+  \figlabel{varytombstones}
 \end{figure}
 
 \end{document}

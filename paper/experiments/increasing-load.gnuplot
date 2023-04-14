@@ -56,6 +56,7 @@ plot "increasing-load.data"\
 
 set output "increasing-load-findempty-ratio.pdf"
 set title "Ratio of findempty vs (X+1)/2"
+set nolog
 plot "increasing-load.data"\
      using 2:($10/$4) with lines title "No-Tombstones",\
   "" using 2:($16/$4) with lines title "Graveyard",

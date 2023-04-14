@@ -5,10 +5,13 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <fstream>
 #include <optional>
 #include <random>
 #include <unordered_set>
 #include <vector>
+
+#include "../../benchmark/statistics.h"
 
 // A Ratio class that doesn't worry about overflow.
 class Ratio {
@@ -65,9 +68,9 @@ static uint64_t GetNumber(std::mt19937_64 &generator, std::uniform_int_distribut
   }
 }
 
-struct ProbeStatistics {
+struct AverageProbeLengths {
   Ratio found, notfound, findempty;
-  friend std::ostream& operator<<(std::ostream& os, const ProbeStatistics& stats) {
+  friend std::ostream& operator<<(std::ostream& os, const AverageProbeLengths& stats) {
     return os << "found=" << stats.found.Float() << " notfound=" << stats.notfound.Float() << " findempty=" << stats.findempty .Float();
   }
 };
@@ -99,7 +102,7 @@ class IntSet {
     std::cerr << "Oops" << std::endl;
     abort();
   }
-  ProbeStatistics GetProbeStatistics() const {
+  AverageProbeLengths GetAverageProbeLengths() const {
     size_t find_cost = 0;
     for (Slot slot : slots_) {
       if (!slot.empty) {
@@ -171,11 +174,15 @@ class IntSet {
   std::vector<Slot> slots_;
 };
 
-void Measure(std::string_view description, std::optional<size_t> graveyard_period, Ratio load_factor, Ratio additional_load_factor, std::mt19937_64 generator) {
+struct ProbeStatistics {
+  Statistics found, notfound, findempty;
+};
+
+AverageProbeLengths MeasureOnce(std::string_view description, std::optional<size_t> graveyard_period, Ratio load_factor, Ratio additional_load_factor, std::mt19937_64& generator) {
+  std::uniform_int_distribution<uint64_t> distribution;
   double x = (Ratio(1)-(load_factor + additional_load_factor)).Invert().Float();
   double xp1o2 = (x + 1) / 2;
   double x2p1o2 = (x * x + 1) / 2;
-  std::uniform_int_distribution<uint64_t> distribution;
   std::unordered_set<uint64_t> seen_numbers;
   std::vector<uint64_t> first_numbers;
   std::vector<uint64_t> second_numbers;
@@ -196,13 +203,60 @@ void Measure(std::string_view description, std::optional<size_t> graveyard_perio
     set.insert(v, std::nullopt);
   }
   // std::cout << "Then " << set << std::endl;
-  ProbeStatistics stats = set.GetProbeStatistics();
-  std::cout << description << " (Knuth predicts " << xp1o2 << " " << x2p1o2 << "):" << stats << std::endl;
+  AverageProbeLengths stats = set.GetAverageProbeLengths();
+  if (0) {
+    std::cout << description << " (Knuth predicts " << xp1o2 << " " << x2p1o2 << "):" << stats << std::endl;
+  }
+  return stats;
+}
+
+ProbeStatistics Measure(std::string_view description, std::optional<size_t> graveyard_period, Ratio load_factor, Ratio additional_load_factor, std::mt19937_64 generator) {
+  ProbeStatistics result;
+  for (size_t i = 0; i < 20; ++i) {
+    AverageProbeLengths lengths = MeasureOnce(description, graveyard_period, load_factor, additional_load_factor, generator);
+    result.found.AddDatum(lengths.found.Float());
+    result.notfound.AddDatum(lengths.notfound.Float());
+    result.findempty.AddDatum(lengths.findempty.Float());
+  }
+  return result;
+}
+
+// Measures the load increasing from 90% to 99% where, on rehash, we
+// fill have the remaining space with graveyard tombstones (or not if
+// we are measuring no-tombstones), and then insert to fill 1/4 of the
+// empty space.
+void MeasureIncreasingLoad(std::mt19937_64 generator) {
+  std::ofstream ofile;
+  ofile.open("increasing-load.data");
+  ofile << "#initial-fullness final-fullness X (X+1)/2 (X^2+1)/2"
+            << " no-tombstones-found-mean no-tombstones-found-sigma no-tombstones-notfound-mean no-tombstones-notfound-sigma no-tombstones-findempty-mean no-tombstones-findempty-sigma"
+            << " graveyard-found-mean graveyard-found-sigma graveyard-notfound-mean graveyard-notfound-sigma graveyard-findempty-mean graveyard-findempty-sigma"
+            << std::endl;
+  for (size_t i = 90; i <= 99; ++i) {
+    Ratio fillto = Ratio{i, 100};
+    Ratio remaining = Ratio{1} - fillto;
+    Ratio tombstones = remaining * Ratio{1, 2};
+    Ratio additional = remaining * Ratio{1, 4};
+    ProbeStatistics no_tombstones = Measure("partlyfull no tombstones", std::nullopt, fillto, additional, generator);
+    ProbeStatistics graveyard = Measure("partlyfull tombstones", tombstones.Invert().Floor(), fillto, additional, generator);
+    double X = (Ratio{1} - (fillto+additional)).Invert().Float();
+    ofile << fillto.Float() << " " << (fillto+additional).Float()
+          << " " << X << " " << (X+1)/2 << " " << (X*X+1)/2
+          << " " << no_tombstones.found.Mean() << " " << no_tombstones.found.StandardDeviation()
+          << " " << no_tombstones.notfound.Mean() << " " << no_tombstones.notfound.StandardDeviation()
+          << " " << no_tombstones.findempty.Mean() << " " << no_tombstones.findempty.StandardDeviation()
+          << " " << graveyard.found.Mean() << " " << graveyard.found.StandardDeviation()
+          << " " << graveyard.notfound.Mean() << " " << graveyard.notfound.StandardDeviation()
+          << " " << graveyard.findempty.Mean() << " " << graveyard.findempty.StandardDeviation()
+          << std::endl;
+  }
 }
 
 int main() {
   // Generate the same sequence of random numbers for both tables.
   std::mt19937_64 gen;
+  MeasureIncreasingLoad(gen);
+#if 0
   //Measure("test", 10, Ratio{3, 5}, Ratio{1, 5}, gen);
   Measure("90% full, no tombstones, add 2.5%", std::nullopt, Ratio{90, 100}, Ratio{25, 1000}, gen);
   // 5% graveyard, 90% full
@@ -219,4 +273,5 @@ int main() {
   Measure("98% full, 0.625% tombstones, add 0.5%  ", 160, Ratio{98, 100}, Ratio{1, 200}, gen);
   Measure("98% full, 0.5% tombstones, add 0.5%    ", 200, Ratio{98, 100}, Ratio{1, 200}, gen);
   Measure("98% full, 0.4% tombstones, add 0.5%    ", 225, Ratio{98, 100}, Ratio{1, 200}, gen);
+#endif
 }

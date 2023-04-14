@@ -64,6 +64,7 @@ cc_library(
     deps = [
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:check",
+	":statistics",
     ],
 )
 
@@ -165,5 +166,10 @@ cc_binary(
             "@folly//folly/container:F14Set",
             "@com_google_absl//absl/flags:flag",
     	    "@com_google_absl//absl/flags:parse",
-],
+	    ],
+)
+
+cc_library(
+  name = "statistics",
+  hdrs = ["benchmark/statistics.h"],
 )

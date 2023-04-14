@@ -54,3 +54,8 @@ plot "increasing-load.data"\
   "" using 2:16 with lines title "Graveyard",\
   "" using 2:($16-2*$17):($16+2*$17) with filledcurve linecolor rgb "#800000" fs transparent solid 0.1 notitle
 
+set output "increasing-load-findempty-ratio.pdf"
+set title "Ratio of findempty vs (X+1)/2"
+plot "increasing-load.data"\
+     using 2:($10/$4) with lines title "No-Tombstones",\
+  "" using 2:($16/$4) with lines title "Graveyard",

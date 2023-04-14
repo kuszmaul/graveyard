@@ -29,7 +29,7 @@ set output "increasing-load-found.pdf"
 set title "Successful Lookup Probe Length"
 plot "increasing-load.data"\
      using 2:4 with lines title "(X+1)/2",\
-  "" using 2:6 with lines title "No-Tombstones",\
+  "" using 2:6 with lines title "Traditional",\
   "" using 2:($6-2*$7):($6+2*$7) with filledcurve linecolor rgb "#800000" fs transparent solid 0.1 notitle,\
   "" using 2:12 with lines title "Graveyard",\
   "" using 2:($12-2*$13):($12+2*$13) with filledcurve linecolor rgb "#800000" fs transparent solid 0.1 notitle
@@ -38,7 +38,7 @@ set output "increasing-load-notfound.pdf"
 set title "Unsuccessful Lookup Probe Length"
 plot "increasing-load.data"\
      using 2:4 with lines title "(X+1)/2",\
-  "" using 2:8 with lines title "No-Tombstones",\
+  "" using 2:8 with lines title "Traditional",\
   "" using 2:($8-2*$9):($8+2*$9) with filledcurve linecolor rgb "#800000" fs transparent solid 0.1 notitle,\
   "" using 2:14 with lines title "Graveyard",\
   "" using 2:($14-2*$15):($14+2*$15) with filledcurve linecolor rgb "#800000" fs transparent solid 0.1 notitle
@@ -49,7 +49,7 @@ plot "increasing-load.data"\
      using 2:4 with lines title "(X+1)/2",\
   "" using 2:5 with lines title "(X^2+1)/2",\
   "" using 2:($4*5) with lines title "5*(X+1)/2",\
-  "" using 2:10 with lines title "No-Tombstones",\
+  "" using 2:10 with lines title "Traditional",\
   "" using 2:($10-2*$11):($10+2*$11) with filledcurve linecolor rgb "#800000" fs transparent solid 0.1 notitle,\
   "" using 2:16 with lines title "Graveyard",\
   "" using 2:($16-2*$17):($16+2*$17) with filledcurve linecolor rgb "#800000" fs transparent solid 0.1 notitle
@@ -58,5 +58,5 @@ set output "increasing-load-findempty-ratio.pdf"
 set title "Ratio of findempty vs (X+1)/2"
 set nolog
 plot "increasing-load.data"\
-     using 2:($10/$4) with lines title "No-Tombstones",\
+     using 2:($10/$4) with lines title "Traditional",\
   "" using 2:($16/$4) with lines title "Graveyard",

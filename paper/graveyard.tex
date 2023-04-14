@@ -1,4 +1,12 @@
-\documentclass{article}
+\documentclass[10pt]{article}
+
+% Sort alphabetically by package name.
+\usepackage[a4paper, margin=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{times}
+
+\newcommand{\figref}[1]{\ref{fig:#1}}
+\newcommand{\figlabel}[1]{\label{fig:#1}}
 
 \title{Practical Graveyard Hashing}
 \author{%Michael A. Bender \and   Removing Mike, at his request, until he determines whether he is contributing. 
@@ -156,5 +164,100 @@ One bubble-sort step: prove that it is pretty good.
 Hover workload: It looks like for a 3/4 full table, after doing t.size() hovers, the unsuccessful search cost has gone up from 1.018 probes to 1.276 probes.
 For a 90\% full table, the unsuccessful search cost quickly rises from 1.2 to 1.6 after 10\%, then 2.2 after another 10\%.
 Conclusion:  You should rehash after doing N hovers if you would have rehashed after doing N inserts.
+
+\section{Experiments}
+
+Hypothesis: Query-Optimized Graveyard hashing scales well to very high
+load factors.
+
+Todo: Define load factor.
+
+Todo: Define ``an insertion-only workload'' is a workload in which the
+only modifications to the table are insertions.  The workload may also
+have queries.
+
+Background: Most industrial-quality hash tables (e.g.,
+\cite{Abseil,Folly} keep the load factor low.  For example, Google
+(Abseil) and Facebook (F14) keep the load factor below $7/8$ (87.5\%),
+and then double the table, reducing the load factor to $7/16$
+(43.75\%).  If a workload is insertion-only, the expected load factor
+would be thus some average of 87.5\% and 43.75\%.  If we believe
+Benford's rule \cite{Benford} applies, then we take the geometric
+average, and get 61.8\%.  We have heard that for real workloads at
+google, the average load factor is closer to 55\%.  That's probably
+because real workloads also remove items from tables, and removing an
+item never causes a rehash.
+
+One justification for using quadratic probing (Google) or double
+hashing (Facebook) is that with traditional unordered linear probing
+at high load factors, the probe lengths grow quadratically with $X$.
+This rationale doesn't seem to actually justify the design decision
+since the load factors are so low.
+
+For this experiment we want to find out how well query-optimized
+graveyard hashing scales as the load factor increases.  Here we
+measured an insertion-only workload: We did the following:
+\begin{itemize}
+\item Create a table that is, say 90\%, full.
+\item Rehash the table (at 90\% full) with tombstones (or without
+  tombstones).  When using tombstones, we placed tombstones into half
+  the remaining slots (5\% of the slots in this case).
+\item Insert more items into the table.  The number of items is half
+  the number of tombstones we placed.  (2.5\% in this case).  (In this
+  case, the table is now 92.5\% full).
+\item Measure the probe lengths.
+\end{itemize}
+
+\figref{probelengths} shows the result of our experiment.
+The X axis is the final load factor (e.g., 92.5\% in the example above).  The $Y$ axis is the average probe length for a 
+\figref{probelengths}(a) shows the average number of slots that must be
+examined for a \textit{successful lookup}.  (Averaging over all the
+values that are actually present in the table.)  What this shows is that lookup and insert scales very well for query-optimized graveyard hashing, and lookup scales well for traditional, but insert scales very badly for traditional (just the problem of finding an empty slot).
+
+define: Traditional as stable ordered-linear probing.  Using the
+search-distance hack so we can stop searching early.  (Without which,
+without ordering, lookup would be quadratic.)  This isn't really
+``Traditional'', so we probably need a better name.
+
+\begin{figure}
+\begin{center}
+  \begin{tabular}{cc}
+  \includegraphics[width=75mm]{experiments/increasing-load-found}  &
+  \includegraphics[width=75mm]{experiments/increasing-load-notfound}  \\
+  \begin{minipage}{75mm}
+    % TODO Get this font right.
+    \footnotesize (a) Successful Lookup, comparing Graveyard,
+    Traditional (both with 95\% confidence intervals shown, shaded),
+    and Knuth's prediction $(X+1)/2$.
+  \end{minipage}
+  &
+  \begin{minipage}{75mm}
+    % TODO Get this font right.
+    \footnotesize (a) Unsuccessful Lookup, comparing Graveyard,
+    Traditional, and Knuth's prediction $(X+1)/2$.
+  \end{minipage}
+ 
+  \\
+  \includegraphics[width=75mm]{experiments/increasing-load-findempty} &
+  \includegraphics[width=75mm]{experiments/increasing-load-findempty-ratio}  \\
+  \begin{minipage}{75mm}
+    % TODO Get this font right.
+    \footnotesize (a) Average probe length to find an empty slot for
+    Graveyard, Traditional, and showing Knuth's $(X+1)/2$ prediction
+    for lookup and $(X+1)/2$ prediction for insert.
+  \end{minipage}
+  &
+  \begin{minipage}{75mm}
+    % TODO Get this font right.
+    \footnotesize (a) How much worse is find-empty than Knuth's
+    lookup?  Graveyard is a small factor (staying near 4 even for very
+    high load factors, traditional grows quickly.
+  \end{minipage}
+ 
+  \end{tabular}
+\end{center}
+\caption{How query-optimized graveyard hashing scales as the load factor increases.}
+\figlabel{probelengths}
+\end{figure}
 
 \end{document}

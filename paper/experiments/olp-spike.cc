@@ -30,7 +30,7 @@ class Olp {
         wrapped = true;
       }
       const Slot to_insert{!wrapped, v};
-      if (!slots_[index].has_value()) {
+      if (slots_[index].empty()) {
         ++size_;
         slots_[index] = to_insert;
         return;
@@ -52,10 +52,10 @@ class Olp {
     size_t count = 0;
     size_t i = 0;
     for (const auto& slot : slots_) {
-      if (slot.has_value() && prev.has_value()) {
+      if (!slot.empty() && !prev.empty()) {
         assert(prev < slot);
       }
-      if (slot.has_value()) {
+      if (slot.present()) {
         ++count;
         prev = slot;
       }
@@ -76,7 +76,10 @@ class Olp {
    public:
     Slot() :tag_{kEmpty} {}
     Slot(bool not_wrapped, uint64_t v) :tag_{kValue}, wrapped_(!not_wrapped), value_(v) {}
-    bool has_value() const { return tag_ == kValue; }
+    bool empty() const { return tag_ == kEmpty; }
+    bool present() const { return tag_ == kValue; }
+    bool tombstone() const { return tag_ == kTombstone; }
+    // Requires not empty.
     bool wrapped() const {
       assert(tag_ != kEmpty);
       return wrapped_;
@@ -86,7 +89,7 @@ class Olp {
       return value_;
     }
    private:
-    // Requires a and b have values.
+    // Requires a and b not empty.
     friend bool operator<(const Slot &a, const Slot &b) {
       assert(a.tag_ != kEmpty && b.tag_ != kEmpty);
       if (a.wrapped_ != b.wrapped_)  {
@@ -95,9 +98,12 @@ class Olp {
       return a.value_ < b.value_;
     }
     friend std::ostream& operator<<(std::ostream& os, const Slot& slot) {
-      if (slot.has_value()) {
+      if (!slot.empty()) {
+        if (slot.tombstone()) {
+          os << "T";
+        }
         if (slot.wrapped()) {
-          os << "!";
+          os << "w";
         }
         return os << (slot.value() >> 54);
       } else {
@@ -115,7 +121,7 @@ class Olp {
     size_t i = 0;
     for (const auto& slot : olp.slots_) {
       os << " ";
-      if (slot.has_value()) {
+      if (!slot.empty()) {
         os << "[" << i << "]";
       }
       os << slot;

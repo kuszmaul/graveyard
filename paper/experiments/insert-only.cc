@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "../../benchmark/statistics.h"
+#Include "hash_function.h"
 
 // A Ratio class that doesn't worry about overflow.
 class Ratio {
@@ -131,7 +132,7 @@ class IntSet {
   }
 
   size_t H1(uint64_t v) const {
-    return size_t((__int128(v) * __int128(slots_.size())) >> 64);
+    return H1(v, slots_.size());
   }
 
   friend std::ostream& operator<<(std::ostream &os, const IntSet &set) {

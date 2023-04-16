@@ -21,7 +21,10 @@ $(VARY_TOMBSTONES_PDFS) &: experiments/vary-tombstones.data experiments/vary-tom
 	cd experiments; gnuplot vary-tombstones.gnuplot
 
 CXXFLAGS = -std=c++17 -Werror -Wall -W -O2 -ggdb
-experiments/insert-only: experiments/insert-only.cc ../benchmark/statistics.h
+experiments/insert-only: experiments/insert-only.cc ../benchmark/statistics.h experiments/hash_function.h
 
 experiments/vary-tombstones.data experiments/increasing-load.data &: experiments/insert-only
 	(cd experiments; ./insert-only)
+
+experiments/olp-spike: experiments/olp-spike.cc experiments/hash_function.h
+	$(CXX) $(CXXFLAGS) $< -o $@

@@ -65,27 +65,34 @@ class Olp {
     std::cout << "Validated" << std::endl;
   }
  private:
-  // A slot can be empty (nullopt), or a value, with a bool.  The bool
-  // indicates that we didn't wrap around.  We can compare two of the
-  // pairs (so that wrapped values sort < unwrapped values).
+  // A slot can be empty (nullopt), or a non-empty.  For non-empty it
+  // can be present or contain a tombstone.  In the non-empty case
+  // there is a bool indicating that it wrapped and a integer value.
+  // The bool is there so we can compare two pairs: wrapped values
+  // sort before unwrapped valueds.
+  //
+  //
   class Slot {
    public:
-    Slot() :slot_(std::nullopt) {}
-    Slot(bool not_wrapped, uint64_t v) :slot_(std::pair<bool, uint64_t>(not_wrapped, v)) {}
-    bool has_value() const { return slot_.has_value(); }
+    Slot() :tag_{kEmpty} {}
+    Slot(bool not_wrapped, uint64_t v) :tag_{kValue}, wrapped_(!not_wrapped), value_(v) {}
+    bool has_value() const { return tag_ == kValue; }
     bool wrapped() const {
-      assert(slot_);
-      return !slot_->first;
+      assert(tag_ != kEmpty);
+      return wrapped_;
     }
     uint64_t value() const {
-      assert(slot_);
-      return slot_->second;
+      assert(tag_ != kEmpty);
+      return value_;
     }
    private:
     // Requires a and b have values.
     friend bool operator<(const Slot &a, const Slot &b) {
-      assert(a.has_value() && b.has_value());
-      return a.slot_ < b.slot_;
+      assert(a.tag_ != kEmpty && b.tag_ != kEmpty);
+      if (a.wrapped_ != b.wrapped_)  {
+        return a.wrapped_;
+      }
+      return a.value_ < b.value_;
     }
     friend std::ostream& operator<<(std::ostream& os, const Slot& slot) {
       if (slot.has_value()) {
@@ -97,7 +104,10 @@ class Olp {
         return os << "_";
       }
     }
-    std::optional<std::pair<bool, uint64_t>> slot_;
+    enum Tag {kEmpty, kValue, kTombstone};
+    Tag tag_;
+    bool wrapped_;
+    uint64_t value_;
   };
 
   friend std::ostream& operator<<(std::ostream& os, const Olp& olp) {

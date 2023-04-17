@@ -186,6 +186,52 @@ class Olp {
   }
 
   double NotFoundAverageProbeLength() const {
+    double sum = 0;
+    for (size_t i = 0; i < nominal_capacity_; ++i) {
+      //std::cout << __LINE__ << ":Looking at " << i << std::endl;
+      double this_sum = 0;
+      size_t this_n = 0;
+      for (size_t j = i; j < slots_.size(); ++j) {
+        const Slot& slot = slots_[j];
+        switch (slot.tag()) {
+          case Tag::kEmpty: {
+            this_sum += (j - i) + 1;
+            ++this_n;
+            goto finished_with_i;
+          }
+          case Tag::kTombstone:
+          case Tag::kPresent: {
+            size_t h1 = H1(slot.value(), nominal_capacity_);
+            if (h1 > i) {
+              this_sum += (j - i) + 1;
+              ++this_n;
+              //std::cout << __LINE__ << ": at " << j << " this_sum=" << this_sum << " this_n=" << this_n << " slots' h1=" << h1 << std::endl;
+              goto finished_with_i;
+            }
+            if (h1 == i) {
+              this_sum += (j - i) + 1;
+              ++this_n;
+              //std::cout << __LINE__ << ": at " << j << " this_sum=" << this_sum << " this_n=" << this_n << " slots' h1=" << h1 << std::endl;
+            } else {
+              //std::cout << __LINE__ << ": at " << j << " slots'h1=" << h1 << std::endl;
+            }
+            break;
+          }
+        }
+      }
+      //std::cout << __LINE__ << ": " << i << " off the end this_sum=" << this_sum << " this_n=" << this_n << std::endl;
+      //std::cout << *this << std::endl;
+      if (this_n == 0) {
+        // If we haven't already looked at the last slot, we need to
+        // account for the fact that we must look at all the slots.
+        this_sum += (slots_.size() - i);
+        ++this_n;
+      }
+      //std::cout << "this_sum=" << this_sum << " this_n=" << this_n << std::endl;
+   finished_with_i:
+      sum += this_sum / this_n;
+    }
+    return sum / nominal_capacity_;
   }
 
 #if 0
@@ -382,7 +428,7 @@ class Olp {
   using Tag = Slot::Tag;
 
   friend std::ostream& operator<<(std::ostream& os, const Olp& olp) {
-    os << "{size=" << olp.size_;
+    os << "{size=" << olp.size_ << " nominal_cap=" << olp.nominal_capacity_;
     size_t i = 0;
     for (const auto& slot : olp.slots_) {
       os << " ";
@@ -481,7 +527,7 @@ int main() {
       if (i_mod_report_every == 0) {
         std::cout << "probe lengths" << std::endl;
         ProbeLengths probelengths = olp.GetProbeLengths();
-        std::cout << i << " " << probelengths.found << std::endl;
+        std::cout << i << " " << probelengths.found << " " << probelengths.notfound << std::endl;
         //std::cout << probelengths.found << " " << probelengths.notfound << " " << probelengths.insert << std::endl;
       }
       ++i_mod_report_every;

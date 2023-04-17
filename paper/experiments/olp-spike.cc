@@ -194,74 +194,62 @@ class Olp {
   double NotFoundAverageProbeLength() const {
     double sum = 0;
     for (size_t i = 0; i < nominal_capacity_; ++i) {
-      //std::cout << __LINE__ << ":Looking at " << i << std::endl;
-      double this_sum = 0;
-      size_t this_n = 0;
-      for (size_t j = i; j < slots_.size(); ++j) {
-        const Slot& slot = slots_[j];
-        switch (slot.tag()) {
-          case Tag::kEmpty: {
-            this_sum += (j - i) + 1;
-            ++this_n;
-            goto finished_with_i;
-          }
-          case Tag::kTombstone:
-          case Tag::kPresent: {
-            size_t h1 = H1(slot.value(), nominal_capacity_);
-            if (h1 > i) {
-              this_sum += (j - i) + 1;
-              ++this_n;
-              //std::cout << __LINE__ << ": at " << j << " this_sum=" << this_sum << " this_n=" << this_n << " slots' h1=" << h1 << std::endl;
-              goto finished_with_i;
-            }
-            if (h1 == i) {
-              this_sum += (j - i) + 1;
-              ++this_n;
-              //std::cout << __LINE__ << ": at " << j << " this_sum=" << this_sum << " this_n=" << this_n << " slots' h1=" << h1 << std::endl;
-            } else {
-              //std::cout << __LINE__ << ": at " << j << " slots'h1=" << h1 << std::endl;
-            }
-            break;
-          }
-        }
-      }
-      //std::cout << __LINE__ << ": " << i << " off the end this_sum=" << this_sum << " this_n=" << this_n << std::endl;
-      //std::cout << *this << std::endl;
-      if (this_n == 0) {
-        // If we haven't already looked at the last slot, we need to
-        // account for the fact that we must look at all the slots.
-        this_sum += (slots_.size() - i);
-        ++this_n;
-      }
+      sum += NotFoundAverageProbeLength(i);
       //std::cout << "this_sum=" << this_sum << " this_n=" << this_n << std::endl;
-   finished_with_i:
-      sum += this_sum / this_n;
     }
     return sum / nominal_capacity_;
   }
 
-  double InsertAverageProbeLength() const {
+  // Computes the average probe length for an unsuccessful lookup that
+  // starts at slot `i`.
+  double NotFoundAverageProbeLength(size_t i) const {
+    //std::cout << __LINE__ << ":Looking at " << i << std::endl;
+    double this_sum = 0;
+    size_t this_n = 0;
+    for (size_t j = i; j < slots_.size(); ++j) {
+      const Slot& slot = slots_[j];
+      switch (slot.tag()) {
+        case Tag::kEmpty: {
+          this_sum += (j - i) + 1;
+          ++this_n;
+          return this_sum / this_n;
+        }
+        case Tag::kTombstone:
+        case Tag::kPresent: {
+          size_t h1 = H1(slot.value(), nominal_capacity_);
+          if (h1 > i) {
+            this_sum += (j - i) + 1;
+            ++this_n;
+            //std::cout << __LINE__ << ": at " << j << " this_sum=" << this_sum << " this_n=" << this_n << " slots' h1=" << h1 << std::endl;
+            return this_sum / this_n;
+          }
+          if (h1 == i) {
+            this_sum += (j - i) + 1;
+            ++this_n;
+            //std::cout << __LINE__ << ": at " << j << " this_sum=" << this_sum << " this_n=" << this_n << " slots' h1=" << h1 << std::endl;
+          } else {
+            //std::cout << __LINE__ << ": at " << j << " slots'h1=" << h1 << std::endl;
+          }
+          break;
+        }
+      }
+    }
+    //std::cout << __LINE__ << ": " << i << " off the end this_sum=" << this_sum << " this_n=" << this_n << std::endl;
+    //std::cout << *this << std::endl;
+    if (this_n == 0) {
+      // If we haven't already looked at the last slot, we need to
+      // account for the fact that we must look at all the slots.
+      this_sum += (slots_.size() - i);
+      ++this_n;
+    }
+    return this_sum / this_n;
+  }
 
+  double InsertAverageProbeLength() const {
+    return 0;
   }
 
 #if 0
-  // Computes the average probe length for an unsuccessful lookup by
-  // iterating over the slots and computing, for each slot, the
-  // average cost of an unsuccessful lookup into that slot.
-  double NotFoundAverageProbeLength() const {
-    double sum = 0;
-    for (size_t i = 0; i < slots_.size(); ++i) {
-      sum += NotFoundAverageProbeLength(i);
-    }
-    return sum / slots_.size();
-  }
-
-  // Computes the average probe legnth for an unsuccessful lookup in a
-  // given slot by iterating through the values and taking the average
-  // probe length over the values (including tombstones) that prefer
-  // this slot.
-  double NotFoundAverageProbeLength(size_t slot_number) const;
-
   double InsertAverageProbeLength(UniqueNumbers &numbers) const {
     const size_t capacity = slots_.size();
     const size_t kNumberOfTrails = capacity * 16;
@@ -286,37 +274,6 @@ class Olp {
 #endif
 
 #if 0
-
-  double NotFoundAverageProbeLength(size_t slot_number) const {
-    for (size_t off = 0; off < capacity; ++off) {
-      size_t index = h1 + off;
-      bool wrap = false
-      if (index >= capacity) {
-        index -= capacity;
-      }
-      Slot& slot = slots_[index];
-      if (slot.empty()) {
-        continue;
-      }
-      size_t h1 = H1(slot.value(), capacity);
-
-
-  }
-
-  double NotFoundAverageProbeLength(UniqueNumbers &unique_numbers) const {
-    // Computing the average is tricky, since it may end early based
-    // on comparing the value to what's present.  So let's just pick
-    // some random never-before-seen values and compute their probe
-    // lengths.
-    const size_t kN = slots_.size() * 10;
-    double sum = 0;
-    for (size_t i = 0; i < kN; ++i) {
-      auto [found, length] = Contains(unique_numbers.Next());
-      assert(!found);
-      sum += length;
-    }
-    return sum / kN;
-  }
   double InsertAverageProbeLength(UniqueNumbers &unique_numbers) const {
     const size_t kN = slots_.size() * 10;
     double n = 0;

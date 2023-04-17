@@ -28,3 +28,6 @@ experiments/vary-tombstones.data experiments/increasing-load.data &: experiments
 
 experiments/olp-spike: experiments/olp-spike.cc experiments/hash_function.h
 	$(CXX) $(CXXFLAGS) $< -o $@
+
+experiments/olp-spike.run: experiments/olp-spike
+	cd experiments; ./olp-spike

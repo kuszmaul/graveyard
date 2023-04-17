@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <fstream>
 #include <iostream>
 #include <optional>
 #include <random>
@@ -202,7 +203,7 @@ class Olp {
 
   // Computes the average probe length for an unsuccessful lookup that
   // starts at slot `i`.
-  double NotFoundAverageProbeLength(size_t i) const {
+  double NotFoundAverageProbeLength(const size_t i) const {
     //std::cout << __LINE__ << ":Looking at " << i << std::endl;
     double this_sum = 0;
     size_t this_n = 0;
@@ -246,7 +247,57 @@ class Olp {
   }
 
   double InsertAverageProbeLength() const {
-    return 0;
+    double sum = 0;
+    for (size_t i = 0; i < nominal_capacity_; ++i) {
+      sum += InsertAverageProbeLength(i);
+    }
+    return sum / nominal_capacity_;
+  }
+
+  double InsertAverageProbeLength(const size_t i) const {
+    double sum = 0;
+    size_t n = 0;
+    for (size_t j = i; j < slots_.size(); ++j) {
+      const Slot& slot = slots_[j];
+      switch (slot.tag()) {
+        case Tag::kEmpty: {
+          sum += (j - i) + 1;
+          ++n;
+          return sum / n;
+        }
+        case Tag::kTombstone:
+        case Tag::kPresent: {
+          size_t h1 = H1(slot.value(), nominal_capacity_);
+          if (h1 >= i) {
+            sum += (j - i) + distance_to_non_present(j);
+            ++n;
+          }
+          if (h1 > i) {
+            return sum / n;
+          }
+          continue;
+        }
+      }
+    }
+    if (n == 0) {
+      // If we haven't already looked at the last slot we need to account for it.
+      sum += (slots_.size() - i);
+      ++n;
+    }
+    return sum / n;
+  }
+
+  // Returns the number of slots you must examine, starting at i,
+  // before you find a non-present slot.  If the first slot is
+  // non-empty, then returns 1, for example.
+  size_t distance_to_non_present(size_t i) const {
+    for (size_t j = i; j < slots_.size(); ++j) {
+      const Slot& slot = slots_[j];
+      if (!slot.present()) {
+        return j - i  + 1;
+      }
+    }
+    return slots_.size() - i;
   }
 
 #if 0
@@ -477,24 +528,26 @@ void test() {
 int main() {
   test();
   std::mt19937_64 master_gen;
-  constexpr size_t kN = 1000000;
+  constexpr size_t kN = 1'000'000;
   for (double load_factor : {.95, .98, .99, .995}) {
+    std::ofstream ofile;
+    ofile.open("spike-" + std::to_string(kN) + "-" + std::to_string(load_factor) + ".data");
+    ofile << "#insert_number found notfound insert" << std::endl;
     std::cout << "load=" << load_factor << std::endl;
     std::mt19937_64 gen = master_gen;
     UniqueNumbers unique_numbers(gen);
     Olp olp{kN};
     std::vector<uint64_t> values;
     size_t size = load_factor * kN;
-    size_t report_every = size / 10;
+    size_t report_every = size / 200;
     size_t i_mod_report_every = 0;
     auto do_an_insert = [&](size_t i) {
       uint64_t v = unique_numbers.Next();
       olp.insert(v);
       values.push_back(v);
       if (i_mod_report_every == 0) {
-        std::cout << "probe lengths" << std::endl;
         ProbeLengths probelengths = olp.GetProbeLengths();
-        std::cout << i << " " << probelengths.found << " " << probelengths.notfound << " " << probelengths.insert << std::endl;
+        ofile << i << " " << probelengths.found << " " << probelengths.notfound << " " << probelengths.insert << std::endl;
       }
       ++i_mod_report_every;
       if (i_mod_report_every == report_every) {
@@ -512,6 +565,5 @@ int main() {
       }
       do_an_insert(i);
     }
-    std::cout << std::endl;
   }
 }

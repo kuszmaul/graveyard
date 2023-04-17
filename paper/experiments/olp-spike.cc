@@ -37,7 +37,7 @@ struct ProbeLengths {
   //double insert;
 };
 
-// A 64-bit integer with a special printer
+// A 64-bit integer that prints as a short number (easier to see)
 struct PV {
   uint64_t v;
   explicit PV(uint64_t v) :v(v) {}
@@ -50,92 +50,81 @@ struct PV {
 // This OLP cannot resize.
 class Olp {
  public:
-  explicit Olp(size_t capacity) :slots_(capacity) {}
-  void insert(uint64_t v) {
-    // std::cout << __LINE__ << ": Inserting " << PV(v) << " into " << *this << std::endl;
-    const size_t capacity = slots_.size();
-    assert(size_ < capacity);
-    const size_t base_h1 = H1(v, capacity);
-    size_t h1 = base_h1;  // h1 of v.
-    size_t off_since_v = 0; // offset since we changed v.
-    size_t index = h1;
-    bool wrapped = false;
-    // We may need to wrap around several times if there are tombstones that used up the empty slots.
-    for (size_t off = 0; true; ++off, ++off_since_v, ++index) {
-      if (index >= capacity) {
-        index -= capacity;
-        wrapped = true;
+  explicit Olp(size_t capacity) :slots_(capacity), nominal_capacity_(capacity) {}
+  bool insert(uint64_t v) {
+    assert(size_ <= nominal_capacity_);
+    for (size_t index = H1(v, nominal_capacity_); true; ++index) {
+      assert(index <= slots_.size());
+      if (index == slots_.size()) {
+        slots_.push_back(Slot{});
       }
-      // std::cout << __LINE__ << ":  Trying to insert " << PV(v) << " at " << index << std::endl;
       Slot& slot = slots_[index];
-      const Slot to_insert{wrapped, v};
       switch (slot.tag()) {
         case Tag::kEmpty: {
           ++size_;
-          slot = to_insert;
-          return;
+          slot = Slot(v);
+          return true;
         }
         case Tag::kPresent: {
-          assert(slot.value() != v);
-          if (to_insert < slot) {
-            // std::cout << __LINE__ << ":  at " << index << " swapping slotval=" << to_insert << " into slotval=" << slot << std::endl;
-            v = slot.value();
-            h1 = H1(v, capacity);
-            off_since_v = 0;
-            wrapped = slot.wrapped();
-            slot = to_insert;
-            continue;
+          if (v == slot.value()) {
+            return false;
           }
-          break;
+          if (v < slot.value()) {
+            std::swap(v, slot.value());
+          }
+          continue;
         }
         case Tag::kTombstone: {
-          // std::cout << __LINE__ << ": " << slot << " <? " << to_insert << std::endl;
-          if (! (slot < to_insert)) {
+          if (v <= slot.value() ||
+              index + 1 == slots_.size() ||
+              slots_[index + 1].tag() == Tag::kEmpty ||
+              slots_[index + 1].value() > v) {
+            // If the tombstone is big enough, or if the next slot is
+            // big enough or empty (or non-existent) we can use this
+            // slot.
             ++size_;
-            slot = to_insert;
-            return;
+            slot = Slot(v);
+            return true;
           }
-          break;
+          continue;
         }
       }
     }
-    std::cerr << "Table full" << std::endl;
-    abort();
   }
   bool erase(uint64_t v) {
-    const size_t capacity = slots_.size();
-    assert(size_ < capacity);
-    assert(size_ > 0);
-    size_t h1 = H1(v, capacity);
-    for (size_t off = 0; off < capacity; ++off) {
-      size_t index = h1 + off;
-      bool wrapped = false;
-      if (index >= capacity) {
-        index -= capacity;
-        wrapped = true;
-      }
-      Slot to_erase{wrapped, v};
-      switch (slots_[index].tag()) {
+    for (size_t index = H1(v, nominal_capacity_); index < slots_.size(); ++index) {
+      Slot& slot = slots_[index];
+      switch (slot.tag()) {
         case Tag::kEmpty: {
-          // It's not there.
           return false;
         }
         case Tag::kPresent: {
-          if (slots_[index].value() == v) {
-            slots_[index].ConvertToTombstone();
+          if (v == slot.value()) {
             --size_;
+            if (index + 1 == slots_.size() ||
+                slots_[index + 1].tag() == Tag::kEmpty ||
+                H1(slots_[index + 1].value(), nominal_capacity_) == index + 1) {
+              // This slot can just be an empty.  This can occur if
+              //  * If it's the end of the array,
+              //  * If the next slot is empty, or
+              //  * If the next slot is at its preferred slot.
+
+              slot = Slot();
+            } else {
+              slot.ConvertToTombstone();
+            }
             return true;
           }
-          if (to_erase < slots_[index]) {
+          if (v < slot.value()) {
             return false;
           }
-          break;
+          continue;
         }
         case Tag::kTombstone: {
-          if (to_erase < slots_[index]) {
+          if (v <= slot.value()) {
             return false;
           }
-          break;
+          continue;
         }
       }
     }
@@ -307,48 +296,34 @@ class Olp {
   }
 #endif
 
+  // Returns a `bool` (`true` if `v` is present) and a `size_t` (the
+  // number of slots examined).
   std::pair<bool, size_t/*probe_length*/> Contains(uint64_t v) const {
-    // std::cout << "Finding " << ( v >> 54) << std::endl;
-    const size_t capacity = slots_.size();
-    size_t h1 = H1(v, capacity);
-    for (size_t off = 0; off < capacity; ++off) {
-      size_t index = h1 + off;
-      bool wrapped = false;
-      if (index >= capacity) {
-        index -= capacity;
-        wrapped = true;
-      }
+    size_t probe_length = 1;
+    for (size_t index = H1(v, nominal_capacity_); index < slots_.size(); ++index, ++probe_length) {
       const Slot& slot = slots_[index];
-      // std::cout << "Looking at [" << index << "]=" << slot << std::endl;
-      Slot to_find{wrapped, v};
       switch (slot.tag()) {
-        case Tag::kEmpty: return {false, off + 1};
-        case Tag::kTombstone: {
-          // If the slot > to_find it's not there.
-          // If the slot == to_find it's not there
-          // If slot >= to_find it's not there
-          // if !(slot < to_find) it's not there.
-          // std::cout << __LINE__ << ": compare " << (to_find < slot) << std::endl;
-          if (! (slot < to_find)) {
-            return {false, off + 1};
-          }
-          break;
+        case Tag::kEmpty: {
+          return {false, probe_length};
         }
         case Tag::kPresent: {
-          // std::cout << "prsent" << std::endl;
-          if (slot.value() == v) {
-            return {true, off + 1};
+          if (v == slot.value()) {
+            return {true, probe_length};
           }
-          // std::cout << "not ==" << std::endl;
-          if ((to_find < slot)) {
-            // std::cout << to_find << " <? " << slot << std::endl;
-            return {false, off + 1};
+          if (v < slot.value()) {
+            return {false, probe_length};
           }
-          break;
+          continue;
+        }
+        case Tag::kTombstone: {
+          if (v <= slot.value()) {
+            return {false, probe_length};
+          }
+          continue;
         }
       }
     }
-    return {false, capacity};
+    return {false, probe_length};
   }
 
   // A slot can be empty (nullopt), or a non-empty.  For non-empty it
@@ -362,16 +337,16 @@ class Olp {
     enum Tag {kEmpty, kPresent, kTombstone};
 
     Slot() :tag_{kEmpty} {}
-    Slot(bool wrapped, uint64_t v) :tag_{kPresent}, wrapped_(wrapped), value_(v) {}
+    explicit Slot(uint64_t v) :tag_{kPresent}, value_(v) {}
     bool empty() const { return tag_ == kEmpty; }
     bool present() const { return tag_ == kPresent; }
     bool tombstone() const { return tag_ == kTombstone; }
     // Requires not empty.
-    bool wrapped() const {
-      assert(tag_ != kEmpty);
-      return wrapped_;
-    }
     uint64_t value() const {
+      assert(tag_ != kEmpty);
+      return value_;
+    }
+    uint64_t& value() {
       assert(tag_ != kEmpty);
       return value_;
     }
@@ -385,10 +360,6 @@ class Olp {
    private:
     // Requires a and b not empty.
     friend bool operator<(const Slot &a, const Slot &b) {
-      assert(a.tag_ != kEmpty && b.tag_ != kEmpty);
-      if (a.wrapped_ != b.wrapped_)  {
-        return a.wrapped_;
-      }
       return a.value_ < b.value_;
     }
     friend std::ostream& operator<<(std::ostream& os, const Slot& slot) {
@@ -396,16 +367,12 @@ class Olp {
         if (slot.tombstone()) {
           os << "T";
         }
-        if (slot.wrapped()) {
-          os << "w";
-        }
         return os << PV(slot.value());
       } else {
         return os << "_";
       }
     }
     Tag tag_;
-    bool wrapped_;
     uint64_t value_;
   };
 
@@ -428,6 +395,10 @@ class Olp {
   // The number of elements in the table
   size_t size_ = 0;
   std::vector<Slot> slots_;
+  // We don't wrap, so `slots_` could be bigger than the capacity
+  // specified at the time of construction.  `nominal_capacity_` is
+  // the specified-at-construction capacity.
+  size_t nominal_capacity_;
 };
 
 uint64_t RemoveRandom(std::vector<uint64_t> &values, std::mt19937_64 &gen) {
@@ -492,7 +463,7 @@ int main() {
   std::mt19937_64 master_gen;
   constexpr size_t kN = 1000000;
   for (double load_factor : {.95, .98, .99, .995}) {
-    std::cout << "load=-" << load_factor;
+    std::cout << "load=" << load_factor << std::endl;
     std::mt19937_64 gen = master_gen;
     UniqueNumbers unique_numbers(gen);
     Olp olp{kN};

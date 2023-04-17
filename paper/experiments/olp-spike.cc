@@ -35,22 +35,36 @@ struct ProbeLengths {
   double found, notfound, insert;
 };
 
+// A 64-bit integer with a special printer
+struct PV {
+  uint64_t v;
+  explicit PV(uint64_t v) :v(v) {}
+  friend std::ostream& operator<<(std::ostream& os, PV pv) {
+    return os << (pv.v >> 54) << "." << std::hex << (pv.v % 16) << std::dec;
+  }
+};
+
+
 // This OLP cannot resize.
 class Olp {
  public:
   explicit Olp(size_t capacity) :slots_(capacity) {}
   void insert(uint64_t v) {
+    // std::cout << __LINE__ << ": Inserting " << PV(v) << " into " << *this << std::endl;
     const size_t capacity = slots_.size();
     assert(size_ < capacity);
- try_again:
-    size_t h1 = H1(v, capacity);
-    for (size_t off = 0; off < capacity; ++off) {
-      size_t index = h1 + off;
-      bool wrapped = false;
+    const size_t base_h1 = H1(v, capacity);
+    size_t h1 = base_h1;  // h1 of v.
+    size_t off_since_v = 0; // offset since we changed v.
+    size_t index = h1;
+    bool wrapped = false;
+    // We may need to wrap around several times if there are tombstones that used up the empty slots.
+    for (size_t off = 0; true; ++off, ++off_since_v, ++index) {
       if (index >= capacity) {
         index -= capacity;
         wrapped = true;
       }
+      // std::cout << __LINE__ << ":  Trying to insert " << PV(v) << " at " << index << std::endl;
       Slot& slot = slots_[index];
       const Slot to_insert{wrapped, v};
       switch (slot.tag()) {
@@ -62,9 +76,13 @@ class Olp {
         case Tag::kPresent: {
           assert(slot.value() != v);
           if (to_insert < slot) {
+            // std::cout << __LINE__ << ":  at " << index << " swapping slotval=" << to_insert << " into slotval=" << slot << std::endl;
             v = slot.value();
+            h1 = H1(v, capacity);
+            off_since_v = 0;
+            wrapped = slot.wrapped();
             slot = to_insert;
-            goto try_again;
+            continue;
           }
           break;
         }
@@ -380,7 +398,7 @@ class Olp {
         if (slot.wrapped()) {
           os << "w";
         }
-        return os << (slot.value() >> 54);
+        return os << PV(slot.value());
       } else {
         return os << "_";
       }
@@ -433,7 +451,7 @@ void test() {
       uint64_t v = numbers.Next();
       olp.insert(v);
       values.push_back(v);
-      // std::cout << "after v=" << (v >> 54) << " load=" << load_factor << " table=" << olp << std::endl;
+      //std::cout << __LINE__ << ":after v=" << (v >> 54) << " load=" << load_factor << " table=" << olp << std::endl;
       olp.Validate();
       //std::cout << "ok" << std::endl;
     }

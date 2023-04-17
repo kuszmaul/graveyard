@@ -34,7 +34,7 @@ class UniqueNumbers {
 struct ProbeLengths {
   double found;
   double notfound;
-  //double insert;
+  double insert;
 };
 
 // A 64-bit integer that prints as a short number (easier to see)
@@ -163,7 +163,7 @@ class Olp {
     return ProbeLengths{
       .found = FoundAverageProbeLength(),
       .notfound = NotFoundAverageProbeLength(),
-      //.insert = InsertAverageProbeLength()
+      .insert = InsertAverageProbeLength()
     };
   }
 
@@ -185,6 +185,12 @@ class Olp {
     return found_sum / n;
   }
 
+  // Computes the average probe length for an unsuccessful lookup.
+  // For each slot, we find the range of slots that we must actually
+  // look at, take the average (since a lookup could end at any
+  // particular non-empty slot (based on the hash getting too big),
+  // and we assume that it's equal probability that it ends at any
+  // particular slot.
   double NotFoundAverageProbeLength() const {
     double sum = 0;
     for (size_t i = 0; i < nominal_capacity_; ++i) {
@@ -232,6 +238,10 @@ class Olp {
       sum += this_sum / this_n;
     }
     return sum / nominal_capacity_;
+  }
+
+  double InsertAverageProbeLength() const {
+
   }
 
 #if 0
@@ -527,8 +537,7 @@ int main() {
       if (i_mod_report_every == 0) {
         std::cout << "probe lengths" << std::endl;
         ProbeLengths probelengths = olp.GetProbeLengths();
-        std::cout << i << " " << probelengths.found << " " << probelengths.notfound << std::endl;
-        //std::cout << probelengths.found << " " << probelengths.notfound << " " << probelengths.insert << std::endl;
+        std::cout << i << " " << probelengths.found << " " << probelengths.notfound << " " << probelengths.insert << std::endl;
       }
       ++i_mod_report_every;
       if (i_mod_report_every == report_every) {

@@ -303,7 +303,7 @@ However, linear probing also famously comes with a major drawback \cite{...}: as
 
 Thus clustering causes linear probing to scale poorly as the hash table fills to high load factors. This is widely cited as the central reason that researchers often turn to other hash table designs (e.g., quadratic probing \cite{...}, double hashing \cite{...}, cuckoo hashing \cite{...}) when designing library hash tables.
 
-\paragraph{Salvaging queries with ordered linear probing.} In 1973, Amble and Knuth \cite{??} showed how to how to modify linear probing in order to improve query time to $O(x)$. 
+\paragraph{Salvaging queries with ordered linear probing.} In 1973, Amble and Knuth \cite{AmbleKn74} showed how to how to modify linear probing in order to improve query time to $O(x)$. 
 
 Notice that, even in classical linear probing, not all positive queries are slow. If we fill a table from empty to $1 - 1/x$ full, then the vast majority of elements will have been inserted \emph{when the hash table was still relatively empty}. These elements $u$ are much quicker to query. In fact, if we define the \emph{offset} of an element $u$ to be the distance between where $u$ resides and its target position $h(u)$, then the \emph{average offset} across all the elements in the hash table will be $O(x)$. The problem is that these offsets are not evenly $O(x)$ across the board---elements that were inserted at load factor close to $1 - 1/x$ will have much higher offsets on average. 
 
@@ -387,13 +387,13 @@ Todo: Define ``an insertion-only workload'' is a workload in which the
 only modifications to the table are insertions.  The workload may also
 have queries.
 
-Background: Most industrial-quality hash tables (e.g.,
-\cite{Abseil, BronsonSh19} keep the load factor low.  For example, Google
-(Abseil) and Facebook (F14) keep the load factor below $7/8$ (87.5\%),
-and then double the table, reducing the load factor to $7/16$
-(43.75\%).  If a workload is insertion-only, the expected load factor
-would be thus some average of 87.5\% and 43.75\%.  If we believe
-Benford's rule \cite{Benford38} applies (and Facebook apparently does
+Background: Most industrial-quality hash tables (e.g., \cite{Abseil17,
+  BronsonSh19} keep the load factor low.  For example, Google (Abseil)
+and Facebook (F14) keep the load factor below $7/8$ (87.5\%), and then
+double the table, reducing the load factor to $7/16$ (43.75\%).  If a
+workload is insertion-only, the expected load factor would be thus
+some average of 87.5\% and 43.75\%.  If we believe Benford's rule
+\cite{Benford38} applies (and Facebook apparently does
 \cite{BronsonSh19}), then we take the geometric average, and get
 61.8\%.  We have heard that for real workloads at google, the average
 load factor is closer to 55\%.  That's probably because real workloads

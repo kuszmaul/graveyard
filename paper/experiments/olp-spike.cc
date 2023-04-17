@@ -33,7 +33,7 @@ class UniqueNumbers {
 
 struct ProbeLengths {
   double found;
-  //double notfound;
+  double notfound;
   //double insert;
 };
 
@@ -162,7 +162,7 @@ class Olp {
   ProbeLengths GetProbeLengths() const {
     return ProbeLengths{
       .found = FoundAverageProbeLength(),
-      //.notfound = NotFoundAverageProbeLength(),
+      .notfound = NotFoundAverageProbeLength(),
       //.insert = InsertAverageProbeLength()
     };
   }
@@ -183,6 +183,9 @@ class Olp {
       }
     }
     return found_sum / n;
+  }
+
+  double NotFoundAverageProbeLength() const {
   }
 
 #if 0

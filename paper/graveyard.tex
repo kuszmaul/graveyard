@@ -388,7 +388,7 @@ only modifications to the table are insertions.  The workload may also
 have queries.
 
 Background: Most industrial-quality hash tables (e.g.,
-\cite{Abseil,Folly} keep the load factor low.  For example, Google
+\cite{Abseil, BronsonSh19} keep the load factor low.  For example, Google
 (Abseil) and Facebook (F14) keep the load factor below $7/8$ (87.5\%),
 and then double the table, reducing the load factor to $7/16$
 (43.75\%).  If a workload is insertion-only, the expected load factor

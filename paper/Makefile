@@ -29,5 +29,14 @@ experiments/vary-tombstones.data experiments/increasing-load.data &: experiments
 experiments/olp-spike: experiments/olp-spike.cc experiments/hash_function.h
 	$(CXX) $(CXXFLAGS) $< -o $@
 
-experiments/olp-spike.run: experiments/olp-spike
+SPIKES = 950000 980000 990000 995000
+SPIKE_DATA = $(patsubst %,experiments/spike-1000000-0.%.data, $(SPIKES))
+SPIKE_PDFS = $(patsubst %,experiments/spike-1000000-0.%.pdf, $(SPIKES))
+
+$(SPIKE_DATA) &: experiments/olp-spike
 	cd experiments; ./olp-spike
+
+$(SPIKE_PDFS) &: experiments/olp-spike.gnuplot $(SPIKE_DATA)
+	cd experiments; gnuplot olp-spike.gnuplot
+
+graveyard.pdf: $(SPIKE_PDFS)

@@ -32,7 +32,9 @@ class UniqueNumbers {
 };
 
 struct ProbeLengths {
-  double found, notfound, insert;
+  double found;
+  //double notfound;
+  //double insert;
 };
 
 // A 64-bit integer with a special printer
@@ -168,17 +170,15 @@ class Olp {
     assert(count == size_);
   }
 
-#if 0
   ProbeLengths GetProbeLengths() const {
     return ProbeLengths{
       .found = FoundAverageProbeLength(),
-      .notfound = NotFoundAverageProbeLength(),
-      .insert = InsertAverageProbeLength()};
+      //.notfound = NotFoundAverageProbeLength(),
+      //.insert = InsertAverageProbeLength()
+    };
   }
-#endif
 
  private:
-#if 0
   // Computes the average probe length for a successful lookup by
   // iterating through the present values and determining the probe
   // length to find each value.
@@ -196,6 +196,7 @@ class Olp {
     return found_sum / n;
   }
 
+#if 0
   // Computes the average probe length for an unsuccessful lookup by
   // iterating over the slots and computing, for each slot, the
   // average cost of an unsuccessful lookup into that slot.
@@ -488,31 +489,43 @@ void test() {
 
 int main() {
   test();
-#if 0
   std::mt19937_64 master_gen;
-  constexpr size_t kN = 100;
+  constexpr size_t kN = 1000000;
   for (double load_factor : {.95, .98, .99, .995}) {
+    std::cout << "load=-" << load_factor;
     std::mt19937_64 gen = master_gen;
     UniqueNumbers unique_numbers(gen);
     Olp olp{kN};
     std::vector<uint64_t> values;
     size_t size = load_factor * kN;
-    size_t tenth = size / 10;
-    size_t i_mod_tenth = 0;
-    for (size_t i = 0; i < size; ++i) {
+    size_t report_every = size / 10;
+    size_t i_mod_report_every = 0;
+    auto do_an_insert = [&](size_t i) {
       uint64_t v = unique_numbers.Next();
       olp.insert(v);
       values.push_back(v);
-      if (i_mod_tenth == 0) {
+      if (i_mod_report_every == 0) {
         std::cout << "probe lengths" << std::endl;
         ProbeLengths probelengths = olp.GetProbeLengths();
-        std::cout << probelengths.found << " " << probelengths.notfound << " " << probelengths.insert << std::endl;
+        std::cout << i << " " << probelengths.found << std::endl;
+        //std::cout << probelengths.found << " " << probelengths.notfound << " " << probelengths.insert << std::endl;
       }
-      ++i_mod_tenth;
-      if (i_mod_tenth == tenth) {
-        i_mod_tenth = 0;
+      ++i_mod_report_every;
+      if (i_mod_report_every == report_every) {
+        i_mod_report_every = 0;
       }
+    };
+    for (size_t i = 0; i < size; ++i) {
+      do_an_insert(i);
     }
+    for (size_t i = size; i < 2 * size; ++i) {
+      {
+        uint64_t v = RemoveRandom(values, gen);
+        bool erased = olp.erase(v);
+        assert(erased);
+      }
+      do_an_insert(i);
+    }
+    std::cout << std::endl;
   }
-#endif
 }

@@ -1,4 +1,7 @@
 *.aux
 graveyard.pdf
 *.log
+*.bbl
+*.blg
+
 

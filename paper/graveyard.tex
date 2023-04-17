@@ -223,7 +223,7 @@ runs, it may be passed an invalid pointer.
   doubles the table size (it uses power-of-two table sizes) and
   reduces the load to 7/16 full.  This ought to produce a table that
   runs at 62\% full (if Benford's rule applies, you expect the
-  geometric mean of the low- and hi- load factor.)  The calculations
+  geometric mean of the low- and hi- load factor.  \cite{Benford38})  The calculations
   for the Facebook table are similar.
 
 \item Not a requirement: Fine-grained parallelism.  Many authors data
@@ -251,7 +251,7 @@ Explain tombstones and graveyards.
 Our table:
 \begin{itemize}
 \item Runs at 3/4 to 7/8 full (81\% on average if you believe in
-  Benford's rule).  In our benchmarks, we use about 30\% less memory
+  Benford's rule \cite{Benford38}).  In our benchmarks, we use about 30\% less memory
   than the Facebook or Google tables.
 \item Performance is about the same as the Facebook or Google tables.
 \item High-water memory is 33\% lower.
@@ -393,11 +393,12 @@ Background: Most industrial-quality hash tables (e.g.,
 and then double the table, reducing the load factor to $7/16$
 (43.75\%).  If a workload is insertion-only, the expected load factor
 would be thus some average of 87.5\% and 43.75\%.  If we believe
-Benford's rule \cite{Benford} applies, then we take the geometric
-average, and get 61.8\%.  We have heard that for real workloads at
-google, the average load factor is closer to 55\%.  That's probably
-because real workloads also remove items from tables, and removing an
-item never causes a rehash.
+Benford's rule \cite{Benford38} applies (and Facebook apparently does
+\cite{BronsonSh19}), then we take the geometric average, and get
+61.8\%.  We have heard that for real workloads at google, the average
+load factor is closer to 55\%.  That's probably because real workloads
+also remove items from tables, and removing an item never causes a
+rehash.
 
 One justification for using quadratic probing (Google) or double
 hashing (Facebook) is that with traditional unordered linear probing
@@ -512,5 +513,8 @@ We conclude that $2$ is about right.
 \section{Experiment 4: Traditional Spike}
 
 How well does the search distance work?
+
+\bibliographystyle{plainurl}
+\bibliography{hashing}
 
 \end{document}

@@ -113,7 +113,7 @@ const EnumsAndStrings<Implementation> *implementation_enum_and_strings =
          {Implementation::kFacebookIdentityHash, "facebook-idhash"},
          {Implementation::kOLPIdentityHash, "OLP-idhash"},
          {Implementation::kGraveyard3578, "graveyard3578"},
-         {Implementation::kGraveyard1278, "graveyard1278"},
+         {Implementation::kGraveyardLikeAbseil, "graveyard-likeabseil"},
          {Implementation::kGraveyard2345, "graveyard2345"},
 	 {Implementation::kGraveyard9092, "graveyard9092"},
 	 {Implementation::kGraveyard9092NoGraveyard, "graveyard9092NoGraveyard"},

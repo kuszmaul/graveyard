@@ -37,8 +37,7 @@ enum class Implementation {
   // Graveyard variants
   kGraveyard3578, // Fill the table to 7/8 then rehash to 3/5 full (instead of
                   // 3/4 full) to reduce number of rehashes.
-  kGraveyard1278, // Fill the table to 7/8 then rehash to 1/2 full (instead of
-                  // 3/4 full) to reduce number of rehashes.
+  kGraveyardLikeAbseil, // Fill the table to 7/8 then rehash to 7/16 full with no graveyard tombstones.
   kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of
                   // 3/4 full) to reduce number of rehashes.
   kGraveyard9092, // Fill to 92.5% full then hash to 90%

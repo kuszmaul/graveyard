@@ -48,15 +48,16 @@ public:
 using Int64Traits3578 = Traits3578<Int64Traits>;
 using Graveyard3578 = yobiduck::internal::HashTable<Int64Traits3578>;
 
-template <class Traits> class Traits1278 : public Traits {
+template <class Traits> class TraitsLikeAbseil : public Traits {
 public:
   static constexpr size_t full_utilization_numerator = 7;
   static constexpr size_t full_utilization_denominator = 8;
-  static constexpr size_t rehashed_utilization_numerator = 1;
-  static constexpr size_t rehashed_utilization_denominator = 2;
+  static constexpr size_t rehashed_utilization_numerator = 7;
+  static constexpr size_t rehashed_utilization_denominator = 16;
+  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
 };
-using Int64Traits1278 = Traits1278<Int64Traits>;
-using Graveyard1278 = yobiduck::internal::HashTable<Int64Traits1278>;
+using Int64TraitsLikeAbseil = TraitsLikeAbseil<Int64Traits>;
+using GraveyardLikeAbseil = yobiduck::internal::HashTable<Int64TraitsLikeAbseil>;
 
 template <class Traits> class Traits2345 : public Traits {
 public:
@@ -139,8 +140,8 @@ int main(int argc, char *argv[]) {
           ImplementationString(implementation));
       break;
     }
-    case Implementation::kGraveyard1278: {
-      IntHashSetBenchmark<Graveyard1278>(
+    case Implementation::kGraveyardLikeAbseil: {
+      IntHashSetBenchmark<GraveyardLikeAbseil>(
           Get_allocated_memory_size,
           ImplementationString(implementation));
       break;

@@ -543,6 +543,35 @@ How well does the search distance work?
 
 \section{Experiment 5: Compare our library to others}
 
+\figref{libraries} shows some microbenchmarks for our library,
+compared to Abseil~\cite{Abseil17}\footnote{Abseil commit
+\texttt{81927248} Mar 21, 2023.}, F14~\cite{BronsonSh19}\footnote{F14
+commit \texttt{22b89282} Jan 30, 2023}, and Libcuckoo~\cite{LiAnKa14,
+  GoyalFaLi23}\footnote{Libcuckoo commit \texttt{e1d74917} Jan 1,
+2023.  Note that Libcuckoo provides a \texttt{map}, but does not
+provide a \texttt{set}, and all our benchmarks are on \texttt{set}.
+So LibCuckoo has larger value objects than the other experiments, and
+our measurement of LibCuckoo's memory doesn't include the extra space
+for the mapped value.}.
+
+Libcuckoo is slower on all operations than the other tables.  It's not
+too surprising that insertions are slow with cuckoo hashing, but the
+lookups are slow too.  It turns out that Libcuckoo does not use vector
+instructions, which probably is the reason lookups are slow.
+Furthermore comparing Libcuckoo to Graveyard, F14, or Abseil is not an
+apples-to-apples comparison since Libcuckoo offers concurrent accesses
+using hardware transactional memory (which seems to be a dead
+technology), and provides no reference stability (whereas the
+convention adopted by F14 and Abseil is that references remain stable
+unless the table is rehashed, and they provide a way to reason about
+when the table will be rehashed.)
+
+Google is the fastest except for successful loookups, where facebook
+is the fastest.  Graveyard is a little slower, probably because of its
+higher load factor.  \todo{State the load factors used by graveyard.}
+
+\todo{Memory footprint and high-water marks.}
+
 \begin{figure}
   \begin{center}
     \begin{tabular}{cc}

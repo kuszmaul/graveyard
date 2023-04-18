@@ -44,3 +44,9 @@ local_repository(
     name = "folly",
     path = "/home/bradley/github/folly",
 )
+
+local_repository(
+    name = "libcuckoo",
+    path = "/home/bradley/github/libcuckoo",
+    )
+    

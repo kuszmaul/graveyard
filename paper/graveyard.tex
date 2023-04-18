@@ -543,6 +543,18 @@ How well does the search distance work?
 
 \section{Experiment 5: Compare our library to others}
 
+\begin{figure}
+  \begin{center}
+  \includegraphics[width=75mm]{experiments/library-insertion}
+  \end{center}
+\caption{Comparison of the speed of Graveyard vs.~Google (Abseil)
+  vs.~Facebook (F14) vs.~LibCuckoo.  The X axis is the table size, and
+  the Y axis is the time-per-operation for the entire construction.
+  Lower is better.  The shaded region shows a 95\% confidence interval
+  (actually, two standard deviations).}
+\figlabel{libraries}
+\end{figure}
+
 \section{Experiment}
 
 How much does the hash function cost?

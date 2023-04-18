@@ -14,6 +14,7 @@
 #include "graveyard_set.h"
 #include "hash_benchmark.h"      // for IntHashSetBenchmark
 #include "ordered_linear_probing_set.h"
+#include "libcuckoo/cuckoohash_map.hh"
 
 struct IdentityHash {
   size_t operator()(uint64_t v) const { return v; }
@@ -97,6 +98,14 @@ int main(int argc, char *argv[]) {
   };
   auto get_allocated_memory_size = [](const auto &table) {
     return table.getAllocatedMemorySize();
+  };
+  auto cuckoo_allocated_memory_size = [](const auto &table) {
+    return table.capacity() * (1 + // for the partial_t
+                               1 + // for the occupied
+                               // Don't penalize libcuckoo for not
+                               // implementating a set, so just count
+                               // the size of the key.
+                               sizeof(uint64_t));
   };
   auto swiss_memory_estimator = [](const auto &table) {
     using table_type = std::remove_reference_t<decltype(table)>;
@@ -195,6 +204,13 @@ int main(int argc, char *argv[]) {
           get_allocated_memory_size,
           ImplementationString(implementation));
       break;
+    }
+    case Implementation::kLibCuckoo: {
+      using CuckooHash = libcuckoo::cuckoohash_map<uint64_t, uint64_t>;
+      IntHashSetBenchmark<CuckooHash>(
+          cuckoo_allocated_memory_size,
+          "cuckoo"
+                                      );
     }
     }
   }

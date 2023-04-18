@@ -11,7 +11,8 @@ cc_binary(
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         "@folly//folly/container:F14Set",
-    ],
+        "@libcuckoo//libcuckoo:cuckoohash_map",
+	],
 )
 
 cc_library(

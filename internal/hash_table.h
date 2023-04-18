@@ -124,17 +124,38 @@ struct HashTableTraits {
   static constexpr size_t kCacheLineSize = 64;
   static constexpr size_t kH2Modulo = 128;
 
-  // The hash tables range from 3/4 full to 7/8 full (unless there are erase
-  // operations, in which case a table might be less than 3/4 full).
-  // TODO: Make these be "kConstant".
-  static constexpr size_t full_utilization_numerator = 7;
-  static constexpr size_t full_utilization_denominator = 8;
-  static constexpr size_t rehashed_utilization_numerator = 3;
-  static constexpr size_t rehashed_utilization_denominator = 4;
-
+#if 1
+  static constexpr size_t full_utilization_numerator = 9;
+  static constexpr size_t full_utilization_denominator = 10;
+  static constexpr size_t rehashed_utilization_numerator = 6;
+  static constexpr size_t rehashed_utilization_denominator = 10;
   // When rehashing, add a tombstone every `kTombstonePeriod` slots.
   // Set this to `std::limits<size_t>::max()` for no tombstones.
-  static constexpr std::optional<size_t> kTombstonePeriod = 28;
+  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+
+#else
+  // Rehash when 24/28 full, and then make it be 23/28 full.  Put in
+  // 2/28 tombstone (with 3/28 empty).
+  static constexpr size_t full_utilization_numerator = 24;
+  static constexpr size_t full_utilization_denominator = 28;
+  static constexpr size_t rehashed_utilization_numerator = 23;
+  static constexpr size_t rehashed_utilization_denominator = 28;
+  // When rehashing, add a tombstone every `kTombstonePeriod` slots.
+  // Set this to `std::limits<size_t>::max()` for no tombstones.
+  static constexpr std::optional<size_t> kTombstonePeriod = 14;
+#endif
+
+  //  // The hash tables range from 3/4 full to 7/8 full (unless there are erase
+  //  // operations, in which case a table might be less than 3/4 full).
+  //  // TODO: Make these be "kConstant".
+  //  static constexpr size_t full_utilization_numerator = 7;
+  //  static constexpr size_t full_utilization_denominator = 8;
+  //  static constexpr size_t rehashed_utilization_numerator = 3;
+  //  static constexpr size_t rehashed_utilization_denominator = 4;
+  //
+  //  // When rehashing, add a tombstone every `kTombstonePeriod` slots.
+  //  // Set this to `std::limits<size_t>::max()` for no tombstones.
+  //  static constexpr std::optional<size_t> kTombstonePeriod = 28;
 
   // When rehashing, construct a rehash_callback, which is a functor,
   // and call it with the table and the size.  This allows code to
@@ -1084,9 +1105,9 @@ void HashTable<Traits>::InsertAscending(value_type value,
   const size_t h2 = buckets_.H2(hash);
   size_t bucket_to_try = preferred_bucket;
   if (insert_tombstones && Traits::kTombstonePeriod.has_value()) {
-    LOG(INFO) << "Inserting tombstones";
+    //LOG(INFO) << "Inserting tombstones";
   } else {
-    LOG(INFO) << "Not inserting tombstones";
+    //LOG(INFO) << "Not inserting tombstones";
   }
   while (true) {
     // TODO: Do something better if this CHECK fails.
@@ -1101,7 +1122,7 @@ void HashTable<Traits>::InsertAscending(value_type value,
     if constexpr (insert_tombstones && Traits::kTombstonePeriod.has_value()) {
       size_t global_slot_number = bucket_to_try * Traits::kSlotsPerBucket;
       size_t mod_period = global_slot_number % *Traits::kTombstonePeriod;
-      static_assert(Traits::kSlotsPerBucket < *Traits::kTombstonePeriod);
+      static_assert(Traits::kSlotsPerBucket <= *Traits::kTombstonePeriod);
       if (mod_period >= *Traits::kTombstonePeriod - Traits::kSlotsPerBucket) {
         // Leave a tombstone in the last bucket of the ones in the
         // same period.
@@ -1157,7 +1178,6 @@ void HashTable<Traits>::CopyFrom(const Buckets<Traits> &buckets) {
 
 template <class Traits>
 void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
-  LOG(INFO) << "Rehash from size=" << size();
   size_t bucket_number = 0;
   size_t first_uninitialized_bucket = 0;
   for (Bucket<Traits> &bucket : buckets) {
@@ -1203,7 +1223,6 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
 }
 
 template <class Traits> void HashTable<Traits>::rehash_internal(size_t slot_count) {
-  LOG(INFO) << "rehash internal " << slot_count << " from " << size();
   if (slot_count == 0) {
     slot_count = ceil(size() * Traits::full_utilization_denominator,
                       Traits::full_utilization_numerator);

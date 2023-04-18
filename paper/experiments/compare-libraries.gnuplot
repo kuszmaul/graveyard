@@ -12,11 +12,22 @@ set ylabel "Time per operation (ns)"
 set title "Insertion-only workload (from empty, no reserve)"
 set output "library-insertion.pdf"
 set yrange [0:600]
-plot "../../data/insert_graveyard.data" using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 1 title "Graveyard",\
-     "../../data/insert_google.data"           using 1:($2/$1)                     with lines       linecolor rgb Gcolor  dt 1 title "Google",\
-     "../../data/insert_facebook.data"         using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 1 title "Facebook",\
-     "../../data/insert_cuckoo.data"         using 1:($2/$1)                     with lines       linecolor rgb Ccolor dt 1 title "Libcuckoo",\
-     "../../data/insert_graveyard.data"        using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor  fs transparent solid 0.1 notitle,\
-     "../../data/insert_google.data"           using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor  fs transparent solid 0.1 notitle,\
-     "../../data/insert_facebook.data"         using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
-     "../../data/insert_cuckoo.data"           using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Ccolor  fs transparent solid 0.1 notitle,\
+plot "../../data/insert_graveyard.data"          using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 1 title "Graveyard",\
+     "../../data/insert_google.data"             using 1:($2/$1)                     with lines       linecolor rgb Gcolor  dt 1 title "Google",\
+     "../../data/insert_facebook.data"           using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 1 title "Facebook",\
+     "../../data/insert_cuckoo.data"             using 1:($2/$1)                     with lines       linecolor rgb Ccolor dt 1 title "Libcuckoo",\
+     "../../data/insert_graveyard.data"          using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor  fs transparent solid 0.1 notitle,\
+     "../../data/insert_google.data"             using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor  fs transparent solid 0.1 notitle,\
+     "../../data/insert_facebook.data"           using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
+     "../../data/insert_cuckoo.data"             using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Ccolor  fs transparent solid 0.1 notitle,\
+
+set title "Insertion-only workload (from empty, reserved)"
+set output "library-reserved-insertion.pdf"
+plot "../../data/reserved-insert_graveyard.data" using 1:($2/$1)                     with lines       linecolor rgb Tcolor  dt 1 title "Graveyard",\
+     "../../data/reserved-insert_google.data"    using 1:($2/$1)                     with lines       linecolor rgb Gcolor  dt 1 title "Google",\
+     "../../data/reserved-insert_facebook.data"  using 1:($2/$1)                     with lines       linecolor rgb FBcolor dt 1 title "Facebook",\
+     "../../data/reserved-insert_cuckoo.data"    using 1:($2/$1)                     with lines       linecolor rgb Ccolor dt 1 title "Libcuckoo",\
+     "../../data/reserved-insert_graveyard.data" using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Tcolor  fs transparent solid 0.1 notitle,\
+     "../../data/reserved-insert_google.data"    using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Gcolor  fs transparent solid 0.1 notitle,\
+     "../../data/reserved-insert_facebook.data"  using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb FBcolor fs transparent solid 0.1 notitle,\
+     "../../data/reserved-insert_cuckoo.data"    using 1:($2/$1-$4/$1):($2/$1+$4/$1) with filledcurve linecolor rgb Ccolor  fs transparent solid 0.1 notitle,\

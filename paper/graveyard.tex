@@ -545,7 +545,12 @@ How well does the search distance work?
 
 \begin{figure}
   \begin{center}
-  \includegraphics[width=75mm]{experiments/library-insertion}
+    \begin{tabular}{cc}
+    \includegraphics[width=75mm]{experiments/library-insertion} &
+    \includegraphics[width=75mm]{experiments/library-reserved-insertion} \\
+    (a) Insertion from empty with no \texttt{reserve()}. &
+    (b) Insertion from empty with \texttt{reserve()}. \\
+    \end{tabular}
   \end{center}
 \caption{Comparison of the speed of Graveyard vs.~Google (Abseil)
   vs.~Facebook (F14) vs.~LibCuckoo.  The X axis is the table size, and

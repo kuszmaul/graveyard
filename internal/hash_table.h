@@ -980,7 +980,19 @@ HashTable<Traits>::find(const key_arg<K> &key, size_t hash) {
     const size_t preferred_bucket = buckets_.H1(hash);
     const size_t h2 = buckets_.H2(hash);
     const size_t distance = buckets_[preferred_bucket].search_distance;
-    for (size_t i = 0; i <= distance; ++i) {
+    //__builtin_prefetch(&buckets_[preferred_bucket].h2[0]);
+    ////__builtin_prefetch(&buckets_[preferred_bucket + 1].h2[0]);
+    //__builtin_prefetch(&buckets_[preferred_bucket].h2[0] + 1 * Traits::kCacheLineSize);
+    //__builtin_prefetch(&buckets_[preferred_bucket].h2[0] + 2 * Traits::kCacheLineSize);
+    ////__builtin_prefetch(&buckets_[preferred_bucket].h2[0] + 3 * Traits::kCacheLineSize);
+    {
+      Bucket<Traits> &bucket = buckets_[preferred_bucket];
+      size_t idx = bucket.FindElement(h2, key, get_key_eq_ref());
+      if (idx < Traits::kSlotsPerBucket) {
+        return iterator{&bucket, idx};
+      }
+    }
+    for (size_t i = 1; i <= distance; ++i) {
       // Prefetch seems to hurt lookup.  Note that F14 prefetches the entire
       // bucket up to a certain number of cache lines.
       //   __builtin_prefetch(&buckets_[preferred_bucket + i + 1].h2[0]);

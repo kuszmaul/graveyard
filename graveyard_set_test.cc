@@ -18,6 +18,7 @@
 #include "absl/hash/hash.h"
 #include "absl/log/check.h"
 #include "absl/random/random.h"
+#include "benchmark.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -212,12 +213,6 @@ struct IdentityHasher {
   size_t operator()(const size_t v) const { return v; }
 };
 
-namespace {
-inline uint64_t operator-(struct timespec a, struct timespec b) {
-  return (a.tv_sec - b.tv_sec) * 1'000'000'000ul + a.tv_nsec - b.tv_nsec;
-}
-} // namespace
-
 TEST(GraveyardSet, RehashTime) {
   constexpr size_t kSize = 1000000;
   GraveyardSet<size_t> set;
@@ -235,6 +230,27 @@ TEST(GraveyardSet, RehashTime) {
     std::cout << "Rehash took " << elapsed / 1'000'000 << "." << std::setw(6)
               << elapsed % 1'000'000 << "ms" << std::endl;
   }
+}
+
+TEST(GraveyardSet, CopyTime) {
+  constexpr size_t kSize = 1000000;
+  GraveyardSet<size_t> set;
+  set.reserve(kSize);
+  for (size_t i = 0; i < kSize; ++i) {
+    set.insert(i);
+  }
+  for (size_t j = 0; j < 3; ++j) {
+    struct timespec start;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    auto set2 = set;
+    DoNotOptimize(set2);
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    uint64_t elapsed = end - start;
+    std::cout << "Rehash took " << elapsed / 1'000'000 << "." << std::setw(6)
+              << elapsed % 1'000'000 << "ms" << std::endl;
+  }
+
 }
 
 ptrdiff_t count_existing = 0;

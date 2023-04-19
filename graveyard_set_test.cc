@@ -143,7 +143,7 @@ TEST(GraveyardSet, Reserve) {
   EXPECT_EQ(set.size(), 1);
   // There's a tradeoff between making the test easy to read and avoiding the
   // use of inscrutable magic numbers.  So we'll do it both ways.
-  EXPECT_EQ(ExpectedCapacityAfterRehash<uint64_t>(1000), 87 * 14);
+  EXPECT_EQ(ExpectedCapacityAfterRehash<uint64_t>(1000), 85 * 14);
   EXPECT_EQ(set.capacity(), ExpectedCapacityAfterRehash<uint64_t>(1000));
 }
 

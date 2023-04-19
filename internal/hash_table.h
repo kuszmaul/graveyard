@@ -998,9 +998,13 @@ HashTable<Traits>::find(const key_arg<K> &key, size_t hash) {
       //   __builtin_prefetch(&buckets_[preferred_bucket + i + 1].h2[0]);
       assert(preferred_bucket + i < buckets_.physical_size());
       Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
-      size_t idx = bucket.FindElement(h2, key, get_key_eq_ref());
-      if (idx < Traits::kSlotsPerBucket) {
-        return iterator{&bucket, idx};
+      size_t matches = bucket.MatchingElementsMask(h2);
+      while (matches) {
+        size_t idx = CountTrailingZeros(matches);
+        if (get_key_eq_ref()(Traits::KeyOf(bucket.slots[idx].value()), key)) {
+          return iterator{&bucket, idx};
+        }
+        matches &= (matches - 1);
       }
       ++i;
     } while (i < distance);

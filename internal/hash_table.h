@@ -672,7 +672,7 @@ private:
   // following, `first_uninitialized_bucket` are uninitialized.  Used
   // during rehash (and TODO: use during copy).  Doesn't update `size_`.
   template <bool insert_tombstones>
-  void InsertAscending(value_type value, size_t &first_uninitialized_bucket);
+  void InsertAscending(value_type value, size_t h1, size_t h2, size_t &first_uninitialized_bucket);
 
   // Finishes the rehash or copy by initializing all the remaining
   // uninitialized buckets.
@@ -1115,12 +1115,14 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
 template <class Traits>
 template <bool insert_tombstones>
 void HashTable<Traits>::InsertAscending(value_type value,
+                                        const size_t h1, size_t h2,
                                         size_t &first_uninitialized_bucket) {
-  const key_type &key = Traits::KeyOf(value);
-  const size_t hash = get_hasher_ref()(key);
-  const size_t preferred_bucket = buckets_.H1(hash);
-  const size_t h2 = buckets_.H2(hash);
-  size_t bucket_to_try = preferred_bucket;
+  //??? const key_type &key = Traits::KeyOf(value);
+  //??? const size_t hash = get_hasher_ref()(key);
+  //const size_t preferred_bucket = buckets_.H1(hash);
+  //const size_t h2 = buckets_.H2(hash);
+  //size_t bucket_to_try = preferred_bucket;
+  size_t bucket_to_try = h1;
   if (insert_tombstones && Traits::kTombstonePeriod.has_value()) {
     //LOG(INFO) << "Inserting tombstones";
   } else {
@@ -1155,8 +1157,8 @@ void HashTable<Traits>::InsertAscending(value_type value,
       bucket.h2[idx] = h2;
       assert(h2 < Traits::kH2Modulo);
       new (&bucket.slots[idx].value()) value_type(std::move(value));
-      maxf(buckets_[preferred_bucket].search_distance,
-           bucket_to_try - preferred_bucket + 1);
+      maxf(buckets_[h1].search_distance,
+           bucket_to_try - h1 + 1);
       // TODO: Factor out the ++size_.
       return;
     }
@@ -1180,12 +1182,19 @@ template <class Traits>
 void HashTable<Traits>::CopyFrom(const Buckets<Traits> &buckets) {
   size_t bucket_number = 0;
   size_t first_uninitialized_bucket = 0;
+  // TODO: Maybe pipeline the calculation of the hashes (compute the
+  // next hash while executing `InsertAscending`).
   for (const Bucket<Traits> &bucket : buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      if (bucket.h2[j] != Traits::kEmpty) {
-        // TODO: We could save recomputing h2 possibly.
+      const size_t h2 = bucket.h2[j];
+      if (h2 != Traits::kEmpty) {
+        const value_type &value = bucket.slots[j].value();
+        const key_type &key = Traits::KeyOf(value);
+        const size_t hash = get_hasher_ref()(key);
+        const size_t h1 = buckets_.H1(hash);
+        assert(buckets_.H2(hash) == h2);
         InsertAscending</*insert_tombstones=*/false>(
-            bucket.slots[j].value(), first_uninitialized_bucket);
+            bucket.slots[j].value(), h1, h2, first_uninitialized_bucket);
       }
     }
     ++bucket_number;
@@ -1213,16 +1222,21 @@ void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
       }
     }
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      if (bucket.h2[j] != Traits::kEmpty) {
-        // TODO: We could save recomputing h2 possibly.
-        //
+      const size_t h2 = bucket.h2[j];
+      if (h2 != Traits::kEmpty) {
+        const value_type &value = bucket.slots[j].value();
+        const key_type &key = Traits::KeyOf(value);
+        const size_t hash = get_hasher_ref()(key);
+        const size_t h1 = buckets_.H1(hash);
+        assert(buckets_.H2(hash) == h2);
+
         // TODO: When value_type is `pair<const K, V>`, this std::move
         // doesn't have any effect, resulting in a copy.  We'd like to
         // have the key type be a `pair<K, V>` that we cast to
         // `pair<const K, V>&`.  That can only be done if the pair has
         // standard layout and the offsets of `K` and `V`.
         InsertAscending</*insert_tombstones*/ true>(
-            std::move(bucket.slots[j].value()), first_uninitialized_bucket);
+            std::move(bucket.slots[j].value()), h1, h2, first_uninitialized_bucket);
         // Destroy the value so that we can destroy the bucket without
         // running a bunch of destructors.
         bucket.slots[j].value().~value_type();
@@ -1236,6 +1250,8 @@ void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
 
 template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
   typename Traits::rehash_callback callback{};
+  // `callback` will call `rehash_internal`, possibly doing some
+  // instrumentation before or after call.
   callback(*this, slot_count);
 }
 

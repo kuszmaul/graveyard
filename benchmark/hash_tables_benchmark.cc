@@ -9,6 +9,7 @@
 #include "absl/flags/flag.h"               // for GetFlag
 #include "absl/flags/parse.h"
 #include "absl/hash/hash.h"           // for Hash
+#include "benchmark/table_types.h"
 #include "folly/container/F14Set.h"
 #include "folly/lang/Bits.h" // for findLastSet
 #include "graveyard_set.h"
@@ -47,17 +48,6 @@ public:
 };
 using Int64Traits3578 = Traits3578<Int64Traits>;
 using Graveyard3578 = yobiduck::internal::HashTable<Int64Traits3578>;
-
-template <class Traits> class TraitsLikeAbseil : public Traits {
-public:
-  static constexpr size_t full_utilization_numerator = 7;
-  static constexpr size_t full_utilization_denominator = 8;
-  static constexpr size_t rehashed_utilization_numerator = 7;
-  static constexpr size_t rehashed_utilization_denominator = 16;
-  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
-};
-using Int64TraitsLikeAbseil = TraitsLikeAbseil<Int64Traits>;
-using GraveyardLikeAbseil = yobiduck::internal::HashTable<Int64TraitsLikeAbseil>;
 
 template <class Traits> class Traits2345 : public Traits {
 public:
@@ -207,8 +197,7 @@ int main(int argc, char *argv[]) {
       break;
     }
     case Implementation::kLibCuckoo: {
-      using CuckooHash = libcuckoo::cuckoohash_map<uint64_t, uint64_t>;
-      IntHashSetBenchmark<CuckooHash>(
+      IntHashSetBenchmark<CuckooSet>(
           cuckoo_allocated_memory_size,
           "cuckoo"
                                       );

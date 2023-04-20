@@ -1,12 +1,13 @@
 cc_binary(
     name = "hash_tables_benchmark",
-    srcs = ["hash_tables_benchmark.cc"],
+    srcs = ["benchmark/hash_tables_benchmark.cc"],
     deps = [
         ":enum_print",
         ":enums_flag",
         ":hash_benchmark",
         ":graveyard_set",
         ":ordered_linear_probing_set",
+	":table_types",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
@@ -133,6 +134,7 @@ cc_library(
     deps = [":object_holder",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 
@@ -154,6 +156,17 @@ cc_binary(
     deps = [":graveyard_set",],
 )
 
+cc_library(
+    name = "table_types",
+    hdrs = ["benchmark/table_types.h"],
+    deps = [
+            ":graveyard_set",
+            "@folly//folly/container:F14Set",
+            "@com_google_absl//absl/container:flat_hash_set",
+            "@libcuckoo//libcuckoo:cuckoohash_map",
+    ]
+    )
+
 # Creates paper/experiments/rss.tex.
 cc_binary(
     name = "amortization_benchmark",
@@ -161,6 +174,7 @@ cc_binary(
     deps = [":hash_benchmark",
             ":graveyard_set",
 	    ":print_numbers",
+	    ":table_types",
             "@folly//folly/container:F14Set",
             "@com_google_absl//absl/flags:flag",
     	    "@com_google_absl//absl/flags:parse",

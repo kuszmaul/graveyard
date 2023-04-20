@@ -35,7 +35,9 @@
 #include "absl/log/check.h"                // for GetReferenceableValue, CHE...
 #include "absl/log/log.h"                  // for LogMessage, ABSL_LOGGING_I...
 #include "absl/strings/str_cat.h"          // for StrCat
+#include "absl/strings/str_format.h"          // for StrCat
 #include "absl/strings/string_view.h"      // for operator<<, string_view
+#include "benchmark/print_numbers.h"
 #include "benchmark.h"                     // for GetTime, operator-
 #include "folly/container/F14Set.h"
 #include "graveyard_set.h"
@@ -43,51 +45,90 @@
 
 // IWYU pragma: no_include <bits/types/struct_rusage.h>
 
-ABSL_FLAG(bool, find_rehash_points, false,
-	  "Instead of running the benchmark, find the number of insertions that cause a rehash to take place");
-
 ABSL_FLAG(Implementation, implementation, Implementation::kGraveyard,
           "Which hash table implementation to benchmark");
 
 using GoogleSet = absl::flat_hash_set<uint64_t>;
 using FacebookSet = folly::F14FastSet<uint64_t>;
-using GraveyardSet = yobiduck::GraveyardSet<uint64_t>;
+
+using Int64Traits =
+    yobiduck::internal::HashTableTraits<uint64_t, void, absl::Hash<uint64_t>,
+                                        std::equal_to<uint64_t>,
+                                        std::allocator<uint64_t>>;
+
+template <class Traits> class TraitsLikeAbseil : public Traits {
+public:
+  static constexpr size_t full_utilization_numerator = 7;
+  static constexpr size_t full_utilization_denominator = 8;
+  static constexpr size_t rehashed_utilization_numerator = 7;
+  static constexpr size_t rehashed_utilization_denominator = 16;
+  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+};
+using GraveyardLikeAbseil = yobiduck::internal::HashTable<TraitsLikeAbseil<Int64Traits>>;
+
+using GraveyardLowLoad = GraveyardLikeAbseil;
+
+template <class Traits> class TraitsMediumLoad : public Traits {
+public:
+  static constexpr size_t full_utilization_numerator = 9;
+  static constexpr size_t full_utilization_denominator = 10;
+  static constexpr size_t rehashed_utilization_numerator = 9;
+  static constexpr size_t rehashed_utilization_denominator = 11;
+  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+};
+using GraveyardMediumLoad = yobiduck::internal::HashTable<TraitsMediumLoad<Int64Traits>>;
+
+template <class Traits> class TraitsHighLoad : public Traits {
+public:
+  static constexpr size_t full_utilization_numerator = 97;
+  static constexpr size_t full_utilization_denominator = 100;
+  static constexpr size_t rehashed_utilization_numerator = 96;
+  static constexpr size_t rehashed_utilization_denominator = 100;
+  static constexpr std::optional<size_t> kTombstonePeriod = 50;
+};
+using GraveyardHighLoad = yobiduck::internal::HashTable<TraitsHighLoad<Int64Traits>>;
 
 template <class Table>
 constexpr std::string_view kTableName = "unknown";
 
 template<>
-constexpr std::string_view kTableName<GoogleSet> = "GoogleSet";
+constexpr std::string_view kTableName<GoogleSet> = "Google";
 template<>
-constexpr std::string_view kTableName<FacebookSet> = "FacebookSet";
+constexpr std::string_view kTableName<FacebookSet> = "Facebook";
 template<>
-constexpr std::string_view kTableName<GraveyardSet> = "GraveyardSet";
-
-// These magic numbers are gotten by running
-// ```
-// $ bazel-bin/amortization_benchmark --find_rehash_points
-// ```
-// and then copying the output to replace the following 6 lines.
+constexpr std::string_view kTableName<GraveyardLowLoad> = "Graveyard low load";
+template<>
+constexpr std::string_view kTableName<GraveyardMediumLoad> = "Graveyard medium load";
+template<>
+constexpr std::string_view kTableName<GraveyardHighLoad> = "Graveyard high Load";
 
 template <class Table>
-constexpr size_t kRehashPoint = 0;
+constexpr size_t rehash_point = 0;
+
+// These numbers are actually computed in the benchmark.
+
 // GoogleSet: rehashed at 117440512 from 134217727 to 268435455
-template<> constexpr size_t kRehashPoint<GoogleSet> = 117440512;
+template<> size_t rehash_point<GoogleSet>;
 // FacebookSet: rehashed at 100663296 from 117440512 to 234881024
-template<> constexpr size_t kRehashPoint<FacebookSet> = 100663296;
-// GraveyardSet: rehashed at 100000008 from 114285780 to 133333410
-template<> constexpr size_t kRehashPoint<GraveyardSet> = 100000008;
+template<> size_t rehash_point<FacebookSet>;
+// GraveyardLowLoad: rehashed at 100000008 from 114285794 to 228571532
+template<> size_t rehash_point<GraveyardLowLoad>;
+// GraveyardMediumLoad: rehashed at 100000000 from 111111182 to 122222296
+template<> size_t rehash_point<GraveyardMediumLoad>;
+// GraveyardHighLoad: rehashed at 100000010 from 103092864 to 104166762
+template<> size_t rehash_point<GraveyardHighLoad>;
 
 // Does the implementation provide a low high-water mark?
 template <class Table>
 constexpr bool kExpectLowHighWater = 0;
 template<> constexpr bool kExpectLowHighWater<GoogleSet> = false;
 template<> constexpr bool kExpectLowHighWater<FacebookSet> = false;
-template<> constexpr bool kExpectLowHighWater<GraveyardSet> = true;
-
+template<> constexpr bool kExpectLowHighWater<GraveyardLowLoad> = true;
+template<> constexpr bool kExpectLowHighWater<GraveyardMediumLoad> = true;
+template<> constexpr bool kExpectLowHighWater<GraveyardHighLoad> = true;
 struct MemoryStats {
   // All units are in KiloBytes
-  size_t size, resident, shared, text, lib, data, dt; 
+  size_t size, resident, shared, text, lib, data, dt;
   size_t max_resident;
 };
 
@@ -157,40 +198,55 @@ void FindRehashPoints() {
   for (size_t i = kMinimumSize; true; ++i) {
     s.insert(i);
     if (s.capacity() != starting_capacity) {
+      rehash_point<Table> = i;
       std::cout << "// " << kTableName<Table> << ": rehashed at " << i << " from " << starting_capacity << " to " << s.capacity() << std::endl;
-      std::cout << "template<> constexpr size_t kRehashPoint<" << kTableName<Table> << "> = " << i << ";" << std::endl;
       break;
     }
   }
 }
 
+constexpr size_t kKilo = 1000;
+constexpr size_t kMega = kKilo * kKilo;
+constexpr size_t kGiga = kKilo * kMega;
+
 std::string DurationString(uint64_t time_in_ns) {
-  if (time_in_ns < 1000) {
+  if (time_in_ns < kKilo) {
     return absl::StrCat(time_in_ns, "ns");
-  } else if (time_in_ns < 1'000'000) {
-    return absl::StrCat(time_in_ns/1000.0, "us");
-  } else if (time_in_ns < 1'000'000'000) {
-    return absl::StrCat(time_in_ns/1000.0/1000.0, "ms");
+  } else if (time_in_ns < kMega) {
+    return absl::StrCat(time_in_ns/double(kKilo), "us");
+  } else if (time_in_ns < kGiga) {
+    return absl::StrCat(time_in_ns/double(kMega), "ms");
   } else {
-    return absl::StrCat(time_in_ns/1000.0/1000.0/1000.0, "s");
+    return absl::StrCat(time_in_ns/double(kGiga), "s");
+  }
+}
+
+std::string NumberWithSuffix(uint64_t n, size_t digits) {
+  if (n >= kGiga) {
+    LOG(FATAL) << "Not ready";
+  }
+  if (n >= 100 * kMega) {
+    CHECK(digits >= 3);
+    return absl::StrFormat("%*.*fM", digits, digits - 3, n / double(kMega));
+  } else {
+    LOG(FATAL) << "Not ready for size " << n;
   }
 }
 
 template <class Table>
-void MeasureRehash() {
+void MeasureRehash(std::ofstream& ofile) {
   // We measure the memory statistics several times:
   //
   // Before doing anything
   MemoryStats memory_at_beginning = GetMemoryStats();
-  // Just before doing an insert that doesn't rehash (a "noncritical
-  // insert").
-  MemoryStats memory_before_noncritical_insert;
   // Just after the noncritical insert before we do an insert that
   // rehashes.
   MemoryStats memory_before_critical_insert;
   // After the critical insert.
   MemoryStats memory_after_critical_insert;
-  timespec start_fast, end_fast, start_slow, end_slow;
+  timespec start_slow, end_slow;
+  // capacities:
+  size_t just_before_rehash, just_after_rehash;
   {
     Table s;
     s.reserve(kMinimumSize);
@@ -199,23 +255,20 @@ void MeasureRehash() {
       s.insert(i);
     }
     size_t initial_capacity = s.capacity();
-    for (; i < kRehashPoint<Table> - 1; ++i) {
+    for (; i < rehash_point<Table>; ++i) {
       s.insert(i);
     }
-    // This rehash shouldn't take long
-    memory_before_noncritical_insert = GetMemoryStats();
-    start_fast = GetTime();
-    s.insert(i);
-    end_fast = GetTime();
-    ++i;
     // This is the rehash that takes a long time
-    size_t just_before_rehash = s.capacity();
+    LOG(INFO) << "Doing i=" << i;
+    just_before_rehash = s.capacity();
+    LOG(INFO) << "before cap=" << s.capacity();
     start_slow = GetTime();
     memory_before_critical_insert = GetMemoryStats();
     s.insert(i);
     end_slow = GetTime();
-    size_t just_after_rehash = s.capacity();
-    CHECK_EQ(initial_capacity, just_before_rehash);
+    just_after_rehash = s.capacity();
+    LOG(INFO) << "after cap=" << s.capacity();
+    CHECK_EQ(initial_capacity, just_before_rehash) << " Expected rehash " << kTableName<Table> << " at " << rehash_point<Table>;
     CHECK_LT(just_before_rehash, just_after_rehash);
     memory_after_critical_insert = GetMemoryStats();
     auto ratio = [](double a, double b) { return a / b; };
@@ -224,8 +277,9 @@ void MeasureRehash() {
       //
       // The max didn't get much bigger.
       CHECK_LT(ratio(memory_after_critical_insert.max_resident, memory_after_critical_insert.resident), 1.05);
-      // The resident memory didn't grow much in the critical insert.
-      CHECK_LT(ratio(memory_after_critical_insert.resident , memory_before_critical_insert.resident), 1.2);
+      // The resident memory grows by a factor of two (since we are
+      // using parameters that "like abseil" double the table.
+      CHECK_LT(ratio(memory_after_critical_insert.resident , memory_before_critical_insert.resident), 2); //1.2);
     } else {
       // For the non-graveyard tables, the critical rehash uses nearly
       // 3/2 as much memory.
@@ -233,13 +287,16 @@ void MeasureRehash() {
       // And the resident memory grows by nearly a factor of two.
       CHECK_GT(ratio(memory_after_critical_insert.resident , memory_before_critical_insert.resident), 1.85);
     }
-  } 
+  }
   ResetMaxRss();
   MemoryStats resetted = GetMemoryStats();
-  uint64_t fast_time = end_fast - start_fast;
-  uint64_t slow_time = end_slow - start_slow;
+  // Implementation
+  ofile << absl::StrFormat("%-21s", kTableName<Table>) << " & ";
+  // Rehash at
+  ofile << NumberWithSuffix(rehash_point<Table>, 4) << " & ";
+  // Rehash multiplier
+  ofile << absl::StrFormat("%.3f       & ", double(just_after_rehash)/double(just_before_rehash));
   LOG(INFO) << kTableName<Table>;
-  LOG(INFO) << " Fast: " << DurationString(fast_time) << " Slow: " << DurationString(slow_time) << " ratio=" << static_cast<double>(slow_time) / fast_time;
   auto show_memory = [](std::string when, const MemoryStats& stats) {
     constexpr size_t kWidth = 20;
     if (when.size() < kWidth) {
@@ -248,24 +305,44 @@ void MeasureRehash() {
     LOG(INFO) << " " << when << " rss = " << std::setw(7) << stats.resident << " maxrss = " << std::setw(7) << stats.max_resident << " ratio=" << stats.max_resident * 1.0 / stats.resident;
   };
   show_memory("Beginning:", memory_at_beginning);
-  show_memory("Before Noncritical:", memory_before_noncritical_insert);
   show_memory("Before critical:", memory_before_critical_insert);
   show_memory("After critical:", memory_after_critical_insert);
   show_memory("After destruction:", resetted);
+  // RSS before
+  ofile << absl::StrFormat("%-4sMiB & ", PrintWithPrecision(memory_before_critical_insert.resident / 1024.0, 3));
+  // RSS After
+  ofile << absl::StrFormat("%-4sMib & ", PrintWithPrecision(memory_after_critical_insert.resident / 1024.0, 3));
+  // rss ratio
+  ofile << absl::StrFormat("%4.2f  & ", memory_after_critical_insert.resident / double(memory_before_critical_insert.resident));
+  // high-water
+  ofile << absl::StrFormat("%-4sMiB    & ", PrintWithPrecision(memory_after_critical_insert.max_resident / 1024.0, 3));
+  // high-water ratio
+  ofile << absl::StrFormat("%4.2f       \\\\", memory_after_critical_insert.max_resident / double(memory_after_critical_insert.resident));
+  ofile << std::endl;
 }
 
 
 int main(int argc, char *argv[]) {
   absl::ParseCommandLine(argc, argv);
-  if (absl::GetFlag(FLAGS_find_rehash_points)) {
-    std::cout << "Measuring" << std::endl;
-    FindRehashPoints<GoogleSet>();
-    FindRehashPoints<FacebookSet>();
-    FindRehashPoints<GraveyardSet>();
-  } else {
-    MeasureRehash<GoogleSet>();
-    MeasureRehash<FacebookSet>();
-    MeasureRehash<GraveyardSet>();
-  }
-}
+  LOG(INFO) << "Finding rehash points";
+  FindRehashPoints<GoogleSet>();
+  FindRehashPoints<FacebookSet>();
+  FindRehashPoints<GraveyardLowLoad>();
+  FindRehashPoints<GraveyardMediumLoad>();
+  FindRehashPoints<GraveyardHighLoad>();
 
+  LOG(INFO) << "Measuring";
+  std::ofstream ofile;
+  ofile.open("/home/bradley/github/graveyard/paper/experiments/rss.tex");
+  ofile << "\\begin{center}" << std::endl;
+  ofile << "\\begin{tabular}{llllllll}" << std::endl;
+  ofile << "Implementation        & Rehash & Rehash      & RSS     & RSS     & RSS   & High-water & High-water \\\\" << std::endl;
+  ofile << "                      & at     & multipler   & before  & after   & ratio &            & ratio      \\\\ \\hline" << std::endl;
+  MeasureRehash<GoogleSet>(ofile);
+  MeasureRehash<FacebookSet>(ofile);
+  MeasureRehash<GraveyardLowLoad>(ofile);
+  MeasureRehash<GraveyardMediumLoad>(ofile);
+  MeasureRehash<GraveyardHighLoad>(ofile);
+  ofile << "\\end{tabular}" << std::endl;
+  ofile << "\\end{center}" << std::endl;
+}

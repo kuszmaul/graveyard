@@ -49,14 +49,8 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "enums_flag",
-    hdrs = ["enums_flag.h"],
-    deps = [
-        ":enum_print",
-        "@com_google_absl//absl/strings",
-    ],
-)
+cc_library( name = "enums_flag", hdrs = ["enums_flag.h"], deps = [
+    ":enum_print", "@com_google_absl//absl/strings", ], )
 
 cc_library(
     name = "benchmark",
@@ -165,6 +159,7 @@ cc_binary(
     srcs = ["amortization_benchmark.cc"],
     deps = [":hash_benchmark",
             ":graveyard_set",
+	    ":print_numbers",
             "@folly//folly/container:F14Set",
             "@com_google_absl//absl/flags:flag",
     	    "@com_google_absl//absl/flags:parse",
@@ -175,3 +170,23 @@ cc_library(
   name = "statistics",
   hdrs = ["benchmark/statistics.h"],
 )
+
+cc_library(
+  name = "print_numbers",
+  hdrs = ["benchmark/print_numbers.h"],
+  srcs = ["benchmark/print_numbers.cc"],
+  deps = [
+          "@com_google_absl//absl/strings:str_format",
+          "@com_google_absl//absl/strings:strings",
+          "@com_google_absl//absl/log:check",
+	  ],
+  )
+
+cc_test(
+  name = "print_numbers_test",
+  srcs = ["benchmark/print_numbers_test.cc"],
+  deps = [
+    ":print_numbers",
+    "@com_google_googletest//:gtest_main",
+  ],)
+  

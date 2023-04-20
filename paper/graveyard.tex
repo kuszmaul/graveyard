@@ -593,6 +593,61 @@ higher load factor.  \todo{State the load factors used by graveyard.}
 \figlabel{libraries}
 \end{figure}
 
+We also measured the memory usage.  We reserved an integer set with
+100 million entries, then inserted random elements until the table
+rehashed.  We measured Google, Facebook, and three versions of
+Graveyard:
+\begin{description}
+  \item[Google (\texttt{abseil::flat\_hash\_set<uint64\_t>})] runs the
+    table between 7/16 and 7/8 full (43.75\% to 87.5\% load factor,
+    geometric mean is 61.9\%), and the capacity is always one less
+    than a power of two.
+  \item[Facebook (\texttt{folly::F14FastSet<uint64\_t>})] runs the table
+    between 7/16 and 7/8 full (43.75\% to 87.5\% load factor,
+    geometric mean is 61.9\%), and the capacity is always seven times
+    a power of two.
+  \item[Graveyard low-load] runs the table between 7/16 and 7/8 full
+    (43.75\% to 87.5\% load factor, geometric mean is 61.9\%, the same
+    as Google and Facebook), and the the capacity is arbitrary (so
+    that if we \verb+reserve()+ space, the table could be an arbitary
+    size, for example).
+  \item[Graveyard medium-load]  runs the table between 81.8\% 90\% full (geometric mean 85.6\%) with arbitrary capacity.
+  \item[Graveyard high-load] runs the table between 96\% and 97\% full (geometric mean 96.5\%) with arbitary capacity.
+\end{description}
+
+\figref{rss} shows the memory usage for a workload that first reserves
+a table of size 100 million, then inserts until the first rehash.
+Observe that when Google or Facebook double their table size, briefly
+there is the old table and the new table (which is twice the size of
+the old table) coexisting, so the high-water mark is 1.5 the size of
+the new table.  The fact that Facebook's memory is 12\% more than
+google is an artifact of the choice of 100 million for the table size,
+and that the capacity for Facebook is not a power of two whereas for
+Google it is.  A different choice would have put Google ahead.  The
+graveyard RSS usage compared to Google and Facebook reflects the fact
+that the capacity can be arbitrary, and for the higher load factors,
+that it uses less memory.  In particular, the medium-load graveyard is
+close to half the size just after the rehash.  The medium-load pays
+for this in increased insertion costs, but it doesn't make much
+difference to the query costs (see \figref{perf}).  The high-water
+mark is much lower for the graveyard because it never as the physical
+memory allocated at the same time for both the old and new table.
+
+TODO: Discuss the reduced-high water scheme.
+
+\begin{figure}
+\input{experiments/rss.tex}
+\caption{Memory footprints just after rehashing to increase the table
+  size.  ``Rehash at'' is the number of number of insertions before
+  the first rehash.  ``Rehash multiplier'' is the increase in capacity
+  due to the rehash.  ``RSS before'' is the amount of physical memory
+  consumed by the test just before the rehash.  ``RSS after'' is the
+  amount of phyical memory in use just after the rehash.  ``RSS
+  ratio'' is the ratio of those two RSS values.  ``High-water'' is the
+  maximum memory used by the test.  ``High-water ratio'' is the ratio
+  of the high-water mark to the ``RSS after''.}  \figlabel{rss}
+\end{figure}
+
 \section{Experiment}
 
 How much does the hash function cost?

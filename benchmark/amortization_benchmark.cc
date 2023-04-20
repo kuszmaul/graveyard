@@ -46,6 +46,24 @@
 
 // IWYU pragma: no_include <bits/types/struct_rusage.h>
 
+template <class Table>
+constexpr size_t rehash_point = 0;
+
+// These numbers are actually computed in the benchmark.
+
+// GoogleSet: rehashed at 117440512 from 134217727 to 268435455
+template<> size_t rehash_point<GoogleSet>;
+// FacebookSet: rehashed at 100663296 from 117440512 to 234881024
+template<> size_t rehash_point<FacebookSet>;
+// Graveyard low load: rehashed at 100000008 from 114285794 to 228571532
+template<> size_t rehash_point<GraveyardLowLoad>;
+// Graveyard medium load: rehashed at 100000000 from 111111182 to 122222296
+template<> size_t rehash_point<GraveyardMediumLoad>;
+// Graveyard high load: rehashed at 100000010 from 103092864 to 104166762
+template<> size_t rehash_point<GraveyardHighLoad>;
+// Graveyard very high Load: rehashed at 100000010 from 103092864 to 104166762
+template<> size_t rehash_point<GraveyardVeryHighLoad>;
+
 struct MemoryStats {
   // All units are in KiloBytes
   size_t size, resident, shared, text, lib, data, dt;
@@ -119,8 +137,8 @@ void FindRehashPoints() {
     s.insert(i);
     if (s.capacity() != starting_capacity) {
       rehash_point<Table> = i;
-      CHECK(kTableName<Table>.has_value());
-      std::cout << "// " << *kTableName<Table> << ": rehashed at " << i << " from " << starting_capacity << " to " << s.capacity() << std::endl;
+      static_assert(kTableNames<Table>.has_value);
+      std::cout << "// " << kTableNames<Table>.human << ": rehashed at " << i << " from " << starting_capacity << " to " << s.capacity() << std::endl;
       break;
     }
   }
@@ -168,7 +186,7 @@ void MeasureRehash(std::ofstream& ofile) {
   timespec start_slow, end_slow;
   // capacities:
   size_t just_before_rehash, just_after_rehash;
-  CHECK(kTableName<Table>.has_value());
+  static_assert(kTableNames<Table>.has_value);
   {
     Table s;
     s.reserve(kMinimumSize);
@@ -190,11 +208,11 @@ void MeasureRehash(std::ofstream& ofile) {
     end_slow = GetTime();
     just_after_rehash = s.capacity();
     LOG(INFO) << "after cap=" << s.capacity();
-    CHECK_EQ(initial_capacity, just_before_rehash) << " Expected rehash " << *kTableName<Table> << " at " << rehash_point<Table>;
+    CHECK_EQ(initial_capacity, just_before_rehash) << " Expected rehash (" << kTableNames<Table>.human << ") at " << rehash_point<Table>;
     CHECK_LT(just_before_rehash, just_after_rehash);
     memory_after_critical_insert = GetMemoryStats();
     auto ratio = [](double a, double b) { return a / b; };
-    CHECK(kExpectLowHighWater<Table>.has_value());
+    static_assert(kExpectLowHighWater<Table>.has_value());
     if (*kExpectLowHighWater<Table>) {
       // For the graveyard table, the critical rehash shouldn't have used much memory.
       //
@@ -214,12 +232,12 @@ void MeasureRehash(std::ofstream& ofile) {
   ResetMaxRss();
   MemoryStats resetted = GetMemoryStats();
   // Implementation
-  ofile << absl::StrFormat("%-21s", *kTableName<Table>) << " & ";
+  ofile << absl::StrFormat("%-21s", kTableNames<Table>.human) << " & ";
   // Rehash at
   ofile << NumberWithSuffix(rehash_point<Table>, 4) << " & ";
   // Rehash multiplier
   ofile << absl::StrFormat("%.3f       & ", double(just_after_rehash)/double(just_before_rehash));
-  LOG(INFO) << *kTableName<Table>;
+  LOG(INFO) << kTableNames<Table>.human;
   auto show_memory = [](std::string when, const MemoryStats& stats) {
     constexpr size_t kWidth = 20;
     if (when.size() < kWidth) {

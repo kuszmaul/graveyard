@@ -897,7 +897,7 @@ void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
   InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket, h2);
 }
 
-void maxf(uint8_t &v1, uint8_t v2) { v1 = std::max(v1, v2); }
+static constexpr void maxf(uint8_t &v1, uint8_t v2) { v1 = std::max(v1, v2); }
 
 template <class Traits>
 typename HashTable<Traits>::iterator

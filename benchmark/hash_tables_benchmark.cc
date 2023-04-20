@@ -13,13 +13,8 @@
 #include "folly/container/F14Set.h"
 #include "folly/lang/Bits.h" // for findLastSet
 #include "graveyard_set.h"
-#include "hash_benchmark.h"      // for IntHashSetBenchmark
-#include "ordered_linear_probing_set.h"
+#include "benchmark/hash_benchmark.h"      // for IntHashSetBenchmark
 #include "libcuckoo/cuckoohash_map.hh"
-
-struct IdentityHash {
-  size_t operator()(uint64_t v) const { return v; }
-};
 
 // GraveyardSet using 255 for the modulo
 template <class Traits> class Traits255 : public Traits {
@@ -37,6 +32,7 @@ static_assert(Int64Traits255::kH2Modulo == 255);
 using Graveyard255 = yobiduck::internal::HashTable<Int64Traits255>;
 static_assert(Int64Traits255::kSlotsPerBucket == 14);
 
+#if 0
 // GraveyardSet is 3/4 to 7/8 by default
 // This one is 3/5 to 7/8 to reduce the number of rehashes
 template <class Traits> class Traits3578 : public Traits {
@@ -48,6 +44,7 @@ public:
 };
 using Int64Traits3578 = Traits3578<Int64Traits>;
 using Graveyard3578 = yobiduck::internal::HashTable<Int64Traits3578>;
+#endif
 
 template <class Traits> class Traits2345 : public Traits {
 public:
@@ -78,6 +75,13 @@ public:
 using Int64Traits9092NoGraveyard = Traits9092NoGraveyard<Int64Traits>;
 using Graveyard9092NoGraveyard = yobiduck::internal::HashTable<Int64Traits9092NoGraveyard>;
 
+using GraveyardNoHash = yobiduck::GraveyardSet<uint64_t, IdentityHash>;
+
+template<>
+constexpr NamePair kTableNames<GraveyardNoHash> = {"graveyard identity-hash", "graveyard-idhash"};
+
+template<>
+constexpr NamePair kTableNames<Graveyard255> = {"graveyard h2-mod-255", "graveyard255"};
 
 int main(int argc, char *argv[]) {
   absl::ParseCommandLine(argc, argv);
@@ -104,103 +108,78 @@ int main(int argc, char *argv[]) {
   };
   for (Implementation implementation : absl::GetFlag(FLAGS_implementations)) {
     switch (implementation) {
-    case Implementation::kGraveyard: {
-      using Graveyard = yobiduck::GraveyardSet<uint64_t>;
-      IntHashSetBenchmark<Graveyard>(
-          Get_allocated_memory_size,
-          ImplementationString(implementation));
+    case Implementation::kGraveyardLow: {
+      IntHashSetBenchmark<GraveyardLowLoad>(Get_allocated_memory_size);
+      break;
+    }
+    case Implementation::kGraveyardMedium: {
+      IntHashSetBenchmark<GraveyardMediumLoad>(Get_allocated_memory_size);
       break;
     }
     case Implementation::kGraveyardIdentityHash: {
-      using GraveyardNoHash = yobiduck::GraveyardSet<uint64_t, IdentityHash>;
-      IntHashSetBenchmark<GraveyardNoHash>(
-          Get_allocated_memory_size,
-          ImplementationString(implementation));
+      IntHashSetBenchmark<GraveyardNoHash>(Get_allocated_memory_size);
       break;
     }
     case Implementation::kGraveyard255: {
-      IntHashSetBenchmark<Graveyard255>(
-          Get_allocated_memory_size,
-          ImplementationString(implementation));
+      IntHashSetBenchmark<Graveyard255>(Get_allocated_memory_size);
       break;
     }
+#if 0
     case Implementation::kGraveyard3578: {
-      IntHashSetBenchmark<Graveyard3578>(
-          Get_allocated_memory_size,
-          ImplementationString(implementation));
+      IntHashSetBenchmark<Graveyard3578>(Get_allocated_memory_size);
       break;
     }
+#endif
     case Implementation::kGraveyardLikeAbseil: {
-      IntHashSetBenchmark<GraveyardLikeAbseil>(
-          Get_allocated_memory_size,
-          ImplementationString(implementation));
+      IntHashSetBenchmark<GraveyardLikeAbseil>(Get_allocated_memory_size);
       break;
     }
+#if 0
     case Implementation::kGraveyard2345: {
-      IntHashSetBenchmark<Graveyard2345>(
-          Get_allocated_memory_size,
-          ImplementationString(implementation));
+      IntHashSetBenchmark<Graveyard2345>(Get_allocated_memory_size);
       break;
     }
-    case Implementation::kGraveyard9092: {
-      IntHashSetBenchmark<Graveyard9092>(
-          Get_allocated_memory_size,
-          ImplementationString(implementation));
+#endif
+    case Implementation::kGraveyardHighLoad: {
+      IntHashSetBenchmark<GraveyardHighLoad>(Get_allocated_memory_size);
       break;
     }
-    case Implementation::kGraveyard9092NoGraveyard: {
-      IntHashSetBenchmark<Graveyard9092NoGraveyard>(
-          Get_allocated_memory_size,
-          ImplementationString(implementation));
+    case Implementation::kGraveyardHighLoadNoGraveyard: {
+      IntHashSetBenchmark<GraveyardHighLoadNoGraveyard>(Get_allocated_memory_size);
       break;
     }
     case Implementation::kOLP: {
-      using OLP = OrderedLinearProbingSet<uint64_t>;
-      IntHashSetBenchmark<OLP>(
-          [](const OLP &table) { return table.memory_estimate(); },
-          ImplementationString(implementation));
+      IntHashSetBenchmark<OLPSet>(
+          [](const OLPSet &table) { return table.memory_estimate(); });
       break;
     }
     case Implementation::kOLPIdentityHash: {
-      using OLPNoHash = OrderedLinearProbingSet<uint64_t, IdentityHash>;
-      IntHashSetBenchmark<OLPNoHash>(
+      IntHashSetBenchmark<OLPSetNoHash>(
           // TODO: Use the facebook name for `memory_estimate()`.
-          [](const OLPNoHash &table) { return table.memory_estimate(); },
-          ImplementationString(implementation));
+          [](const OLPSetNoHash &table) { return table.memory_estimate(); });
       break;
     }
     case Implementation::kGoogle: {
       IntHashSetBenchmark<absl::flat_hash_set<uint64_t>>(
-          swiss_memory_estimator,
-          ImplementationString(implementation));
+          swiss_memory_estimator);
       break;
     }
     case Implementation::kGoogleIdentityHash: {
-      using FlatNoHash = absl::flat_hash_set<uint64_t, IdentityHash>;
-      IntHashSetBenchmark<FlatNoHash>(
-          swiss_memory_estimator,
-          ImplementationString(implementation));
+      IntHashSetBenchmark<GoogleSetNoHash>(swiss_memory_estimator);
       break;
     }
     case Implementation::kFacebook: {
       using F14 = folly::F14FastSet<uint64_t>;
-      IntHashSetBenchmark<F14>(
-          get_allocated_memory_size,
-          ImplementationString(implementation));
+      IntHashSetBenchmark<F14>(get_allocated_memory_size);
       break;
     }
     case Implementation::kFacebookIdentityHash: {
-      using F14NoHash = folly::F14FastSet<uint64_t, IdentityHash>;
-      IntHashSetBenchmark<F14NoHash>(
-          get_allocated_memory_size,
-          ImplementationString(implementation));
+      IntHashSetBenchmark<FacebookSetNoHash>(get_allocated_memory_size);
       break;
     }
     case Implementation::kLibCuckoo: {
-      IntHashSetBenchmark<CuckooSet>(
-          cuckoo_allocated_memory_size,
-          "cuckoo"
-                                      );
+      IntHashSetBenchmark<CuckooSet>(cuckoo_allocated_memory_size);
+      break;
     }
     }
   }

@@ -18,6 +18,7 @@
 #include "absl/log/log.h"
 #include "benchmark.h"
 #include "enum_print.h"
+#include "benchmark/table_types.h"
 
 ABSL_DECLARE_FLAG(size_t, size_growth);
 enum class Operation { kInsert, kReservedInsert, kFound, kNotFound };
@@ -26,7 +27,8 @@ ABSL_DECLARE_FLAG(absl::flat_hash_set<Operation>, operations);
 enum class Implementation {
   // Order these from most-important-to-benchmark to
   // least-important-to-benchmark.
-  kGraveyard,
+  kGraveyardLow,
+  kGraveyardMedium,
   kGoogle,
   kFacebook,
   kOLP,
@@ -35,15 +37,19 @@ enum class Implementation {
   kFacebookIdentityHash,
   kOLPIdentityHash,
   // Graveyard variants
+#if 0
   kGraveyard3578, // Fill the table to 7/8 then rehash to 3/5 full (instead of
                   // 3/4 full) to reduce number of rehashes.
+#endif
   kGraveyardLikeAbseil, // Fill the table to 7/8 then rehash to 7/16 full with no graveyard tombstones.
+#if 0
   kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of
                   // 3/4 full) to reduce number of rehashes.
-  kGraveyard9092, // Fill to 92.5% full then hash to 90%
-		  // full. Eventually we want 5% graveyard tombstones,
-		  // but for now it's still 3.6% graveyard.
-  kGraveyard9092NoGraveyard, // Same as 9092, except no graveyard tombstones.
+#endif
+  kGraveyardHighLoad, // Fill to 92.5% full then hash to 90% full with 5%
+		      // graveyard tombstones,
+  kGraveyardHighLoadNoGraveyard, // Same as HighLoad, except no
+                                 // graveyard tombstones.
   kGraveyard255,  // H2 computed modulo 255 (rather than 128)
   kLibCuckoo,
 };
@@ -58,9 +64,6 @@ std::string AbslUnparseFlag(Implementation implementation);
 
 // Return the --implementation
 std::set<Implementation> FlaggedImplementations();
-
-std::string_view ImplementationString(Implementation implementation);
-
 
 // These functions don't return a flat-hash-set since the sort order will be
 // correlated and make the flat hash set look much faster than it is.  The
@@ -83,8 +86,7 @@ std::string FileNameForHashSetBenchmark(Operation operation,
 
 template <class HashSet>
 void IntHashSetBenchmark(
-    std::function<size_t(const HashSet &)> memory_estimator,
-    std::string_view implementation) {
+    std::function<size_t(const HashSet &)> memory_estimator) {
   size_t size_growth = absl::GetFlag(FLAGS_size_growth);
   std::vector<size_t> sizes;
   for (size_t size = 1; size < size_growth; ++size) {
@@ -97,10 +99,12 @@ void IntHashSetBenchmark(
   // LOG(INFO) << "Opening " << absl::StrCat(implementation, ".data");
   HashSet set;
   std::vector<uint64_t> values;
-  LOG(INFO) << implementation;
+  static_assert(kTableNames<HashSet>.has_value);
+  auto implementation = kTableNames<HashSet>;
+  LOG(INFO) << implementation.human;
   // TODO: Make "insert" contant into kConstant.
   if (Operation op = Operation::kInsert; OperationIsFlagged(op)) {
-    std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
+    std::ofstream output(FileNameForHashSetBenchmark(op, implementation.computer),
                          std::ios::out);
     CHECK(output.is_open());
     Benchmark(
@@ -120,7 +124,7 @@ void IntHashSetBenchmark(
         sizes);
   }
   if (Operation op = Operation::kReservedInsert; OperationIsFlagged(op)) {
-    std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
+    std::ofstream output(FileNameForHashSetBenchmark(op, implementation.computer),
                          std::ios::out);
     CHECK(output.is_open());
     Benchmark(
@@ -144,7 +148,7 @@ void IntHashSetBenchmark(
   }
 
   if (Operation op = Operation::kFound; OperationIsFlagged(op)) {
-    std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
+    std::ofstream output(FileNameForHashSetBenchmark(op, implementation.computer),
                          std::ios::out);
     CHECK(output.is_open());
     Benchmark(
@@ -169,7 +173,7 @@ void IntHashSetBenchmark(
         sizes);
   }
   if (Operation op = Operation::kNotFound; OperationIsFlagged(op)) {
-    std::ofstream output(FileNameForHashSetBenchmark(op, implementation),
+    std::ofstream output(FileNameForHashSetBenchmark(op, implementation.computer),
                          std::ios::out);
     CHECK(output.is_open());
     std::vector<uint64_t> other_numbers;

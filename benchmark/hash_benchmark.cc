@@ -9,6 +9,7 @@
 #include "absl/hash/hash.h"               // for Hash
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h" // for string_view
+#include "benchmark/table_types.h"
 #include "enum_print.h"
 #include "enums_flag.h"
 
@@ -104,19 +105,21 @@ const typename Table::value_type &FindOrDie(const Table &table,
 
 const EnumsAndStrings<Implementation> *implementation_enum_and_strings =
     EnumsAndStrings<Implementation>::Create(
-        {{Implementation::kGraveyard, "graveyard"},
-         {Implementation::kGoogle, "google"},
+        {{Implementation::kGraveyardLow, kTableNames<GraveyardLowLoad>.computer},
+         {Implementation::kGraveyardMedium, kTableNames<GraveyardMediumLoad>.computer},
+         {Implementation::kGoogle, kTableNames<GoogleSet>.computer},
          {Implementation::kFacebook, "facebook"},
-         {Implementation::kOLP, "OLP"},
+         {Implementation::kOLP, kTableNames<OLPSet>.computer},
          {Implementation::kGraveyardIdentityHash, "graveyard-idhash"},
-         {Implementation::kGoogleIdentityHash, "google-idhash"},
-         {Implementation::kFacebookIdentityHash, "facebook-idhash"},
-         {Implementation::kOLPIdentityHash, "OLP-idhash"},
-         {Implementation::kGraveyard3578, "graveyard3578"},
+
+         {Implementation::kGoogleIdentityHash, kTableNames<GoogleSetNoHash>.computer},
+         {Implementation::kFacebookIdentityHash, kTableNames<FacebookSetNoHash>.computer},
+         {Implementation::kOLPIdentityHash, kTableNames<OLPSetNoHash>.computer},
+         // {Implementation::kGraveyard3578, "graveyard3578"},
          {Implementation::kGraveyardLikeAbseil, "graveyard-likeabseil"},
-         {Implementation::kGraveyard2345, "graveyard2345"},
-	 {Implementation::kGraveyard9092, "graveyard9092"},
-	 {Implementation::kGraveyard9092NoGraveyard, "graveyard9092NoGraveyard"},
+         //{Implementation::kGraveyard2345, "graveyard2345"},
+	 {Implementation::kGraveyardHighLoad, "graveyardHighLoad"},
+	 {Implementation::kGraveyardHighLoadNoGraveyard, "graveyard9092NoGraveyard"},
          {Implementation::kGraveyard255, "graveyard255"},
 	 {Implementation::kLibCuckoo, "libcuckoo"}});
 
@@ -141,8 +144,4 @@ bool AbslParseFlag(std::string_view text,
                    std::string *error) {
   return AbslParseSetEnumFlag(*implementation_enum_and_strings, text,
 			      implementations, error);
-}
-
-std::string_view ImplementationString(Implementation implementation) {
-  return implementation_enum_and_strings->ToString(implementation);
 }

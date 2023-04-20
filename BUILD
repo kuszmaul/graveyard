@@ -28,12 +28,13 @@ cc_library(
 
 cc_library(
     name = "hash_benchmark",
-    srcs = ["hash_benchmark.cc"],
-    hdrs = ["hash_benchmark.h"],
+    srcs = ["benchmark/hash_benchmark.cc"],
+    hdrs = ["benchmark/hash_benchmark.h"],
     deps = [
         ":benchmark",
         ":enum_print",
         ":enums_flag",
+	":table_types",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
@@ -161,6 +162,7 @@ cc_library(
     hdrs = ["benchmark/table_types.h"],
     deps = [
             ":graveyard_set",
+	    ":ordered_linear_probing_set",
             "@folly//folly/container:F14Set",
             "@com_google_absl//absl/container:flat_hash_set",
             "@libcuckoo//libcuckoo:cuckoohash_map",

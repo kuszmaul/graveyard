@@ -154,9 +154,10 @@ cc_binary(
     deps = [":graveyard_set",],
 )
 
+# Creates paper/experiments/rss.tex.
 cc_binary(
     name = "amortization_benchmark",
-    srcs = ["amortization_benchmark.cc"],
+    srcs = ["benchmark/amortization_benchmark.cc"],
     deps = [":hash_benchmark",
             ":graveyard_set",
 	    ":print_numbers",

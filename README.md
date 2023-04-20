@@ -411,3 +411,9 @@ I0000 00:00:1680523430.074642  250787 amortization_benchmark.cc:242]  After dest
 
 - [ ] Wrap on overflow?  It's looking like we should...  Currently
     adding 5 buckets to large tables, but even that might not be enough.
+
+- [ ] Vectorize libcuckoo to find out how much of the performance
+    problem is vectorization and how much is cache effects.
+
+- [ ] Implement vanilla linear probing (no ordering, no search
+    distance) for a very low load factor.

@@ -613,7 +613,8 @@ Graveyard:
     that if we \verb+reserve()+ space, the table could be an arbitary
     size, for example).
   \item[Graveyard medium-load]  runs the table between 81.8\% 90\% full (geometric mean 85.6\%) with arbitrary capacity.
-  \item[Graveyard high-load] runs the table between 96\% and 97\% full (geometric mean 96.5\%) with arbitary capacity.
+  \item[Graveyard high-load] runs the table between 90\% and 92.5\% full (geometric mean 92.25\%) with arbitrary capacity and 5\% tombstones.
+  \item[Graveyard very-high-load] runs the table between 96\% and 97\% full (geometric mean 96.5\%) with arbitary capacity and 2\% tombstones.
 \end{description}
 
 \figref{rss} shows the memory usage for a workload that first reserves

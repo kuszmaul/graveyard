@@ -78,29 +78,52 @@ public:
 };
 using GraveyardMediumLoad = yobiduck::internal::HashTable<TraitsMediumLoad<Int64Traits>>;
 
+template <class Traits> class TraitsHighLoadNoGraveyard : public Traits {
+public:
+  static constexpr size_t full_utilization_numerator = 925;
+  static constexpr size_t full_utilization_denominator = 1000;
+  static constexpr size_t rehashed_utilization_numerator = 9;
+  static constexpr size_t rehashed_utilization_denominator = 10;
+  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+};
+using GraveyardHighLoadNoGraveyard = yobiduck::internal::HashTable<TraitsHighLoadNoGraveyard<Int64Traits>>;
+
 template <class Traits> class TraitsHighLoad : public Traits {
+public:
+  static constexpr size_t full_utilization_numerator = 925;
+  static constexpr size_t full_utilization_denominator = 1000;
+  static constexpr size_t rehashed_utilization_numerator = 9;
+  static constexpr size_t rehashed_utilization_denominator = 10;
+  static constexpr std::optional<size_t> kTombstonePeriod = 40; // 2.5%
+};
+using GraveyardHighLoad = yobiduck::internal::HashTable<TraitsHighLoad<Int64Traits>>;
+
+template <class Traits> class TraitsVeryHighLoad : public Traits {
 public:
   static constexpr size_t full_utilization_numerator = 97;
   static constexpr size_t full_utilization_denominator = 100;
   static constexpr size_t rehashed_utilization_numerator = 96;
   static constexpr size_t rehashed_utilization_denominator = 100;
-  static constexpr std::optional<size_t> kTombstonePeriod = 50;
+  static constexpr std::optional<size_t> kTombstonePeriod = 50; // 2 %
 };
-using GraveyardHighLoad = yobiduck::internal::HashTable<TraitsHighLoad<Int64Traits>>;
+using GraveyardVeryHighLoad = yobiduck::internal::HashTable<TraitsVeryHighLoad<Int64Traits>>;
+
 
 template <class Table>
-constexpr std::string_view kTableName = "unknown";
+constexpr std::optional<std::string_view> kTableName = std::nullopt;
 
 template<>
-constexpr std::string_view kTableName<GoogleSet> = "Google";
+constexpr std::optional<std::string_view> kTableName<GoogleSet> = "Google";
 template<>
-constexpr std::string_view kTableName<FacebookSet> = "Facebook";
+constexpr std::optional<std::string_view> kTableName<FacebookSet> = "Facebook";
 template<>
-constexpr std::string_view kTableName<GraveyardLowLoad> = "Graveyard low load";
+constexpr std::optional<std::string_view> kTableName<GraveyardLowLoad> = "Graveyard low load";
 template<>
-constexpr std::string_view kTableName<GraveyardMediumLoad> = "Graveyard medium load";
+constexpr std::optional<std::string_view> kTableName<GraveyardMediumLoad> = "Graveyard medium load";
 template<>
-constexpr std::string_view kTableName<GraveyardHighLoad> = "Graveyard high Load";
+constexpr std::optional<std::string_view> kTableName<GraveyardHighLoad> = "Graveyard high Load";
+template<>
+constexpr std::optional<std::string_view> kTableName<GraveyardVeryHighLoad> = "Graveyard very high Load";
 
 template <class Table>
 constexpr size_t rehash_point = 0;
@@ -111,21 +134,24 @@ constexpr size_t rehash_point = 0;
 template<> size_t rehash_point<GoogleSet>;
 // FacebookSet: rehashed at 100663296 from 117440512 to 234881024
 template<> size_t rehash_point<FacebookSet>;
-// GraveyardLowLoad: rehashed at 100000008 from 114285794 to 228571532
+// Graveyard low load: rehashed at 100000008 from 114285794 to 228571532
 template<> size_t rehash_point<GraveyardLowLoad>;
-// GraveyardMediumLoad: rehashed at 100000000 from 111111182 to 122222296
+// Graveyard medium load: rehashed at 100000000 from 111111182 to 122222296
 template<> size_t rehash_point<GraveyardMediumLoad>;
-// GraveyardHighLoad: rehashed at 100000010 from 103092864 to 104166762
+// Graveyard high load: rehashed at 100000010 from 103092864 to 104166762
 template<> size_t rehash_point<GraveyardHighLoad>;
+// Graveyard very high Load: rehashed at 100000010 from 103092864 to 104166762
+template<> size_t rehash_point<GraveyardVeryHighLoad>;
 
 // Does the implementation provide a low high-water mark?
 template <class Table>
-constexpr bool kExpectLowHighWater = 0;
-template<> constexpr bool kExpectLowHighWater<GoogleSet> = false;
-template<> constexpr bool kExpectLowHighWater<FacebookSet> = false;
-template<> constexpr bool kExpectLowHighWater<GraveyardLowLoad> = true;
-template<> constexpr bool kExpectLowHighWater<GraveyardMediumLoad> = true;
-template<> constexpr bool kExpectLowHighWater<GraveyardHighLoad> = true;
+constexpr std::optional<bool> kExpectLowHighWater = std::nullopt;
+template<> constexpr std::optional<bool> kExpectLowHighWater<GoogleSet> = false;
+template<> constexpr std::optional<bool> kExpectLowHighWater<FacebookSet> = false;
+template<> constexpr std::optional<bool> kExpectLowHighWater<GraveyardLowLoad> = true;
+template<> constexpr std::optional<bool> kExpectLowHighWater<GraveyardMediumLoad> = true;
+template<> constexpr std::optional<bool> kExpectLowHighWater<GraveyardHighLoad> = true;
+template<> constexpr std::optional<bool> kExpectLowHighWater<GraveyardVeryHighLoad> = true;
 struct MemoryStats {
   // All units are in KiloBytes
   size_t size, resident, shared, text, lib, data, dt;
@@ -199,7 +225,8 @@ void FindRehashPoints() {
     s.insert(i);
     if (s.capacity() != starting_capacity) {
       rehash_point<Table> = i;
-      std::cout << "// " << kTableName<Table> << ": rehashed at " << i << " from " << starting_capacity << " to " << s.capacity() << std::endl;
+      CHECK(kTableName<Table>.has_value());
+      std::cout << "// " << *kTableName<Table> << ": rehashed at " << i << " from " << starting_capacity << " to " << s.capacity() << std::endl;
       break;
     }
   }
@@ -247,6 +274,7 @@ void MeasureRehash(std::ofstream& ofile) {
   timespec start_slow, end_slow;
   // capacities:
   size_t just_before_rehash, just_after_rehash;
+  CHECK(kTableName<Table>.has_value());
   {
     Table s;
     s.reserve(kMinimumSize);
@@ -268,11 +296,12 @@ void MeasureRehash(std::ofstream& ofile) {
     end_slow = GetTime();
     just_after_rehash = s.capacity();
     LOG(INFO) << "after cap=" << s.capacity();
-    CHECK_EQ(initial_capacity, just_before_rehash) << " Expected rehash " << kTableName<Table> << " at " << rehash_point<Table>;
+    CHECK_EQ(initial_capacity, just_before_rehash) << " Expected rehash " << *kTableName<Table> << " at " << rehash_point<Table>;
     CHECK_LT(just_before_rehash, just_after_rehash);
     memory_after_critical_insert = GetMemoryStats();
     auto ratio = [](double a, double b) { return a / b; };
-    if (kExpectLowHighWater<Table>) {
+    CHECK(kExpectLowHighWater<Table>.has_value());
+    if (*kExpectLowHighWater<Table>) {
       // For the graveyard table, the critical rehash shouldn't have used much memory.
       //
       // The max didn't get much bigger.
@@ -291,12 +320,12 @@ void MeasureRehash(std::ofstream& ofile) {
   ResetMaxRss();
   MemoryStats resetted = GetMemoryStats();
   // Implementation
-  ofile << absl::StrFormat("%-21s", kTableName<Table>) << " & ";
+  ofile << absl::StrFormat("%-21s", *kTableName<Table>) << " & ";
   // Rehash at
   ofile << NumberWithSuffix(rehash_point<Table>, 4) << " & ";
   // Rehash multiplier
   ofile << absl::StrFormat("%.3f       & ", double(just_after_rehash)/double(just_before_rehash));
-  LOG(INFO) << kTableName<Table>;
+  LOG(INFO) << *kTableName<Table>;
   auto show_memory = [](std::string when, const MemoryStats& stats) {
     constexpr size_t kWidth = 20;
     if (when.size() < kWidth) {
@@ -309,10 +338,10 @@ void MeasureRehash(std::ofstream& ofile) {
   show_memory("After critical:", memory_after_critical_insert);
   show_memory("After destruction:", resetted);
   // RSS before
-  ofile << absl::StrFormat("%-4sMiB & ", PrintWithPrecision(memory_before_critical_insert.resident / 1024.0, 3));
+  ofile << absl::StrFormat("%4sMiB & ", PrintWithPrecision(memory_before_critical_insert.resident / 1024.0, 3));
   // RSS After
-  ofile << absl::StrFormat("%-4sMib & ", PrintWithPrecision(memory_after_critical_insert.resident / 1024.0, 3));
-  // rss ratio
+  ofile << absl::StrFormat("%4sMib & ", PrintWithPrecision(memory_after_critical_insert.resident / 1024.0, 3));
+  // RSS ratio
   ofile << absl::StrFormat("%4.2f  & ", memory_after_critical_insert.resident / double(memory_before_critical_insert.resident));
   // high-water
   ofile << absl::StrFormat("%-4sMiB    & ", PrintWithPrecision(memory_after_critical_insert.max_resident / 1024.0, 3));
@@ -330,6 +359,7 @@ int main(int argc, char *argv[]) {
   FindRehashPoints<GraveyardLowLoad>();
   FindRehashPoints<GraveyardMediumLoad>();
   FindRehashPoints<GraveyardHighLoad>();
+  FindRehashPoints<GraveyardVeryHighLoad>();
 
   LOG(INFO) << "Measuring";
   std::ofstream ofile;
@@ -343,6 +373,7 @@ int main(int argc, char *argv[]) {
   MeasureRehash<GraveyardLowLoad>(ofile);
   MeasureRehash<GraveyardMediumLoad>(ofile);
   MeasureRehash<GraveyardHighLoad>(ofile);
+  MeasureRehash<GraveyardVeryHighLoad>(ofile);
   ofile << "\\end{tabular}" << std::endl;
   ofile << "\\end{center}" << std::endl;
 }

@@ -63,7 +63,7 @@ public:
   static constexpr size_t full_utilization_denominator = 1000;
   static constexpr size_t rehashed_utilization_numerator = 9;
   static constexpr size_t rehashed_utilization_denominator = 10;
-  static constexpr std::optional<size_t> kTombstonePeriod = 40; // 2.5%
+  static constexpr std::optional<size_t> kTombstonePeriod = 20; // 5%
 };
 using GraveyardHighLoad = yobiduck::internal::HashTable<TraitsHighLoad<Int64Traits>>;
 
@@ -74,6 +74,7 @@ public:
   static constexpr size_t rehashed_utilization_numerator = 96;
   static constexpr size_t rehashed_utilization_denominator = 100;
   static constexpr std::optional<size_t> kTombstonePeriod = 50; // 2 %
+  static constexpr size_t kMaxExtraBuckets = 20;
 };
 using GraveyardVeryHighLoad = yobiduck::internal::HashTable<TraitsVeryHighLoad<Int64Traits>>;
 
@@ -106,7 +107,7 @@ constexpr NamePair kTableNames<GraveyardMediumLoad> = {"Graveyard medium load", 
 template<>
 constexpr NamePair kTableNames<GraveyardHighLoad> = {"Graveyard high load", "graveyard-high-load"};
 template<>
-constexpr NamePair kTableNames<GraveyardHighLoadNoGraveyard> = {"Graveyard high load, no graveyard tombstones", "gravey ard-high-load-no-tombstones"};
+constexpr NamePair kTableNames<GraveyardHighLoadNoGraveyard> = {"Graveyard high load, no graveyard tombstones", "graveyard-high-load-no-tombstones"};
 template<>
 constexpr NamePair kTableNames<GraveyardVeryHighLoad> = {"Graveyard very high load", "graveyard-very-high-load"};
 template<>

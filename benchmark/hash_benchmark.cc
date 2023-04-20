@@ -107,6 +107,9 @@ const EnumsAndStrings<Implementation> *implementation_enum_and_strings =
     EnumsAndStrings<Implementation>::Create(
         {{Implementation::kGraveyardLow, kTableNames<GraveyardLowLoad>.computer},
          {Implementation::kGraveyardMedium, kTableNames<GraveyardMediumLoad>.computer},
+	 {Implementation::kGraveyardHighLoad, kTableNames<GraveyardHighLoad>.computer},
+	 {Implementation::kGraveyardHighLoadNoGraveyard, kTableNames<GraveyardHighLoadNoGraveyard>.computer},
+         {Implementation::kGraveyardVeryHighLoad, kTableNames<GraveyardVeryHighLoad>.computer},
          {Implementation::kGoogle, kTableNames<GoogleSet>.computer},
          {Implementation::kFacebook, "facebook"},
          {Implementation::kOLP, kTableNames<OLPSet>.computer},
@@ -118,8 +121,6 @@ const EnumsAndStrings<Implementation> *implementation_enum_and_strings =
          // {Implementation::kGraveyard3578, "graveyard3578"},
          {Implementation::kGraveyardLikeAbseil, "graveyard-likeabseil"},
          //{Implementation::kGraveyard2345, "graveyard2345"},
-	 {Implementation::kGraveyardHighLoad, "graveyardHighLoad"},
-	 {Implementation::kGraveyardHighLoadNoGraveyard, "graveyard9092NoGraveyard"},
          {Implementation::kGraveyard255, "graveyard255"},
 	 {Implementation::kLibCuckoo, "libcuckoo"}});
 

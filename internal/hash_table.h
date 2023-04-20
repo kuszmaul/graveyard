@@ -145,6 +145,8 @@ struct HashTableTraits {
   static constexpr std::optional<size_t> kTombstonePeriod = 14;
 #endif
 
+  static constexpr size_t kMaxExtraBuckets = 5;
+
   //  // The hash tables range from 3/4 full to 7/8 full (unless there are erase
   //  // operations, in which case a table might be less than 3/4 full).
   //  // TODO: Make these be "kConstant".
@@ -362,7 +364,7 @@ public:
     // Add 1 bucket if logical_size_ from 1 to 2.
     // Add 0 bucketrs if logical_size_ == 0;
     // TODO: We'd like to add 0 buckets if the logical_bucket_count == 1.
-    size_t extra_buckets = (logical_size_ >= 6)  ? 5
+    size_t extra_buckets = (logical_size_ > Traits::kMaxExtraBuckets)  ? Traits::kMaxExtraBuckets
                            : (logical_size_ > 2) ? logical_size_ - 1
                            : (logical_size_ > 0) ? 1
                                                  : 0;

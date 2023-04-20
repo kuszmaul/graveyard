@@ -552,7 +552,7 @@ commit \texttt{22b89282} Jan 30, 2023}, and Libcuckoo~\cite{LiAnKa14,
 2023.  Note that Libcuckoo provides a \texttt{map}, but does not
 provide a \texttt{set}, and all our benchmarks are on \texttt{set}.
 So LibCuckoo has larger value objects than the other experiments, and
-our measurement of LibCuckoo's memory doesn't include the extra space
+our reported measurement of LibCuckoo's memory subtracts the extra space
 for the mapped value.}.
 
 Libcuckoo is slower on all operations than the other tables.  It's not
@@ -638,6 +638,10 @@ memory allocated at the same time for both the old and new table.
 TODO: Discuss the reduced-high water scheme.
 
 \begin{figure}
+\begin{center}
+    \includegraphics[width=75mm]{experiments/library-memory} \\
+\end{center}
+
 \input{experiments/rss.tex}
 \caption{Memory footprints just after rehashing to increase the table
   size.  ``Rehash at'' is the number of number of insertions before

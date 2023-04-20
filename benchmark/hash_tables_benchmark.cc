@@ -116,6 +116,18 @@ int main(int argc, char *argv[]) {
       IntHashSetBenchmark<GraveyardMediumLoad>(Get_allocated_memory_size);
       break;
     }
+    case Implementation::kGraveyardHighLoad: {
+      IntHashSetBenchmark<GraveyardHighLoad>(Get_allocated_memory_size);
+      break;
+    }
+    case Implementation::kGraveyardHighLoadNoGraveyard: {
+      IntHashSetBenchmark<GraveyardHighLoadNoGraveyard>(Get_allocated_memory_size);
+      break;
+    }
+    case Implementation::kGraveyardVeryHighLoad: {
+      IntHashSetBenchmark<GraveyardVeryHighLoad>(Get_allocated_memory_size);
+      break;
+    }
     case Implementation::kGraveyardIdentityHash: {
       IntHashSetBenchmark<GraveyardNoHash>(Get_allocated_memory_size);
       break;
@@ -140,14 +152,6 @@ int main(int argc, char *argv[]) {
       break;
     }
 #endif
-    case Implementation::kGraveyardHighLoad: {
-      IntHashSetBenchmark<GraveyardHighLoad>(Get_allocated_memory_size);
-      break;
-    }
-    case Implementation::kGraveyardHighLoadNoGraveyard: {
-      IntHashSetBenchmark<GraveyardHighLoadNoGraveyard>(Get_allocated_memory_size);
-      break;
-    }
     case Implementation::kOLP: {
       IntHashSetBenchmark<OLPSet>(
           [](const OLPSet &table) { return table.memory_estimate(); });

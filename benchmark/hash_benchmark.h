@@ -29,6 +29,11 @@ enum class Implementation {
   // least-important-to-benchmark.
   kGraveyardLow,
   kGraveyardMedium,
+  kGraveyardHighLoad, // Fill to 92.5% full then hash to 90% full with 5%
+		      // graveyard tombstones,
+  kGraveyardHighLoadNoGraveyard, // Same as HighLoad, except no
+                                 // graveyard tombstones.
+  kGraveyardVeryHighLoad,
   kGoogle,
   kFacebook,
   kOLP,
@@ -46,10 +51,6 @@ enum class Implementation {
   kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of
                   // 3/4 full) to reduce number of rehashes.
 #endif
-  kGraveyardHighLoad, // Fill to 92.5% full then hash to 90% full with 5%
-		      // graveyard tombstones,
-  kGraveyardHighLoadNoGraveyard, // Same as HighLoad, except no
-                                 // graveyard tombstones.
   kGraveyard255,  // H2 computed modulo 255 (rather than 128)
   kLibCuckoo,
 };

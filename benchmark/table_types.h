@@ -64,6 +64,7 @@ public:
   static constexpr size_t rehashed_utilization_numerator = 9;
   static constexpr size_t rehashed_utilization_denominator = 10;
   static constexpr std::optional<size_t> kTombstonePeriod = 20; // 5%
+  static constexpr size_t kMaxExtraBuckets = 10;
 };
 using GraveyardHighLoad = yobiduck::internal::HashTable<TraitsHighLoad<Int64Traits>>;
 

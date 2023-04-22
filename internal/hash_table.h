@@ -1124,11 +1124,33 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
 
 // TODO: It looks like we lost the bubble.
 
+template <size_t numerator, size_t denominator>
+static constexpr uint64_t NumberWithFractionOfOnes() {
+  if constexpr (numerator == 0) {
+    return 0;
+  } else {
+    static_assert(denominator != 0);
+    uint64_t result = 0;
+    uint64_t number_of_ones = 0;
+    for (size_t i = 0; i < 64; ++i) {
+      // Need another `1` if, in real arithmetic:
+      //    number_of_ones/i < numerator/denominator
+      // (ignore `denominator == 0` in this comment, but it works in the code).
+      result *= 2;
+      if (number_of_ones * denominator < numerator * i) {
+        ++result;
+        ++number_of_ones;
+      }
+    }
+    return result;
+  }
+}
+
 template <class Traits>
 static constexpr bool BucketGetsTombstone(size_t bucket_number) {
-  // E.g., Suppose the ratio is 7/10 then 7/10 of the buckets get a tombstone.
-  //  So `bucket % 10 < 7` gives us 70%.
-  return bucket_number % Traits::kTombstoneRatio.denominator() < Traits::kTombstoneRatio.numerator();
+  size_t b64 = bucket_number % 64;
+  uint64_t mask = NumberWithFractionOfOnes<Traits::kTombstoneRatio.numerator(), Traits::kTombstoneRatio.denominator()>();
+  return (mask >> b64) % 2 == 1;
 }
 
 template <class Traits>

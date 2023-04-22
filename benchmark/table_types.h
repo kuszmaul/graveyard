@@ -60,10 +60,9 @@ using GraveyardHighLoadNoGraveyard = yobiduck::internal::HashTable<TraitsHighLoa
 template <class Traits> class TraitsHighLoad : public TraitsHighLoadNoGraveyard<Traits> {
 public:
   // 5% tombstones means one tombstone every 20 slots which means 7
-  // tombstones in 140 slots which means 7 tombstones is 10 buckets.
+  // tombstones in 140 slots which means 7 tombstones in 10 buckets.
   static_assert(Traits::kSlotsPerBucket == 14);
-  // want 7/10 but 179/256 is pretty close and faster to compute.
-  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{179, 256};
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{7, 10};
   static constexpr size_t kMaxExtraBuckets = 20;
 };
 using GraveyardHighLoad = yobiduck::internal::HashTable<TraitsHighLoad<Int64Traits>>;

@@ -17,6 +17,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/hash/hash.h"
 #include "absl/log/check.h"
+#include "absl/numeric/bits.h"
 #include "absl/random/random.h"
 #include "benchmark.h"
 #include "gmock/gmock.h"
@@ -29,6 +30,18 @@ using testing::UnorderedElementsAre;
 using testing::UnorderedElementsAreArray;
 
 using yobiduck::GraveyardSet;
+
+TEST(HashTable, Constants) {
+  using yobiduck::internal::NumberWithFractionOfOnes;
+  //LOG(INFO) << "70% bits = " << std::bitset<64>{NumberWithFractionOfOnes<7, 10>()};
+  EXPECT_EQ(absl::popcount(NumberWithFractionOfOnes<7, 10>()), 45);
+  //LOG(INFO) << "70% bits = " << std::bitset<64>{NumberWithFractionOfOnes<7, 20>()};
+  EXPECT_EQ(absl::popcount(NumberWithFractionOfOnes<7, 20>()), 23);
+  EXPECT_EQ(absl::popcount(NumberWithFractionOfOnes<0, 1>()), 0);
+  EXPECT_EQ((NumberWithFractionOfOnes<0, 1>()), 0);
+  EXPECT_EQ((NumberWithFractionOfOnes<1, 2>()), 0x5555'5555'5555'5555);
+  EXPECT_EQ((NumberWithFractionOfOnes<1, 4>()), 0x4444'4444'4444'4444);
+}
 
 TEST(GraveyardSet, Types) {
   using IntSet = GraveyardSet<uint64_t>;

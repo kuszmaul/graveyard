@@ -141,6 +141,41 @@
 \begin{document}
 \maketitle
 
+
+
+First introduced in the early 1950s, the linear probing hash table remains one of the most influential data structures in computer science. The simple linear-probing hash-table design offers many natural upsides: it has excellent data locality, it avoids excessive space overhead from metadata such as pointers, and on modern machines it can be accelerated using vector instructions. However, linear probing also comes with a major drawback, in the form of a \defn{clustering effect}. As elements are inserted into the hash table, they have a tendency to group together into contiguous runs that are \emph{quadratically larger} than one might intuitively expect. If the hash table is filled to a load factor of $1 - 1 / x$ for some $x > 0$, then the expected length of the run containing a given element will be $\Theta(x^2)$. This clustering effect has been taught to generations of computer scientists \cite{...}, and is widely cited is the central reason that high-performance library hash tables tend to avoid the use of linear probing \cite{...}.
+
+Recently, in FOCS'21, Bender et al.~\cite{?} showed that the asymptotic effects of clustering can actually be \emph{eliminated} by strategically leaving `gaps' (i.e., tombstones) within each run, that way operations can complete without traveling to the end of the run. Specifically, they introduce a new version of linear probing, called \defn{graveyard hashing}, that achieves $O(x)$ amortized expected time per operation when the hash table is at a load factor of $1 - 1/x$.
+
+In this paper, we use graveyard hashing to build a simple, theoretically sound, and high-performance \texttt{C++} library hash table. As far as we know, our hash table is the first example of a real-world linear probing hash table that avoids the asymptotic effects of clustering. The result is a single hash-table design that is able to offer state-of-the-art performance at all load factors.
+
+\paragraph{The challenges of designing a \texttt{C++} library hash table.}
+Our library hash table, which we call \texttt{LibGraveyard}, is designed to be a swap-in replacement for the widely-used \texttt{C++} library hash tables released by Google \cite{?} and Facebook \cite{?}.\footnote{These hash tables, in turn, are \emph{almost} swap-in replacements for the \texttt{C++} standard-library hash table, although as we shall discuss and Section \ref{??}, there are a few key differences in the specifications that allow for Google and Facebook to achieve significant performance improvements.} 
+
+In addition to optimizing performance and space utilization, these hash tables support a strong set of specifications that make them suitable for widespread use within applications. Notably, they support \defn{rebuild-to-rebuild stability}, which requires that the physical locations where items reside change only when the hash table is rebuilt (and consequently resized), but \emph{never between rebuilds}. Rebuild-to-rebuild stability ensures that iterators within the hash table remain valid between rebuilds. However, rebuild-to-rebuild stability is incompatible with many hash table designs, including cuckoo hashing \cite{}, robin hood hashing \cite{?}, and intuitively graveyard hashing as well. This is one of the main technical challenges that we overcome in this paper.
+
+\paragraph{This paper: implicit graveyard hashing and \texttt{LibGraveyard}.} 
+The main algorithmic contribution of this paper is a new hash table design, called \defn{implicit graveyard hashing}, that (1) matches the theoretical guarantees of graveyard hashing; (2) achieves rebuild-to-rebuild stability; and (3) is amenable to a simple high-performance implementation. 
+
+We then present a library implementation \texttt{LibGraveyard} that can be used as a swap-in replacement for Google's Abseil hash table \cite{??} or Facebook's F14 hash table \cite{??}. \texttt{LibGraveyard} allows the user to choose between three load factor ranges: Moderate (60\%-80\% load factor); High (90\%-94\$ load factor); or Very High (95\%-96\% load factor).
+
+At moderate load factors, \texttt{LibGraveyard} matches the space efficiency is achieved by  Abseil and F14. At these loads, we find that clustering is not a practical problem, and in fact there is no need to leave gaps within the runs. Nonetheless, even in this case, \texttt{LibGraveyard} is able to achieve a significant practical reduction in space usage by avoiding memory-usage spikes during resizes. This is thanks to a simple (but, as far as we know, algorithmically novel) approach to resizing, which we present in Section \ref{??}.
+
+At high and very high load factors, LibGraveyard is able to avoid the clustering effects traditionally associated with linear probing, in order to achieve linear scaling in the load-factor parameter $x$. Even at very high load factors, LibGraveyard offers performance competitive with the \texttt{C++} standard-library implementation. \todo{Don't know if this is true}
+
+\paragraph{Paper outline.}
+Section \ref{?} presents theoretical foundations. The section begins with background on linear probing and graveyard hashing, and then presents the design and analysis of implicit graveyard hashing.
+
+Section \ref{?} discusses the design and implementation of \texttt{LibGraveyard}. Additionally, the section discusses the specifications and features that a good \texttt{C++} library hash table should satisfy. We emphasize that \texttt{LibGraveyard} is designed not just to be an experimental hash table, but to be a practical and theoretically sound swap-in replacement for current \texttt{C++} library hash tables \cite{??}.
+
+Section \ref{?} performs an experimental evaluation, comparing \texttt{LibGraveyard} both to the standard \texttt{C++} library hash table, and to Google's and Facebook's highly optimized replacement hash tables (based on quadratic probing and double hashing, respectively). \texttt{LibGraveyard} also compares favorably to the highly optimized \texttt{libcuckoo} library, although for reasons that we discuss in detail in Section \ref{?}, this final comparison should not be viewed as apples to apples. 
+
+Additionally, Section \ref{?} offers some general-purpose experiments to illustrate how the theory behind graveyard hashing scales to practice. We also demonstrate a real-world instance of an \emph{anti-clustering} effect that Bender et al.~\cite{?} showed should happen in standard linear probing hash tables under certain workloads. 
+
+Finally, Section \ref{??} discusses directions of future work.
+
+\newpage
+
 What are the requirements for a practical C++ hash table?
 \begin{itemize}
 \item Near-compatability with the C++ standard library hash table

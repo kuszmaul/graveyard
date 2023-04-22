@@ -1181,7 +1181,7 @@ void HashTable<Traits>::InsertAscending(value_type value,
         // Assert that we haven't filled the tombstone already.
         assert(matches % 2 == 1);
         // remove one possible empty tombstone from the empty list.
-        //??        matches &= ~1;
+        matches &= ~1;
         assert(matches % 2 == 0);
       }
     }

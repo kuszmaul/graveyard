@@ -38,7 +38,9 @@ template <class Traits> class NoteRehashTraits90 : public Traits {
   static constexpr size_t rehashed_utilization_numerator = 9;
   static constexpr size_t rehashed_utilization_denominator = 10;
 
-  static constexpr std::optional<size_t> kTombstonePeriod = 42;
+  // Tombstone one every 42.
+  static_assert(Traits::kSlotsPerBucket == 14);
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{1, 3};
 };
 
 using GraveyardInstrumented90 = yobiduck::internal::HashTable<NoteRehashTraits90<Int64Traits>>;
@@ -47,7 +49,7 @@ using GraveyardInstrumented90 = yobiduck::internal::HashTable<NoteRehashTraits90
 
 template <class Traits> class NoGraveyard : public NoteRehashTraits90<Traits> {
  public:
-  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{};
 };
 
 using NoGraveyardInstrumented90 = yobiduck::internal::HashTable<NoGraveyard<NoteRehashTraits90<Int64Traits>>>;

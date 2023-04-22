@@ -87,6 +87,20 @@ struct NullRehashCallback {
   }
 };
 
+class TombstoneRatio {
+ public:
+  constexpr TombstoneRatio() :value_(std::nullopt) {}
+  constexpr TombstoneRatio(size_t numerator, size_t denominator) :value_({numerator, denominator}) {
+    assert(denominator != 0);
+  }
+  constexpr bool has_value() const { return value_.has_value(); }
+  // `numerator()` and `denominator()` require `has_value()`.
+  constexpr size_t numerator() const { return value_->first;; }
+  constexpr size_t denominator() const { return value_->second; }
+ private:
+  std::optional<std::pair<size_t, size_t>> value_;
+};
+
 template <class KeyType, class MappedTypeOrVoid, class Hash, class KeyEqual,
           class Allocator>
 struct HashTableTraits {
@@ -129,9 +143,9 @@ struct HashTableTraits {
   static constexpr size_t full_utilization_denominator = 10;
   static constexpr size_t rehashed_utilization_numerator = 6;
   static constexpr size_t rehashed_utilization_denominator = 10;
-  // When rehashing, add a tombstone every `kTombstonePeriod` slots.
+  // When rehashing, add no tombstones.
   // Set this to `std::limits<size_t>::max()` for no tombstones.
-  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio = TombstoneRatio();
 
 #else
   // Rehash when 24/28 full, and then make it be 23/28 full.  Put in
@@ -140,9 +154,8 @@ struct HashTableTraits {
   static constexpr size_t full_utilization_denominator = 28;
   static constexpr size_t rehashed_utilization_numerator = 23;
   static constexpr size_t rehashed_utilization_denominator = 28;
-  // When rehashing, add a tombstone every `kTombstonePeriod` slots.
-  // Set this to `std::limits<size_t>::max()` for no tombstones.
-  static constexpr std::optional<size_t> kTombstonePeriod = 14;
+  // When rehashing, add a tombstone every `kTombstoneRatio` buckets.
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{1, 1};
 #endif
 
   static constexpr size_t kMaxExtraBuckets = 5;
@@ -155,9 +168,6 @@ struct HashTableTraits {
   //  static constexpr size_t rehashed_utilization_numerator = 3;
   //  static constexpr size_t rehashed_utilization_denominator = 4;
   //
-  //  // When rehashing, add a tombstone every `kTombstonePeriod` slots.
-  //  // Set this to `std::limits<size_t>::max()` for no tombstones.
-  //  static constexpr std::optional<size_t> kTombstonePeriod = 28;
 
   // When rehashing, construct a rehash_callback, which is a functor,
   // and call it with the table and the size.  This allows code to
@@ -1115,6 +1125,13 @@ void HashTable<Traits>::CheckValidityAfterRehash(int line_number) const {
 // TODO: It looks like we lost the bubble.
 
 template <class Traits>
+static constexpr bool BucketGetsTombstone(size_t bucket_number) {
+  // E.g., Suppose the ratio is 7/10 then 7/10 of the buckets get a tombstone.
+  //  So `bucket % 10 < 7` gives us 70%.
+  return bucket_number % Traits::kTombstoneRatio.denominator() < Traits::kTombstoneRatio.numerator();
+}
+
+template <class Traits>
 template <bool insert_tombstones>
 void HashTable<Traits>::InsertAscending(value_type value,
                                         const size_t h1, size_t h2,
@@ -1125,11 +1142,6 @@ void HashTable<Traits>::InsertAscending(value_type value,
   //const size_t h2 = buckets_.H2(hash);
   //size_t bucket_to_try = preferred_bucket;
   size_t bucket_to_try = h1;
-  if (insert_tombstones && Traits::kTombstonePeriod.has_value()) {
-    //LOG(INFO) << "Inserting tombstones";
-  } else {
-    //LOG(INFO) << "Not inserting tombstones";
-  }
   while (true) {
     // TODO: Do something better if this CHECK fails.
     CHECK_LT(bucket_to_try, buckets_.physical_size());
@@ -1140,17 +1152,15 @@ void HashTable<Traits>::InsertAscending(value_type value,
       ++first_uninitialized_bucket;
     }
     size_t matches = bucket.FindEmpties();
-    if constexpr (insert_tombstones && Traits::kTombstonePeriod.has_value()) {
-      size_t global_slot_number = bucket_to_try * Traits::kSlotsPerBucket;
-      size_t mod_period = global_slot_number % *Traits::kTombstonePeriod;
-      static_assert(Traits::kSlotsPerBucket <= *Traits::kTombstonePeriod);
-      if (mod_period >= *Traits::kTombstonePeriod - Traits::kSlotsPerBucket) {
+    if constexpr (insert_tombstones && Traits::kTombstoneRatio.has_value()) {
+      if (BucketGetsTombstone<Traits>(bucket_to_try)) {
         // Leave a tombstone in the last bucket of the ones in the
         // same period.
         // Assert that we haven't filled the tombstone already.
         assert(matches % 2 == 1);
         // remove one possible empty tombstone from the empty list.
-        matches -= 1;
+        //??        matches &= ~1;
+        assert(matches % 2 == 0);
       }
     }
     if (matches != 0) {

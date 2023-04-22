@@ -70,7 +70,7 @@ using Graveyard9092 = yobiduck::internal::HashTable<Int64Traits9092>;
 
 template <class Traits> class Traits9092NoGraveyard : public Traits9092<Traits> {
 public:
-  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{};
 };
 using Int64Traits9092NoGraveyard = Traits9092NoGraveyard<Int64Traits>;
 using Graveyard9092NoGraveyard = yobiduck::internal::HashTable<Int64Traits9092NoGraveyard>;

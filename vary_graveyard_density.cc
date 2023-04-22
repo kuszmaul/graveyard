@@ -40,7 +40,7 @@ template <class Traits> class LogRehashTraits : public Traits {
   static constexpr size_t rehashed_utilization_numerator = 9;
   static constexpr size_t rehashed_utilization_denominator = 10;
 
-  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{};
 };
 #endif
 
@@ -72,10 +72,10 @@ template <class Traits> class LogRehashTraits : public Traits {
   static constexpr size_t rehashed_utilization_numerator = 37;
   static constexpr size_t rehashed_utilization_denominator = 40;
 
-  // Without:
-  // static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
-  // With(40):
-  static constexpr std::optional<size_t> kTombstonePeriod = 40;
+  // Tombstone one in 40 slots.  Therefore the ratio is 7/20 (in 280
+  // slots, which 20 buckets, we want 7 tombstone so that 280/7 = 40.
+  static_assert(Traits::kSlotsPerBucket == 14);
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{7, 20};
 };
 
 using GraveyardInstrumented = yobiduck::internal::HashTable<LogRehashTraits<Int64Traits>>;

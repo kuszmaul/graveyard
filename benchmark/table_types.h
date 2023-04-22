@@ -31,7 +31,7 @@ public:
   static constexpr size_t full_utilization_denominator = 8;
   static constexpr size_t rehashed_utilization_numerator = 7;
   static constexpr size_t rehashed_utilization_denominator = 16;
-  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{};
 };
 using GraveyardLikeAbseil = yobiduck::internal::HashTable<TraitsLikeAbseil<Int64Traits>>;
 
@@ -43,7 +43,7 @@ public:
   static constexpr size_t full_utilization_denominator = 10;
   static constexpr size_t rehashed_utilization_numerator = 9;
   static constexpr size_t rehashed_utilization_denominator = 11;
-  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{};
 };
 using GraveyardMediumLoad = yobiduck::internal::HashTable<TraitsMediumLoad<Int64Traits>>;
 
@@ -53,18 +53,18 @@ public:
   static constexpr size_t full_utilization_denominator = 1000;
   static constexpr size_t rehashed_utilization_numerator = 9;
   static constexpr size_t rehashed_utilization_denominator = 10;
-  static constexpr std::optional<size_t> kTombstonePeriod = std::nullopt;
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{};
 };
 using GraveyardHighLoadNoGraveyard = yobiduck::internal::HashTable<TraitsHighLoadNoGraveyard<Int64Traits>>;
 
-template <class Traits> class TraitsHighLoad : public Traits {
+template <class Traits> class TraitsHighLoad : public TraitsHighLoadNoGraveyard<Traits> {
 public:
-  static constexpr size_t full_utilization_numerator = 925;
-  static constexpr size_t full_utilization_denominator = 1000;
-  static constexpr size_t rehashed_utilization_numerator = 9;
-  static constexpr size_t rehashed_utilization_denominator = 10;
-  static constexpr std::optional<size_t> kTombstonePeriod = 20; // 5%
-  static constexpr size_t kMaxExtraBuckets = 10;
+  // 5% tombstones means one tombstone every 20 slots which means 7
+  // tombstones in 140 slots which means 7 tombstones is 10 buckets.
+  static_assert(Traits::kSlotsPerBucket == 14);
+  // want 7/10 but 179/256 is pretty close and faster to compute.
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{179, 256};
+  static constexpr size_t kMaxExtraBuckets = 20;
 };
 using GraveyardHighLoad = yobiduck::internal::HashTable<TraitsHighLoad<Int64Traits>>;
 
@@ -74,7 +74,10 @@ public:
   static constexpr size_t full_utilization_denominator = 100;
   static constexpr size_t rehashed_utilization_numerator = 96;
   static constexpr size_t rehashed_utilization_denominator = 100;
-  static constexpr std::optional<size_t> kTombstonePeriod = 50; // 2 %
+  // 2% tombstones means one tombstone every 50 slots, which means 7 tombstones in 350 slots which means 7 tombsstones in 25 buckets.
+  static_assert(Traits::kSlotsPerBucket == 14);
+  // Wnat 7/25 but 72/256 is pretty close and is faster to compute.
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{72, 256};
   static constexpr size_t kMaxExtraBuckets = 20;
 };
 using GraveyardVeryHighLoad = yobiduck::internal::HashTable<TraitsVeryHighLoad<Int64Traits>>;

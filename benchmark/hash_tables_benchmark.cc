@@ -15,21 +15,10 @@
 #include "graveyard_set.h"
 #include "libcuckoo/cuckoohash_map.hh"
 
-// GraveyardSet using 255 for the modulo
-template <class Traits> class Traits255 : public Traits {
-public:
-  static constexpr size_t kH2Modulo = 255;
-};
 using Int64Traits =
     yobiduck::internal::HashTableTraits<uint64_t, void, absl::Hash<uint64_t>,
                                         std::equal_to<uint64_t>,
                                         std::allocator<uint64_t>>;
-static_assert(Int64Traits::kH2Modulo == 128);
-static_assert(Int64Traits::kSlotsPerBucket == 14);
-using Int64Traits255 = Traits255<Int64Traits>;
-static_assert(Int64Traits255::kH2Modulo == 255);
-using Graveyard255 = yobiduck::internal::HashTable<Int64Traits255>;
-static_assert(Int64Traits255::kSlotsPerBucket == 14);
 
 #if 0
 // GraveyardSet is 3/4 to 7/8 by default
@@ -82,10 +71,6 @@ template <>
 constexpr NamePair kTableNames<GraveyardNoHash> = {"graveyard identity-hash",
                                                    "graveyard-idhash"};
 
-template <>
-constexpr NamePair kTableNames<Graveyard255> = {"graveyard h2-mod-255",
-                                                "graveyard255"};
-
 int main(int argc, char *argv[]) {
   absl::ParseCommandLine(argc, argv);
   // The difference between these two is the 'g' vs. the 'G'.  The lower-case
@@ -134,10 +119,6 @@ int main(int argc, char *argv[]) {
     }
     case Implementation::kGraveyardIdentityHash: {
       IntHashSetBenchmark<GraveyardNoHash>(Get_allocated_memory_size);
-      break;
-    }
-    case Implementation::kGraveyard255: {
-      IntHashSetBenchmark<Graveyard255>(Get_allocated_memory_size);
       break;
     }
 #if 0

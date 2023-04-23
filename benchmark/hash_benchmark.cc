@@ -129,7 +129,6 @@ const EnumsAndStrings<Implementation> *implementation_enum_and_strings =
          // {Implementation::kGraveyard3578, "graveyard3578"},
          {Implementation::kGraveyardLikeAbseil, "graveyard-likeabseil"},
          //{Implementation::kGraveyard2345, "graveyard2345"},
-         {Implementation::kGraveyard255, "graveyard255"},
          {Implementation::kLibCuckoo, "libcuckoo"}});
 
 bool AbslParseFlag(std::string_view text, Implementation *implementation,

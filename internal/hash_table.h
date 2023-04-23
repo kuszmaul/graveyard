@@ -105,6 +105,56 @@ private:
   std::optional<std::pair<size_t, size_t>> value_;
 };
 
+// The slot byte encodes as follows:
+// Bit 7 (the high-order bit) "ordered"
+//   0   the slot is possibly out of order
+//   1   the slot is in order (possibly empty)
+// Bits 0:6:
+//   127 the slot is empty (in which case bit 7 is 1)
+//   others: the hash % 127.
+//
+// As a result, _mm_movemask_epi8 (which uses the high-order bit) can
+// tell us if the slot is ordered.
+//
+// To determine if a value is present we must construct the vector
+// with all 127's in it, then use __mm_and_ps() to construct the
+// vector with the "ordered" bit cleared, then we can compare.
+
+// Old variables
+// static constexpr uint8_t kEmpty = 255;
+// static constexpr size_t kH2Modulo = 128;
+
+class MetaByte {
+ public:
+  static constexpr uint8_t kOrderedMask = 0x80;
+  static constexpr uint8_t kEmpty = 0xFF;
+  static constexpr uint8_t kModulo = 127;
+  MetaByte() = delete;
+  void SetEmpty() {
+    meta_byte_ = kEmpty;
+  }
+  constexpr bool IsEmpty() const {
+    return meta_byte_ == kEmpty;
+  }
+  void SetOrderedValue(uint8_t v) {
+    assert(v < kEmpty);
+    meta_byte_ = kOrderedMask | v;
+  }
+  void SetUnorderedValue(uint8_t v) {
+    assert(v < kEmpty);
+    meta_byte_ = v;
+  }
+  constexpr uint8_t h2() const { return meta_byte_ & ~kOrderedMask; }
+  constexpr bool IsOrdered() const { return (meta_byte_ & kOrderedMask) != 0; }
+  static constexpr size_t ComputeH2(size_t hash) {
+    return hash % kModulo;
+  }
+ private:
+  uint8_t meta_byte_;
+};
+
+static_assert(std::is_trivially_destructible_v<MetaByte>);
+
 template <class KeyType, class MappedTypeOrVoid, class Hash, class KeyEqual,
           class Allocator>
 struct HashTableTraits {
@@ -136,11 +186,8 @@ struct HashTableTraits {
     }
   }
 
-  // H2 Value for empty slots
-  static constexpr uint8_t kEmpty = 255;
   static constexpr uint8_t kSearchDistanceEndSentinal = 255;
   static constexpr size_t kCacheLineSize = 64;
-  static constexpr size_t kH2Modulo = 128;
 
 #if 1
   static constexpr size_t full_utilization_numerator = 9;
@@ -201,19 +248,20 @@ template <class Traits> struct Bucket {
   using key_equal = typename Traits::key_equal;
 
   // Trivial constructor, copyconstructor, copy assignment, move
-  // consgtructor, move assignment, and destructor.
+  // constructor, move assignment, and destructor.
 
   void Init() {
     static_assert(std::is_trivial<Bucket>::value, "Bucket should be POD");
     search_distance = 0;
     for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i)
-      h2[i] = Traits::kEmpty;
+      h2[i].SetEmpty();
   }
 
   size_t PortableMatchingElements(uint8_t value) const {
+    assert(value < MetaByte::kModulo);
     int result = 0;
     for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {
-      if (h2[i] == value) {
+      if (h2[i].h2() == value) {
         result |= (1 << i);
       }
     }
@@ -250,17 +298,7 @@ template <class Traits> struct Bucket {
 
   // Returns an integer bitmask indicating which slots are empty.
   unsigned int FindEmpties() const {
-    if constexpr (kHaveSse2 && Traits::kH2Modulo == 128) {
-      static_assert(Traits::kEmpty > 128);
-      // We can special case in the event that the empty value is the only H2
-      // value with bit 7 set.
-      __m128i h2s = _mm_loadu_si128(reinterpret_cast<const __m128i *>(&h2[0]));
-      unsigned int empties = _mm_movemask_epi8(h2s);
-      empties &= (1 << Traits::kSlotsPerBucket) - 1;
-      return empties;
-    } else {
-      return MatchingElementsMask(Traits::kEmpty);
-    }
+    return MatchingElementsMask(MetaByte::kEmpty);
   }
 
   // Returns an empty slot number in this bucket, if it exists.  Else
@@ -273,21 +311,13 @@ template <class Traits> struct Bucket {
   // Returns a bit mask containing the non-empty slot numbers in this bucket.
   unsigned int FindNonEmpties() const {
     unsigned int mask;
-    if constexpr (kHaveSse2 && Traits::kH2Modulo == 128) {
-      static_assert(Traits::kEmpty > 128);
-      // We can special case in the event that the empty value is the only H2
-      // value with bit 7 set.
-      __m128i h2s = _mm_loadu_si128(reinterpret_cast<const __m128i *>(&h2[0]));
-      mask = _mm_movemask_epi8(h2s);
-    } else {
-      mask = MatchingElementsMask(Traits::kEmpty);
-    }
+    mask = FindEmpties();
     mask = ~mask;
     mask &= (1 << Traits::kSlotsPerBucket) - 1;
     return mask;
   }
 
-  std::array<uint8_t, Traits::kSlotsPerBucket> h2;
+  std::array<MetaByte, Traits::kSlotsPerBucket> h2;
   // The number of buckets we must search in an unsuccessful lookup that starts
   // here.
   uint8_t search_distance;
@@ -353,7 +383,7 @@ public:
     if (data_ != nullptr) {
       for (Bucket<Traits> &bucket : *this) {
         for (size_t slot = 0; slot < Traits::kSlotsPerBucket; ++slot) {
-          if (bucket.h2[slot] != Traits::kEmpty) {
+          if (!bucket.h2[slot].IsEmpty()) {
             bucket.slots[slot].value().~value_type();
           }
         }
@@ -413,7 +443,7 @@ public:
 
   // Returns the H2 hash, used by vector instructions to filter out most of the
   // not-equal entries.
-  size_t H2(size_t hash) const { return hash % Traits::kH2Modulo; }
+  size_t H2(size_t hash) const { return MetaByte::ComputeH2(hash); }
 
 private:
   static constexpr size_t buckets_offset = 0;
@@ -690,7 +720,7 @@ private:
   // following, `first_uninitialized_bucket` are uninitialized.  Used
   // during rehash (and TODO: use during copy).  Doesn't update `size_`.
   template <bool insert_tombstones>
-  void InsertAscending(value_type value, size_t h1, size_t h2,
+  void InsertAscending(value_type value, size_t h1, uint8_t h2,
                        size_t &first_uninitialized_bucket);
 
   // Finishes the rehash or copy by initializing all the remaining
@@ -894,7 +924,7 @@ HashTable<Traits>::insert(const value_type &value) {
   const size_t distance = buckets_[preferred_bucket].search_distance;
   for (size_t i = 0; i < distance; ++i) {
     // Don't use operator[], since that Buckets::operator[] has a bounds check.
-    __builtin_prefetch(&(buckets_.begin() + preferred_bucket + i + 1)->h2[0]);
+    __builtin_prefetch(&(buckets_.begin() + preferred_bucket + i + 1)->h2);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
     size_t idx = bucket.FindElement(h2, Traits::KeyOf(value), get_key_eq_ref());
@@ -926,12 +956,10 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
-    // TODO: Use FindEmpty
-    size_t matches = bucket.MatchingElementsMask(Traits::kEmpty);
+    size_t matches = bucket.FindEmpties();
     if (matches != 0) {
       size_t idx = CountTrailingZeros(matches);
-      bucket.h2[idx] = h2;
-      assert(h2 < Traits::kH2Modulo);
+      bucket.h2[idx].SetUnorderedValue(h2);
       new (&bucket.slots[idx].value()) value_type(value);
       maxf(buckets_[preferred_bucket].search_distance, i + 1);
       ++size_;
@@ -963,9 +991,9 @@ template <class Traits> void HashTable<Traits>::erase(const_iterator pos) {
   Bucket<Traits> *bucket = const_cast<Bucket<Traits> *>(pos.bucket_);
   size_t index = pos.index_;
   // We can assume that it's a valid iterator.
-  assert(bucket->h2[index] != Traits::kEmpty);
+  assert(!bucket->h2[index].IsEmpty());
   assert(size_ > 0);
-  bucket->h2[index] = Traits::kEmpty;
+  bucket->h2[index].SetEmpty();
   bucket->slots[index].value().~value_type();
   --size_;
   return;
@@ -1050,9 +1078,12 @@ template <class Traits> std::string HashTable<Traits>::ToString() const {
            << static_cast<size_t>(bucket->search_distance);
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       result << " " << j << ":";
-      if (bucket->h2[j] == Traits::kEmpty) {
+      if (bucket->h2[j].IsEmpty()) {
         result << "_";
       } else {
+        if (!bucket->h2[j].IsOrdered()) {
+          result << "!";
+        }
         result << bucket->slots[j].value();
       }
     }
@@ -1090,8 +1121,8 @@ void HashTable<Traits>::Validate(int line_number) const {
   size_t actual_size = 0;
   for (size_t i = 0; i < buckets_.physical_size(); ++i) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      if (buckets_[i].h2[j] != Traits::kEmpty) {
-        assert(buckets_[i].h2[j] < Traits::kH2Modulo);
+      if (!buckets_[i].h2[j].IsEmpty()) {
+        assert(buckets_[i].h2[j].h2() < MetaByte::kModulo);
         ++actual_size;
         size_t hash = get_hasher_ref()(buckets_[i].slots[j].value());
         size_t h1 = buckets_.H1(hash);
@@ -1167,7 +1198,7 @@ static constexpr bool BucketGetsTombstone(size_t bucket_number) {
 template <class Traits>
 template <bool insert_tombstones>
 void HashTable<Traits>::InsertAscending(value_type value, const size_t h1,
-                                        size_t h2,
+                                        uint8_t h2,
                                         size_t &first_uninitialized_bucket) {
   //??? const key_type &key = Traits::KeyOf(value);
   //??? const size_t hash = get_hasher_ref()(key);
@@ -1198,9 +1229,9 @@ void HashTable<Traits>::InsertAscending(value_type value, const size_t h1,
     }
     if (matches != 0) {
       size_t idx = CountTrailingZeros(matches);
-      assert(bucket.h2[idx] == Traits::kEmpty);
-      bucket.h2[idx] = h2;
-      assert(h2 < Traits::kH2Modulo);
+      MetaByte &meta_byte = bucket.h2[idx];
+      assert(meta_byte.IsEmpty());
+      meta_byte.SetUnorderedValue(h2);
       new (&bucket.slots[idx].value()) value_type(std::move(value));
       maxf(buckets_[h1].search_distance, bucket_to_try - h1 + 1);
       // TODO: Factor out the ++size_.
@@ -1230,15 +1261,15 @@ void HashTable<Traits>::CopyFrom(const Buckets<Traits> &buckets) {
   // next hash while executing `InsertAscending`).
   for (const Bucket<Traits> &bucket : buckets) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      const size_t h2 = bucket.h2[j];
-      if (h2 != Traits::kEmpty) {
+      const MetaByte meta_byte = bucket.h2[j];
+      if (!meta_byte.IsEmpty()) {
         const value_type &value = bucket.slots[j].value();
         const key_type &key = Traits::KeyOf(value);
         const size_t hash = get_hasher_ref()(key);
         const size_t h1 = buckets_.H1(hash);
-        assert(buckets_.H2(hash) == h2);
+        assert(buckets_.H2(hash) == meta_byte.h2());
         InsertAscending</*insert_tombstones=*/false>(
-            bucket.slots[j].value(), h1, h2, first_uninitialized_bucket);
+            bucket.slots[j].value(), h1, meta_byte.h2(), first_uninitialized_bucket);
       }
     }
     ++bucket_number;
@@ -1266,13 +1297,13 @@ void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
       }
     }
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      const size_t h2 = bucket.h2[j];
-      if (h2 != Traits::kEmpty) {
+      MetaByte meta_byte = bucket.h2[j];
+      if (!meta_byte.IsEmpty()) {
         const value_type &value = bucket.slots[j].value();
         const key_type &key = Traits::KeyOf(value);
         const size_t hash = get_hasher_ref()(key);
         const size_t h1 = buckets_.H1(hash);
-        assert(buckets_.H2(hash) == h2);
+        assert(buckets_.H2(hash) == meta_byte.h2());
 
         // TODO: When value_type is `pair<const K, V>`, this std::move
         // doesn't have any effect, resulting in a copy.  We'd like to
@@ -1280,7 +1311,7 @@ void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
         // `pair<const K, V>&`.  That can only be done if the pair has
         // standard layout and the offsets of `K` and `V`.
         InsertAscending</*insert_tombstones*/ true>(
-            std::move(bucket.slots[j].value()), h1, h2,
+            std::move(bucket.slots[j].value()), h1, meta_byte.h2(),
             first_uninitialized_bucket);
         // Destroy the value so that we can destroy the bucket without
         // running a bunch of destructors.
@@ -1344,7 +1375,7 @@ HashTable<Traits>::GetSuccessfulProbeLength(const value_type &value) const {
   for (size_t i = 0; i <= search_distance; ++i) {
     const Bucket<Traits> &bucket = buckets_[h1 + i];
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      if (bucket.h2[j] != Traits::kEmpty && bucket.slots[j].value() == value) {
+      if (!bucket.h2[j].IsEmpty() && bucket.slots[j].value() == value) {
         return i + 1;
       }
     }
@@ -1360,7 +1391,7 @@ size_t HashTable<Traits>::GetInsertProbeLength(
     CHECK_LT(bucket_number, buckets_.physical_size());
     const Bucket<Traits> &bucket = buckets_[bucket_number];
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      if (bucket.h2[j] == Traits::kEmpty) {
+      if (bucket.h2[j].IsEmpty()) {
         return i + 1;
       }
     }
@@ -1385,7 +1416,7 @@ ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
     size_t mask = 0;
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       mask *= 2ul;
-      if (bucket.h2[j] != Traits::kEmpty) {
+      if (!bucket.h2[j].IsEmpty()) {
         ++mask;
       }
     }

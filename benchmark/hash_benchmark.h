@@ -55,7 +55,6 @@ enum class Implementation {
   kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of
                   // 3/4 full) to reduce number of rehashes.
 #endif
-  kGraveyard255, // H2 computed modulo 255 (rather than 128)
   kLibCuckoo,
 };
 // TODO: Make this a set, not an unordered set.

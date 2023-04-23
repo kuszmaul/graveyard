@@ -623,16 +623,22 @@ How well does the search distance work?
 
 \section{Experiment 5: Compare our library to others}
 
-\figref{libraries} shows some microbenchmarks for our library,
-compared to Abseil~\cite{Abseil17}\footnote{Abseil commit
-\texttt{81927248} Mar 21, 2023.}, F14~\cite{BronsonSh19}\footnote{F14
-commit \texttt{22b89282} Jan 30, 2023}, and Libcuckoo~\cite{LiAnKa14,
+\figref{libraries} shows the performance on an insertion-only workload
+for Implicit Graveyard compared to
+Abseil~\cite{Abseil17}\footnote{Abseil commit \texttt{81927248} Mar
+21, 2023.}, F14~\cite{BronsonSh19}\footnote{F14 commit
+\texttt{22b89282} Jan 30, 2023}, and Libcuckoo~\cite{LiAnKa14,
   GoyalFaLi23}\footnote{Libcuckoo commit \texttt{e1d74917} Jan 1,
 2023.  Note that Libcuckoo provides a \texttt{map}, but does not
 provide a \texttt{set}, and all our benchmarks are on \texttt{set}.
 So LibCuckoo has larger value objects than the other experiments, and
-our reported measurement of LibCuckoo's memory subtracts the extra space
-for the mapped value.}.
+our reported measurement of LibCuckoo's memory subtracts the extra
+space for the mapped value.}.  We measured the cost of insertions from
+an empty table (in which as the table grows, it is rehashed),
+insertions into a reserved table (in which \texttt{reserve()} has been
+used to size the table so that no rehashes are needed), the cost of a
+successful lookup after the table has been built, and a the cost of an
+unsuccessful lookup after the table has been built.
 
 Libcuckoo is slower on all operations than the other tables.  It's not
 too surprising that insertions are slow with cuckoo hashing, but the
@@ -642,13 +648,16 @@ Furthermore comparing Libcuckoo to Graveyard, F14, or Abseil is not an
 apples-to-apples comparison since Libcuckoo offers concurrent accesses
 using hardware transactional memory (which seems to be a dead
 technology), and provides no reference stability (whereas the
-convention adopted by F14 and Abseil is that references remain stable
+convention adopted by the others is that references remain stable
 unless the table is rehashed, and they provide a way to reason about
 when the table will be rehashed.)
 
-Google is the fastest except for successful loookups, where facebook
-is the fastest.  Graveyard is a little slower, probably because of its
-higher load factor.  \todo{State the load factors used by graveyard.}
+Google is slightly faster except for successful loookups, where
+facebook is the fastest.  Graveyard low-load is the same as Facebook
+for insertions. Graveyard medium load is slower at insertions.
+Graveayard high-load runs quite quickly, and we can see that graveyard
+tombstones improve insertions and unsuccessful lookups.  \todo{State
+  the load factors used by graveyard.}
 
 \todo{Memory footprint and high-water marks.}
 

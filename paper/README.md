@@ -56,6 +56,20 @@ This README is effectively acting as the TO-DO list for putting together the pap
     and use one bit of the metadata to remember which items are out of
     order.  Merge them.
 
+    On main we have:
+
+    ```
+    [ RUN      ] GraveyardSet.RehashTime
+    Rehash of 10000000 took 97.113819ms
+    Rehash of 10000000 took 109.963275ms
+    Rehash of 10000000 took 110.515586ms
+    [       OK ] GraveyardSet.RehashTime (1396 ms)
+    [ RUN      ] GraveyardSet.CopyTime
+    Copy of 10000000 took 101.200839ms
+    Copy of 10000000 took 105.469711ms
+    Copy of 10000000 took 104.669613ms
+    ```
+
 ## Random Notes
 
 ---

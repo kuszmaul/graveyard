@@ -227,7 +227,7 @@ struct IdentityHasher {
 };
 
 TEST(GraveyardSet, RehashTime) {
-  constexpr size_t kSize = 1000000;
+  constexpr size_t kSize = 10000000;
   GraveyardSet<size_t> set;
   set.reserve(kSize);
   for (size_t i = 0; i < kSize; ++i) {
@@ -240,13 +240,13 @@ TEST(GraveyardSet, RehashTime) {
     struct timespec end;
     clock_gettime(CLOCK_MONOTONIC, &end);
     uint64_t elapsed = end - start;
-    std::cout << "Rehash took " << elapsed / 1'000'000 << "." << std::setw(6)
+    std::cout << "Rehash of " << kSize << " took " << elapsed / 1'000'000 << "." << std::setw(6)
               << elapsed % 1'000'000 << "ms" << std::endl;
   }
 }
 
 TEST(GraveyardSet, CopyTime) {
-  constexpr size_t kSize = 1000000;
+  constexpr size_t kSize = 10000000;
   GraveyardSet<size_t> set;
   set.reserve(kSize);
   for (size_t i = 0; i < kSize; ++i) {
@@ -260,7 +260,7 @@ TEST(GraveyardSet, CopyTime) {
     struct timespec end;
     clock_gettime(CLOCK_MONOTONIC, &end);
     uint64_t elapsed = end - start;
-    std::cout << "Rehash took " << elapsed / 1'000'000 << "." << std::setw(6)
+    std::cout << "Copy of " << kSize << " took " << elapsed / 1'000'000 << "." << std::setw(6)
               << elapsed % 1'000'000 << "ms" << std::endl;
   }
 }

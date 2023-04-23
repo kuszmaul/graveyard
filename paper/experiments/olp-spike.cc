@@ -1,22 +1,26 @@
 /* Measure the spike for a hovering workload with ordered linear
  * probing. */
 
-#include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <fstream>
-#include <iostream>
-#include <optional>
-#include <random>
-#include <unordered_set>
-#include <utility>
-#include <vector>
+#include <cassert>          // for assert
+#include <cstddef>          // for size_t
+#include <cstdint>          // for uint64_t
+#include <fstream>          // IWYU pragma: keep
+#include <initializer_list> // for initializer_list
+#include <iostream>         // for operator<<, ostream, basic_ostream, basi...
+#include <memory>           // for allocator, allocator_traits<>::value_type
+#include <random>           // for mt19937_64, uniform_int_distribution
+#include <string>           // for char_traits, operator+, to_string
+#include <unordered_set>    // for unordered_set
+#include <utility>          // for swap, pair
+#include <vector>           // for vector
 
 #include "hash_function.h"
 
+// IWYU note: fstream doesn't quite work right with IWYU.
+
 class UniqueNumbers {
- public:
-  explicit UniqueNumbers(std::mt19937_64 &gen) :gen_(gen) {}
+public:
+  explicit UniqueNumbers(std::mt19937_64 &gen) : gen_(gen) {}
   uint64_t Next() {
     while (true) {
       uint64_t v = distribution_(gen_);
@@ -26,7 +30,8 @@ class UniqueNumbers {
       }
     }
   }
- private:
+
+private:
   std::mt19937_64 &gen_;
   std::uniform_int_distribution<uint64_t> distribution_;
   std::unordered_set<uint64_t> seen_;
@@ -41,17 +46,17 @@ struct ProbeLengths {
 // A 64-bit integer that prints as a short number (easier to see)
 struct PV {
   uint64_t v;
-  explicit PV(uint64_t v) :v(v) {}
-  friend std::ostream& operator<<(std::ostream& os, PV pv) {
+  explicit PV(uint64_t v) : v(v) {}
+  friend std::ostream &operator<<(std::ostream &os, PV pv) {
     return os << (pv.v >> 54) << "." << std::hex << (pv.v % 16) << std::dec;
   }
 };
 
-
 // This OLP cannot resize.
 class Olp {
- public:
-  explicit Olp(size_t capacity) :slots_(capacity), nominal_capacity_(capacity) {}
+public:
+  explicit Olp(size_t capacity)
+      : slots_(capacity), nominal_capacity_(capacity) {}
   bool insert(uint64_t v) {
     assert(size_ <= nominal_capacity_);
     for (size_t index = H1(v, nominal_capacity_); true; ++index) {
@@ -59,88 +64,86 @@ class Olp {
       if (index == slots_.size()) {
         slots_.push_back(Slot{});
       }
-      Slot& slot = slots_[index];
+      Slot &slot = slots_[index];
       switch (slot.tag()) {
-        case Tag::kEmpty: {
+      case Tag::kEmpty: {
+        ++size_;
+        slot = Slot(v);
+        return true;
+      }
+      case Tag::kPresent: {
+        if (v == slot.value()) {
+          return false;
+        }
+        if (v < slot.value()) {
+          std::swap(v, slot.value());
+        }
+        continue;
+      }
+      case Tag::kTombstone: {
+        if (v <= slot.value() || index + 1 == slots_.size() ||
+            slots_[index + 1].tag() == Tag::kEmpty ||
+            slots_[index + 1].value() > v) {
+          // If the tombstone is big enough, or if the next slot is
+          // big enough or empty (or non-existent) we can use this
+          // slot.
           ++size_;
           slot = Slot(v);
           return true;
         }
-        case Tag::kPresent: {
-          if (v == slot.value()) {
-            return false;
-          }
-          if (v < slot.value()) {
-            std::swap(v, slot.value());
-          }
-          continue;
-        }
-        case Tag::kTombstone: {
-          if (v <= slot.value() ||
-              index + 1 == slots_.size() ||
-              slots_[index + 1].tag() == Tag::kEmpty ||
-              slots_[index + 1].value() > v) {
-            // If the tombstone is big enough, or if the next slot is
-            // big enough or empty (or non-existent) we can use this
-            // slot.
-            ++size_;
-            slot = Slot(v);
-            return true;
-          }
-          continue;
-        }
+        continue;
+      }
       }
     }
   }
   bool erase(uint64_t v) {
-    for (size_t index = H1(v, nominal_capacity_); index < slots_.size(); ++index) {
-      Slot& slot = slots_[index];
+    for (size_t index = H1(v, nominal_capacity_); index < slots_.size();
+         ++index) {
+      Slot &slot = slots_[index];
       switch (slot.tag()) {
-        case Tag::kEmpty: {
+      case Tag::kEmpty: {
+        return false;
+      }
+      case Tag::kPresent: {
+        if (v == slot.value()) {
+          --size_;
+          if (index + 1 == slots_.size() ||
+              slots_[index + 1].tag() == Tag::kEmpty ||
+              H1(slots_[index + 1].value(), nominal_capacity_) == index + 1) {
+            // This slot can just be an empty.  This can occur if
+            //  * If it's the end of the array,
+            //  * If the next slot is empty, or
+            //  * If the next slot is at its preferred slot.
+
+            slot = Slot();
+          } else {
+            slot.ConvertToTombstone();
+          }
+          return true;
+        }
+        if (v < slot.value()) {
           return false;
         }
-        case Tag::kPresent: {
-          if (v == slot.value()) {
-            --size_;
-            if (index + 1 == slots_.size() ||
-                slots_[index + 1].tag() == Tag::kEmpty ||
-                H1(slots_[index + 1].value(), nominal_capacity_) == index + 1) {
-              // This slot can just be an empty.  This can occur if
-              //  * If it's the end of the array,
-              //  * If the next slot is empty, or
-              //  * If the next slot is at its preferred slot.
-
-              slot = Slot();
-            } else {
-              slot.ConvertToTombstone();
-            }
-            return true;
-          }
-          if (v < slot.value()) {
-            return false;
-          }
-          continue;
+        continue;
+      }
+      case Tag::kTombstone: {
+        if (v <= slot.value()) {
+          return false;
         }
-        case Tag::kTombstone: {
-          if (v <= slot.value()) {
-            return false;
-          }
-          continue;
-        }
+        continue;
+      }
       }
     }
     return false;
   }
 
-  bool contains(uint64_t v) const {
-    return Contains(v).first;
-  }
+  bool contains(uint64_t v) const { return Contains(v).first; }
 
   void Validate() const {
     Slot prev;
     size_t count = 0;
     size_t i = 0;
-    for (const auto& slot : slots_) {
+    for (const auto &slot : slots_) {
       if (!slot.empty() && !prev.empty()) {
         assert(prev < slot);
       }
@@ -148,7 +151,8 @@ class Olp {
         ++count;
         prev = slot;
         if (!contains(slot.value())) {
-          std::cout << "Looking for " << (slot.value() >> 54) << " in " << *this << std::endl;
+          std::cout << "Looking for " << (slot.value() >> 54) << " in " << *this
+                    << std::endl;
         }
         assert(contains(slot.value()));
       }
@@ -161,21 +165,19 @@ class Olp {
   }
 
   ProbeLengths GetProbeLengths() const {
-    return ProbeLengths{
-      .found = FoundAverageProbeLength(),
-      .notfound = NotFoundAverageProbeLength(),
-      .insert = InsertAverageProbeLength()
-    };
+    return ProbeLengths{.found = FoundAverageProbeLength(),
+                        .notfound = NotFoundAverageProbeLength(),
+                        .insert = InsertAverageProbeLength()};
   }
 
- private:
+private:
   // Computes the average probe length for a successful lookup by
   // iterating through the present values and determining the probe
   // length to find each value.
   double FoundAverageProbeLength() const {
     double n = 0;
     size_t found_sum = 0;
-    for (const auto& slot : slots_) {
+    for (const auto &slot : slots_) {
       if (slot.present()) {
         auto [found, length] = Contains(slot.value());
         assert(found);
@@ -196,7 +198,8 @@ class Olp {
     double sum = 0;
     for (size_t i = 0; i < nominal_capacity_; ++i) {
       sum += NotFoundAverageProbeLength(i);
-      //std::cout << "this_sum=" << this_sum << " this_n=" << this_n << std::endl;
+      // std::cout << "this_sum=" << this_sum << " this_n=" << this_n <<
+      // std::endl;
     }
     return sum / nominal_capacity_;
   }
@@ -204,39 +207,43 @@ class Olp {
   // Computes the average probe length for an unsuccessful lookup that
   // starts at slot `i`.
   double NotFoundAverageProbeLength(const size_t i) const {
-    //std::cout << __LINE__ << ":Looking at " << i << std::endl;
+    // std::cout << __LINE__ << ":Looking at " << i << std::endl;
     double this_sum = 0;
     size_t this_n = 0;
     for (size_t j = i; j < slots_.size(); ++j) {
-      const Slot& slot = slots_[j];
+      const Slot &slot = slots_[j];
       switch (slot.tag()) {
-        case Tag::kEmpty: {
+      case Tag::kEmpty: {
+        this_sum += (j - i) + 1;
+        ++this_n;
+        return this_sum / this_n;
+      }
+      case Tag::kTombstone:
+      case Tag::kPresent: {
+        size_t h1 = H1(slot.value(), nominal_capacity_);
+        if (h1 > i) {
           this_sum += (j - i) + 1;
           ++this_n;
+          // std::cout << __LINE__ << ": at " << j << " this_sum=" << this_sum
+          // << " this_n=" << this_n << " slots' h1=" << h1 << std::endl;
           return this_sum / this_n;
         }
-        case Tag::kTombstone:
-        case Tag::kPresent: {
-          size_t h1 = H1(slot.value(), nominal_capacity_);
-          if (h1 > i) {
-            this_sum += (j - i) + 1;
-            ++this_n;
-            //std::cout << __LINE__ << ": at " << j << " this_sum=" << this_sum << " this_n=" << this_n << " slots' h1=" << h1 << std::endl;
-            return this_sum / this_n;
-          }
-          if (h1 == i) {
-            this_sum += (j - i) + 1;
-            ++this_n;
-            //std::cout << __LINE__ << ": at " << j << " this_sum=" << this_sum << " this_n=" << this_n << " slots' h1=" << h1 << std::endl;
-          } else {
-            //std::cout << __LINE__ << ": at " << j << " slots'h1=" << h1 << std::endl;
-          }
-          break;
+        if (h1 == i) {
+          this_sum += (j - i) + 1;
+          ++this_n;
+          // std::cout << __LINE__ << ": at " << j << " this_sum=" << this_sum
+          // << " this_n=" << this_n << " slots' h1=" << h1 << std::endl;
+        } else {
+          // std::cout << __LINE__ << ": at " << j << " slots'h1=" << h1 <<
+          // std::endl;
         }
+        break;
+      }
       }
     }
-    //std::cout << __LINE__ << ": " << i << " off the end this_sum=" << this_sum << " this_n=" << this_n << std::endl;
-    //std::cout << *this << std::endl;
+    // std::cout << __LINE__ << ": " << i << " off the end this_sum=" <<
+    // this_sum << " this_n=" << this_n << std::endl; std::cout << *this <<
+    // std::endl;
     if (this_n == 0) {
       // If we haven't already looked at the last slot, we need to
       // account for the fact that we must look at all the slots.
@@ -258,29 +265,30 @@ class Olp {
     double sum = 0;
     size_t n = 0;
     for (size_t j = i; j < slots_.size(); ++j) {
-      const Slot& slot = slots_[j];
+      const Slot &slot = slots_[j];
       switch (slot.tag()) {
-        case Tag::kEmpty: {
-          sum += (j - i) + 1;
+      case Tag::kEmpty: {
+        sum += (j - i) + 1;
+        ++n;
+        return sum / n;
+      }
+      case Tag::kTombstone:
+      case Tag::kPresent: {
+        size_t h1 = H1(slot.value(), nominal_capacity_);
+        if (h1 >= i) {
+          sum += (j - i) + distance_to_non_present(j);
           ++n;
+        }
+        if (h1 > i) {
           return sum / n;
         }
-        case Tag::kTombstone:
-        case Tag::kPresent: {
-          size_t h1 = H1(slot.value(), nominal_capacity_);
-          if (h1 >= i) {
-            sum += (j - i) + distance_to_non_present(j);
-            ++n;
-          }
-          if (h1 > i) {
-            return sum / n;
-          }
-          continue;
-        }
+        continue;
+      }
       }
     }
     if (n == 0) {
-      // If we haven't already looked at the last slot we need to account for it.
+      // If we haven't already looked at the last slot we need to account for
+      // it.
       sum += (slots_.size() - i);
       ++n;
     }
@@ -292,9 +300,9 @@ class Olp {
   // non-empty, then returns 1, for example.
   size_t distance_to_non_present(size_t i) const {
     for (size_t j = i; j < slots_.size(); ++j) {
-      const Slot& slot = slots_[j];
+      const Slot &slot = slots_[j];
       if (!slot.present()) {
-        return j - i  + 1;
+        return j - i + 1;
       }
     }
     return slots_.size() - i;
@@ -365,29 +373,30 @@ class Olp {
 
   // Returns a `bool` (`true` if `v` is present) and a `size_t` (the
   // number of slots examined).
-  std::pair<bool, size_t/*probe_length*/> Contains(uint64_t v) const {
+  std::pair<bool, size_t /*probe_length*/> Contains(uint64_t v) const {
     size_t probe_length = 1;
-    for (size_t index = H1(v, nominal_capacity_); index < slots_.size(); ++index, ++probe_length) {
-      const Slot& slot = slots_[index];
+    for (size_t index = H1(v, nominal_capacity_); index < slots_.size();
+         ++index, ++probe_length) {
+      const Slot &slot = slots_[index];
       switch (slot.tag()) {
-        case Tag::kEmpty: {
+      case Tag::kEmpty: {
+        return {false, probe_length};
+      }
+      case Tag::kPresent: {
+        if (v == slot.value()) {
+          return {true, probe_length};
+        }
+        if (v < slot.value()) {
           return {false, probe_length};
         }
-        case Tag::kPresent: {
-          if (v == slot.value()) {
-            return {true, probe_length};
-          }
-          if (v < slot.value()) {
-            return {false, probe_length};
-          }
-          continue;
+        continue;
+      }
+      case Tag::kTombstone: {
+        if (v <= slot.value()) {
+          return {false, probe_length};
         }
-        case Tag::kTombstone: {
-          if (v <= slot.value()) {
-            return {false, probe_length};
-          }
-          continue;
-        }
+        continue;
+      }
       }
     }
     return {false, probe_length};
@@ -400,11 +409,11 @@ class Olp {
   // sort before unwrapped valueds.
 
   class Slot {
-   public:
-    enum Tag {kEmpty, kPresent, kTombstone};
+  public:
+    enum Tag { kEmpty, kPresent, kTombstone };
 
-    Slot() :tag_{kEmpty} {}
-    explicit Slot(uint64_t v) :tag_{kPresent}, value_(v) {}
+    Slot() : tag_{kEmpty} {}
+    explicit Slot(uint64_t v) : tag_{kPresent}, value_(v) {}
     bool empty() const { return tag_ == kEmpty; }
     bool present() const { return tag_ == kPresent; }
     bool tombstone() const { return tag_ == kTombstone; }
@@ -413,23 +422,22 @@ class Olp {
       assert(tag_ != kEmpty);
       return value_;
     }
-    uint64_t& value() {
+    uint64_t &value() {
       assert(tag_ != kEmpty);
       return value_;
     }
-    Tag tag() const {
-      return tag_;
-    }
+    Tag tag() const { return tag_; }
     void ConvertToTombstone() {
       assert(present());
       tag_ = kTombstone;
     }
-   private:
+
+  private:
     // Requires a and b not empty.
     friend bool operator<(const Slot &a, const Slot &b) {
       return a.value_ < b.value_;
     }
-    friend std::ostream& operator<<(std::ostream& os, const Slot& slot) {
+    friend std::ostream &operator<<(std::ostream &os, const Slot &slot) {
       if (!slot.empty()) {
         if (slot.tombstone()) {
           os << "T";
@@ -445,10 +453,10 @@ class Olp {
 
   using Tag = Slot::Tag;
 
-  friend std::ostream& operator<<(std::ostream& os, const Olp& olp) {
+  friend std::ostream &operator<<(std::ostream &os, const Olp &olp) {
     os << "{size=" << olp.size_ << " nominal_cap=" << olp.nominal_capacity_;
     size_t i = 0;
-    for (const auto& slot : olp.slots_) {
+    for (const auto &slot : olp.slots_) {
       os << " ";
       if (!slot.empty()) {
         os << "[" << i << "]";
@@ -490,9 +498,10 @@ void test() {
       uint64_t v = numbers.Next();
       olp.insert(v);
       values.push_back(v);
-      //std::cout << __LINE__ << ":after v=" << (v >> 54) << " load=" << load_factor << " table=" << olp << std::endl;
+      // std::cout << __LINE__ << ":after v=" << (v >> 54) << " load=" <<
+      // load_factor << " table=" << olp << std::endl;
       olp.Validate();
-      //std::cout << "ok" << std::endl;
+      // std::cout << "ok" << std::endl;
     }
     // std::cout << "load=" << load_factor << " table=" << olp << std::endl;
     uint64_t v = RemoveRandom(values, gen);
@@ -506,21 +515,24 @@ void test() {
       bool erased = olp.erase(v);
       assert(erased);
     }
-    olp.insert(v-1);
-    // std::cout << __LINE__ << ": Inserted and Erased and inserted - 1 " << (v >> 54) << " Got " << olp << std::endl;
-    olp.erase(v-1);
+    olp.insert(v - 1);
+    // std::cout << __LINE__ << ": Inserted and Erased and inserted - 1 " << (v
+    // >> 54) << " Got " << olp << std::endl;
+    olp.erase(v - 1);
     // std::cout << __LINE__ << ":" << std::endl;
     olp.insert(v);
-    // std::cout << __LINE__ << ": Inserted " << (v >> 54) << " Got " << olp << std::endl;
+    // std::cout << __LINE__ << ": Inserted " << (v >> 54) << " Got " << olp <<
+    // std::endl;
     olp.Validate();
     // std::cout << __LINE__ << ":" << std::endl;
     {
       bool erased = olp.erase(v);
       assert(erased);
     }
-    olp.insert(v+1);
-    // std::cout << "Inserted and Erased and inserted + 1 " << (v >> 54) << " Got " << olp << std::endl;
-    olp.erase(v+1);
+    olp.insert(v + 1);
+    // std::cout << "Inserted and Erased and inserted + 1 " << (v >> 54) << "
+    // Got " << olp << std::endl;
+    olp.erase(v + 1);
     olp.Validate();
   }
 }
@@ -531,7 +543,8 @@ int main() {
   constexpr size_t kN = 1'000'000;
   for (double load_factor : {.95, .98, .99, .995}) {
     std::ofstream ofile;
-    ofile.open("spike-" + std::to_string(kN) + "-" + std::to_string(load_factor) + ".data");
+    ofile.open("spike-" + std::to_string(kN) + "-" +
+               std::to_string(load_factor) + ".data");
     ofile << "#insert_number found notfound insert" << std::endl;
     std::cout << "load=" << load_factor << std::endl;
     std::mt19937_64 gen = master_gen;
@@ -547,7 +560,8 @@ int main() {
       values.push_back(v);
       if (i_mod_report_every == 0) {
         ProbeLengths probelengths = olp.GetProbeLengths();
-        ofile << i << " " << probelengths.found << " " << probelengths.notfound << " " << probelengths.insert << std::endl;
+        ofile << i << " " << probelengths.found << " " << probelengths.notfound
+              << " " << probelengths.insert << std::endl;
       }
       ++i_mod_report_every;
       if (i_mod_report_every == report_every) {

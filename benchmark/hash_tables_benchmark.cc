@@ -1,19 +1,18 @@
-#include <cstddef> // for size_t
-#include <cstdint> // for uint64_t
+#include <cstddef>     // for size_t
+#include <cstdint>     // for uint64_t
 #include <functional>  // for equal_to
-#include <optional>
 #include <type_traits> // for remove_reference_t
 #include <vector>      // for vector
 
 #include "absl/container/flat_hash_set.h"
-#include "absl/flags/flag.h"               // for GetFlag
+#include "absl/flags/flag.h" // for GetFlag
 #include "absl/flags/parse.h"
 #include "absl/hash/hash.h"           // for Hash
+#include "benchmark/hash_benchmark.h" // for IntHashSetBenchmark
 #include "benchmark/table_types.h"
 #include "folly/container/F14Set.h"
 #include "folly/lang/Bits.h" // for findLastSet
 #include "graveyard_set.h"
-#include "benchmark/hash_benchmark.h"      // for IntHashSetBenchmark
 #include "libcuckoo/cuckoohash_map.hh"
 
 // GraveyardSet using 255 for the modulo
@@ -68,20 +67,24 @@ public:
 using Int64Traits9092 = Traits9092<Int64Traits>;
 using Graveyard9092 = yobiduck::internal::HashTable<Int64Traits9092>;
 
-template <class Traits> class Traits9092NoGraveyard : public Traits9092<Traits> {
+template <class Traits>
+class Traits9092NoGraveyard : public Traits9092<Traits> {
 public:
   static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{};
 };
 using Int64Traits9092NoGraveyard = Traits9092NoGraveyard<Int64Traits>;
-using Graveyard9092NoGraveyard = yobiduck::internal::HashTable<Int64Traits9092NoGraveyard>;
+using Graveyard9092NoGraveyard =
+    yobiduck::internal::HashTable<Int64Traits9092NoGraveyard>;
 
 using GraveyardNoHash = yobiduck::GraveyardSet<uint64_t, IdentityHash>;
 
-template<>
-constexpr NamePair kTableNames<GraveyardNoHash> = {"graveyard identity-hash", "graveyard-idhash"};
+template <>
+constexpr NamePair kTableNames<GraveyardNoHash> = {"graveyard identity-hash",
+                                                   "graveyard-idhash"};
 
-template<>
-constexpr NamePair kTableNames<Graveyard255> = {"graveyard h2-mod-255", "graveyard255"};
+template <>
+constexpr NamePair kTableNames<Graveyard255> = {"graveyard h2-mod-255",
+                                                "graveyard255"};
 
 int main(int argc, char *argv[]) {
   absl::ParseCommandLine(argc, argv);
@@ -121,7 +124,8 @@ int main(int argc, char *argv[]) {
       break;
     }
     case Implementation::kGraveyardHighLoadNoGraveyard: {
-      IntHashSetBenchmark<GraveyardHighLoadNoGraveyard>(Get_allocated_memory_size);
+      IntHashSetBenchmark<GraveyardHighLoadNoGraveyard>(
+          Get_allocated_memory_size);
       break;
     }
     case Implementation::kGraveyardVeryHighLoad: {

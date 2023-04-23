@@ -36,5 +36,4 @@ static inline timespec GetTime() {
   return result;
 }
 
-
 #endif // BENCHMARK_H_

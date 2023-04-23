@@ -107,13 +107,14 @@ Follow the Google style guide.
 
 Keep code formatted with `clang-format`.  E.g.,
 ```shell
-$ clang-format -i *.h *.cc internal/*.h internal/*.cc
+$ clang-format -i $(find . -name \*.c -or -name \*.h)
 ```
 
 Keep includes clean with iwyu:
 
 ```shell
-$ for x in *.h *.cc internal/*.h internal/*.cc; do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c++17 -I/home/bradley/github/abseil-cpp/ -I/home/bradley/github/folly -I. -I/home/bradley/github/googletest/googlemock/include/ -I/home/bradley/github/googletest/googletest/include $x; done
+$ for x in $(find . -name \*.cc -or -name \*.h); do include-what-you-use -Xiwyu --no_fwd_decls -x c++ -std=c++17 -I/home/bradley/github/abseil-cpp/ -I/home/bradley/github/folly -I. -I/home/bradley/github/googletest/googlemock/include/ -I/home/bradley/github/googletest/googletest/include -I/home/bradley/github/libcuckoo/ $x; done
+
 ```
 
 (You may need to install the right version of clang.  E.g., in Ubuntu 22, `include-what-you-use` needs `sudo apt install clang-13`.)

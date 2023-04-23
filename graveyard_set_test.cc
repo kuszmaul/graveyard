@@ -13,8 +13,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "absl/container/flat_hash_set.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/hash/hash.h"
 #include "absl/log/check.h"
 #include "absl/numeric/bits.h"
@@ -33,9 +33,11 @@ using yobiduck::GraveyardSet;
 
 TEST(HashTable, Constants) {
   using yobiduck::internal::NumberWithFractionOfOnes;
-  //LOG(INFO) << "70% bits = " << std::bitset<64>{NumberWithFractionOfOnes<7, 10>()};
+  // LOG(INFO) << "70% bits = " << std::bitset<64>{NumberWithFractionOfOnes<7,
+  // 10>()};
   EXPECT_EQ(absl::popcount(NumberWithFractionOfOnes<7, 10>()), 45);
-  //LOG(INFO) << "70% bits = " << std::bitset<64>{NumberWithFractionOfOnes<7, 20>()};
+  // LOG(INFO) << "70% bits = " << std::bitset<64>{NumberWithFractionOfOnes<7,
+  // 20>()};
   EXPECT_EQ(absl::popcount(NumberWithFractionOfOnes<7, 20>()), 23);
   EXPECT_EQ(absl::popcount(NumberWithFractionOfOnes<0, 1>()), 0);
   EXPECT_EQ((NumberWithFractionOfOnes<0, 1>()), 0);
@@ -204,9 +206,7 @@ TEST(GraveyardSet, UserDefinedHashAndEq) {
     }
   }
   {
-    GraveyardSet<UnhashableInt, UnhashableIntHasher,
-                           UnhashableIntEqual>
-        set;
+    GraveyardSet<UnhashableInt, UnhashableIntHasher, UnhashableIntEqual> set;
     EXPECT_TRUE(!set.contains(UnhashableInt{0}));
     set.insert(UnhashableInt{0});
     EXPECT_TRUE(set.contains(UnhashableInt{0}));
@@ -263,7 +263,6 @@ TEST(GraveyardSet, CopyTime) {
     std::cout << "Rehash took " << elapsed / 1'000'000 << "." << std::setw(6)
               << elapsed % 1'000'000 << "ms" << std::endl;
   }
-
 }
 
 ptrdiff_t count_existing = 0;
@@ -594,13 +593,13 @@ TEST(GraveyardSet, Copy) {
 int next_live = 0;
 absl::flat_hash_map<int, size_t> live;
 class AllocatedInt {
- public:
-  AllocatedInt() :value_(next_live) {
+public:
+  AllocatedInt() : value_(next_live) {
     live.insert({value_, 1});
     ++next_live;
   }
   // Copy constructor
-  AllocatedInt (const AllocatedInt& other) :value_(other.value_) {
+  AllocatedInt(const AllocatedInt &other) : value_(other.value_) {
     CHECK(live.contains(value_));
     ++live.find(value_)->second;
   }
@@ -613,12 +612,10 @@ class AllocatedInt {
       live.erase(it);
     }
   }
-  static bool IsAllDestructed() {
-    return live.empty();
-  }
- private:
-  template <typename H>
-  friend H AbslHashValue(H h, const AllocatedInt &i) {
+  static bool IsAllDestructed() { return live.empty(); }
+
+private:
+  template <typename H> friend H AbslHashValue(H h, const AllocatedInt &i) {
     return H::combine(std::move(h), i.value_);
   }
   friend bool operator==(const AllocatedInt &a, const AllocatedInt &b) {

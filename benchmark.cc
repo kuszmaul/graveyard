@@ -2,10 +2,9 @@
 
 #include <time.h>
 
-#include <cmath>
 #include <cstdint>
 #include <functional>
-#include <string>                      // for getline, string
+#include <string> // for getline, string
 
 #include "absl/flags/flag.h"
 #include "absl/log/check.h"
@@ -55,4 +54,3 @@ void Benchmark(std::ofstream &output,
            << 2 * statistics.StandardDeviation() << std::endl;
   }
 }
-

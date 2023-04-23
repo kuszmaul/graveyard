@@ -1,9 +1,9 @@
 #include "benchmark/print_numbers.h"
 
-#include <iostream>
+#include <initializer_list> // for initializer_list
+#include <string_view>      // for string_view, operator==, basic_...
 
 #include "absl/log/check.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 
 std::string PrintWithPrecision(double v, size_t precision) {

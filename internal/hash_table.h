@@ -81,23 +81,27 @@ template <> struct KeyArg<false> {
 };
 
 struct NullRehashCallback {
-  template <class Table>
-  void operator()(Table& table, size_t slot_count) {
+  template <class Table> void operator()(Table &table, size_t slot_count) {
     table.rehash_internal(slot_count);
   }
 };
 
 class TombstoneRatio {
- public:
-  constexpr TombstoneRatio() :value_(std::nullopt) {}
-  constexpr TombstoneRatio(size_t numerator, size_t denominator) :value_({numerator, denominator}) {
+public:
+  constexpr TombstoneRatio() : value_(std::nullopt) {}
+  constexpr TombstoneRatio(size_t numerator, size_t denominator)
+      : value_({numerator, denominator}) {
     assert(denominator != 0);
   }
   constexpr bool has_value() const { return value_.has_value(); }
   // `numerator()` and `denominator()` require `has_value()`.
-  constexpr size_t numerator() const { return value_->first;; }
+  constexpr size_t numerator() const {
+    return value_->first;
+    ;
+  }
   constexpr size_t denominator() const { return value_->second; }
- private:
+
+private:
   std::optional<std::pair<size_t, size_t>> value_;
 };
 
@@ -145,7 +149,8 @@ struct HashTableTraits {
   static constexpr size_t rehashed_utilization_denominator = 10;
   // When rehashing, add no tombstones.
   // Set this to `std::limits<size_t>::max()` for no tombstones.
-  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio = TombstoneRatio();
+  static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio =
+      TombstoneRatio();
 
 #else
   // Rehash when 24/28 full, and then make it be 23/28 full.  Put in
@@ -374,7 +379,8 @@ public:
     // Add 1 bucket if logical_size_ from 1 to 2.
     // Add 0 bucketrs if logical_size_ == 0;
     // TODO: We'd like to add 0 buckets if the logical_bucket_count == 1.
-    size_t extra_buckets = (logical_size_ > Traits::kMaxExtraBuckets)  ? Traits::kMaxExtraBuckets
+    size_t extra_buckets = (logical_size_ > Traits::kMaxExtraBuckets)
+                               ? Traits::kMaxExtraBuckets
                            : (logical_size_ > 2) ? logical_size_ - 1
                            : (logical_size_ > 0) ? 1
                                                  : 0;
@@ -614,12 +620,12 @@ public:
   // it can be slow, `rehash()` doesn't guarantee, for example, that
   // if the table grows, it grows by at least a constant factor.
   void rehash(size_t count);
- private:
+
+private:
   void rehash_internal(size_t count);
   friend typename Traits::rehash_callback;
 
- public:
-
+public:
   void reserve(size_t count);
 
   ProbeStatistics GetProbeStatistics() const;
@@ -684,7 +690,8 @@ private:
   // following, `first_uninitialized_bucket` are uninitialized.  Used
   // during rehash (and TODO: use during copy).  Doesn't update `size_`.
   template <bool insert_tombstones>
-  void InsertAscending(value_type value, size_t h1, size_t h2, size_t &first_uninitialized_bucket);
+  void InsertAscending(value_type value, size_t h1, size_t h2,
+                       size_t &first_uninitialized_bucket);
 
   // Finishes the rehash or copy by initializing all the remaining
   // uninitialized buckets.
@@ -994,10 +1001,12 @@ HashTable<Traits>::find(const key_arg<K> &key, size_t hash) {
     const size_t distance = buckets_[preferred_bucket].search_distance;
     //__builtin_prefetch(&buckets_[preferred_bucket].h2[0]);
     ////__builtin_prefetch(&buckets_[preferred_bucket + 1].h2[0]);
-    //__builtin_prefetch(&buckets_[preferred_bucket].h2[0] + 1 * Traits::kCacheLineSize);
-    //__builtin_prefetch(&buckets_[preferred_bucket].h2[0] + 2 * Traits::kCacheLineSize);
-    ////__builtin_prefetch(&buckets_[preferred_bucket].h2[0] + 3 * Traits::kCacheLineSize);
-
+    //__builtin_prefetch(&buckets_[preferred_bucket].h2[0] + 1 *
+    // Traits::kCacheLineSize);
+    //__builtin_prefetch(&buckets_[preferred_bucket].h2[0] + 2 *
+    // Traits::kCacheLineSize);
+    ////__builtin_prefetch(&buckets_[preferred_bucket].h2[0] + 3 *
+    /// Traits::kCacheLineSize);
 
     // This for loop is written as a do loop so that we won't have a
     // branch in the common case (in which case the hash table has
@@ -1149,20 +1158,22 @@ static constexpr uint64_t NumberWithFractionOfOnes() {
 template <class Traits>
 static constexpr bool BucketGetsTombstone(size_t bucket_number) {
   size_t b64 = bucket_number % 64;
-  uint64_t mask = NumberWithFractionOfOnes<Traits::kTombstoneRatio.numerator(), Traits::kTombstoneRatio.denominator()>();
+  uint64_t mask =
+      NumberWithFractionOfOnes<Traits::kTombstoneRatio.numerator(),
+                               Traits::kTombstoneRatio.denominator()>();
   return (mask >> b64) % 2 == 1;
 }
 
 template <class Traits>
 template <bool insert_tombstones>
-void HashTable<Traits>::InsertAscending(value_type value,
-                                        const size_t h1, size_t h2,
+void HashTable<Traits>::InsertAscending(value_type value, const size_t h1,
+                                        size_t h2,
                                         size_t &first_uninitialized_bucket) {
   //??? const key_type &key = Traits::KeyOf(value);
   //??? const size_t hash = get_hasher_ref()(key);
-  //const size_t preferred_bucket = buckets_.H1(hash);
-  //const size_t h2 = buckets_.H2(hash);
-  //size_t bucket_to_try = preferred_bucket;
+  // const size_t preferred_bucket = buckets_.H1(hash);
+  // const size_t h2 = buckets_.H2(hash);
+  // size_t bucket_to_try = preferred_bucket;
   size_t bucket_to_try = h1;
   while (true) {
     // TODO: Do something better if this CHECK fails.
@@ -1191,8 +1202,7 @@ void HashTable<Traits>::InsertAscending(value_type value,
       bucket.h2[idx] = h2;
       assert(h2 < Traits::kH2Modulo);
       new (&bucket.slots[idx].value()) value_type(std::move(value));
-      maxf(buckets_[h1].search_distance,
-           bucket_to_try - h1 + 1);
+      maxf(buckets_[h1].search_distance, bucket_to_try - h1 + 1);
       // TODO: Factor out the ++size_.
       return;
     }
@@ -1270,7 +1280,8 @@ void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
         // `pair<const K, V>&`.  That can only be done if the pair has
         // standard layout and the offsets of `K` and `V`.
         InsertAscending</*insert_tombstones*/ true>(
-            std::move(bucket.slots[j].value()), h1, h2, first_uninitialized_bucket);
+            std::move(bucket.slots[j].value()), h1, h2,
+            first_uninitialized_bucket);
         // Destroy the value so that we can destroy the bucket without
         // running a bunch of destructors.
         bucket.slots[j].value().~value_type();
@@ -1289,7 +1300,8 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
   callback(*this, slot_count);
 }
 
-template <class Traits> void HashTable<Traits>::rehash_internal(size_t slot_count) {
+template <class Traits>
+void HashTable<Traits>::rehash_internal(size_t slot_count) {
   if (slot_count == 0) {
     slot_count = ceil(size() * Traits::full_utilization_denominator,
                       Traits::full_utilization_numerator);
@@ -1341,9 +1353,9 @@ HashTable<Traits>::GetSuccessfulProbeLength(const value_type &value) const {
 }
 
 template <class Traits>
-size_t
-HashTable<Traits>::GetInsertProbeLength(const size_t logical_bucket_number) const {
-  for(size_t i = 0; true; ++i) {
+size_t HashTable<Traits>::GetInsertProbeLength(
+    const size_t logical_bucket_number) const {
+  for (size_t i = 0; true; ++i) {
     const size_t bucket_number = logical_bucket_number + i;
     CHECK_LT(bucket_number, buckets_.physical_size());
     const Bucket<Traits> &bucket = buckets_[bucket_number];
@@ -1377,12 +1389,12 @@ ProbeStatistics HashTable<Traits>::GetProbeStatistics() const {
         ++mask;
       }
     }
-    // LOG(INFO) << "Bucket " << i << ":" << std::bitset<Traits::kSlotsPerBucket>{mask};
+    // LOG(INFO) << "Bucket " << i << ":" <<
+    // std::bitset<Traits::kSlotsPerBucket>{mask};
   }
   return {.successful = success_sum / size(),
           .unsuccessful = unsuccess_sum / buckets_.logical_size(),
-          .insert = insert_sum / buckets_.logical_size()
-  };
+          .insert = insert_sum / buckets_.logical_size()};
 }
 
 } // namespace yobiduck::internal

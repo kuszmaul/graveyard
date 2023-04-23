@@ -2,11 +2,12 @@
 #define BENCHMARK_STATISTICS_H_
 
 #include <algorithm>
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <optional>
 
-// Compute statistics for a set of data values: min, max, mean, standard deviation.
+// Compute statistics for a set of data values: min, max, mean, standard
+// deviation.
 class Statistics {
 public:
   void AddDatum(double v) {
@@ -17,21 +18,16 @@ public:
     ++n_;
   }
   // Requires at least one sample
-  double Mean() const {
-    return x_sum_ / n_;
-  }
+  double Mean() const { return x_sum_ / n_; }
   // Requires at least one sample
-  double Min() const {
-    return *min_;
-  }
+  double Min() const { return *min_; }
   // Requires at least one sample
-  double Max() const {
-    return *max_;
-  }
+  double Max() const { return *max_; }
   // Requires at least one sample
   double StandardDeviation() const {
     return sqrt(x_squared_sum_ / n_ - square(x_sum_ / n_));
   }
+
 private:
   static double square(double x) { return x * x; }
   std::optional<double> min_ = std::nullopt;
@@ -41,4 +37,4 @@ private:
   size_t n_ = 0;
 };
 
-#endif  // BENCHMARK_STATISTICS_H_
+#endif // BENCHMARK_STATISTICS_H_

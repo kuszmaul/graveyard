@@ -1,4 +1,12 @@
-#include "graveyard_set.h"
+#include <cassert>    // for assert
+#include <cstddef>    // for size_t
+#include <cstdint>    // for uint64_t
+#include <functional> // for equal_to
+#include <memory>     // for allocator
+
+#include "absl/hash/hash.h" // for Hash
+#include "absl/log/log.h"   // for LogMessage, ABSL_LOGGING_INTERNAL_LOG_INFO
+#include "graveyard_set.h"  // for Buckets, ProbeStatistics, HashTable, Gra...
 
 using yobiduck::GraveyardSet;
 using yobiduck::internal::ProbeStatistics;
@@ -6,17 +14,19 @@ using yobiduck::internal::ProbeStatistics;
 static size_t rehash_count = 0;
 
 struct RehashCallback {
-  template <class Table>
-  void operator()(Table& table, size_t slot_count) {
+  template <class Table> void operator()(Table &table, size_t slot_count) {
     ProbeStatistics pre_stats = table.GetProbeStatistics();
-    LOG(INFO) << "rehash: " << slot_count << " Probe stats: s=" << pre_stats.successful << " u=" << pre_stats.unsuccessful << " i=" << pre_stats.insert;
+    LOG(INFO) << "rehash: " << slot_count
+              << " Probe stats: s=" << pre_stats.successful
+              << " u=" << pre_stats.unsuccessful << " i=" << pre_stats.insert;
     LOG(INFO) << " size=" << table.size() << " capacity=" << table.capacity();
     ++rehash_count;
     table.rehash_internal(slot_count);
     ProbeStatistics post_stats = table.GetProbeStatistics();
-    LOG(INFO) << "rehashed: " << slot_count << " Probe stats: s=" << post_stats.successful << " u=" << post_stats.unsuccessful << " i=" << post_stats.insert;
+    LOG(INFO) << "rehashed: " << slot_count
+              << " Probe stats: s=" << post_stats.successful
+              << " u=" << post_stats.unsuccessful << " i=" << post_stats.insert;
     LOG(INFO) << " size=" << table.size() << " capacity=" << table.capacity();
-
   }
 };
 
@@ -62,7 +72,7 @@ template <class Traits> class LogRehashTraits : public Traits {
 // Need to measure the insertion cost.
 
 template <class Traits> class LogRehashTraits : public Traits {
- public:
+public:
   using rehash_callback = RehashCallback;
 
   // 95% load when full
@@ -78,7 +88,8 @@ template <class Traits> class LogRehashTraits : public Traits {
   static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{7, 20};
 };
 
-using GraveyardInstrumented = yobiduck::internal::HashTable<LogRehashTraits<Int64Traits>>;
+using GraveyardInstrumented =
+    yobiduck::internal::HashTable<LogRehashTraits<Int64Traits>>;
 
 int main() {
   constexpr size_t kN = 100000;

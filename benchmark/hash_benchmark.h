@@ -17,8 +17,11 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "benchmark.h"
+#include "benchmark/table_types.h" // IWYU pragma: keep
 #include "enum_print.h"
-#include "benchmark/table_types.h"
+
+// IWYU note: kTableNames, which is a templated constexpr variable,
+// doesn't work right with IWYU, so we have to keep table_types.h.
 
 ABSL_DECLARE_FLAG(size_t, size_growth);
 enum class Operation { kInsert, kReservedInsert, kFound, kNotFound };
@@ -30,7 +33,7 @@ enum class Implementation {
   kGraveyardLow,
   kGraveyardMedium,
   kGraveyardHighLoad, // Fill to 92.5% full then hash to 90% full with 5%
-		      // graveyard tombstones,
+                      // graveyard tombstones,
   kGraveyardHighLoadNoGraveyard, // Same as HighLoad, except no
                                  // graveyard tombstones.
   kGraveyardVeryHighLoad,
@@ -41,17 +44,18 @@ enum class Implementation {
   kGoogleIdentityHash,
   kFacebookIdentityHash,
   kOLPIdentityHash,
-  // Graveyard variants
+// Graveyard variants
 #if 0
   kGraveyard3578, // Fill the table to 7/8 then rehash to 3/5 full (instead of
                   // 3/4 full) to reduce number of rehashes.
 #endif
-  kGraveyardLikeAbseil, // Fill the table to 7/8 then rehash to 7/16 full with no graveyard tombstones.
+  kGraveyardLikeAbseil, // Fill the table to 7/8 then rehash to 7/16 full with
+                        // no graveyard tombstones.
 #if 0
   kGraveyard2345, // Fill the table to 4/5 then rehash to 2/3 full (instead of
                   // 3/4 full) to reduce number of rehashes.
 #endif
-  kGraveyard255,  // H2 computed modulo 255 (rather than 128)
+  kGraveyard255, // H2 computed modulo 255 (rather than 128)
   kLibCuckoo,
 };
 // TODO: Make this a set, not an unordered set.
@@ -59,7 +63,8 @@ ABSL_DECLARE_FLAG(absl::flat_hash_set<Implementation>, implementations);
 
 extern const EnumsAndStrings<Implementation> *implementation_enum_and_strings;
 
-bool AbslParseFlag(std::string_view text, Implementation *implementation, std::string *error);
+bool AbslParseFlag(std::string_view text, Implementation *implementation,
+                   std::string *error);
 
 std::string AbslUnparseFlag(Implementation implementation);
 
@@ -105,8 +110,9 @@ void IntHashSetBenchmark(
   LOG(INFO) << implementation.human;
   // TODO: Make "insert" contant into kConstant.
   if (Operation op = Operation::kInsert; OperationIsFlagged(op)) {
-    std::ofstream output(FileNameForHashSetBenchmark(op, implementation.computer),
-                         std::ios::out);
+    std::ofstream output(
+        FileNameForHashSetBenchmark(op, implementation.computer),
+        std::ios::out);
     CHECK(output.is_open());
     Benchmark(
         output,
@@ -125,8 +131,9 @@ void IntHashSetBenchmark(
         sizes);
   }
   if (Operation op = Operation::kReservedInsert; OperationIsFlagged(op)) {
-    std::ofstream output(FileNameForHashSetBenchmark(op, implementation.computer),
-                         std::ios::out);
+    std::ofstream output(
+        FileNameForHashSetBenchmark(op, implementation.computer),
+        std::ios::out);
     CHECK(output.is_open());
     Benchmark(
         output,
@@ -149,8 +156,9 @@ void IntHashSetBenchmark(
   }
 
   if (Operation op = Operation::kFound; OperationIsFlagged(op)) {
-    std::ofstream output(FileNameForHashSetBenchmark(op, implementation.computer),
-                         std::ios::out);
+    std::ofstream output(
+        FileNameForHashSetBenchmark(op, implementation.computer),
+        std::ios::out);
     CHECK(output.is_open());
     Benchmark(
         output,
@@ -174,8 +182,9 @@ void IntHashSetBenchmark(
         sizes);
   }
   if (Operation op = Operation::kNotFound; OperationIsFlagged(op)) {
-    std::ofstream output(FileNameForHashSetBenchmark(op, implementation.computer),
-                         std::ios::out);
+    std::ofstream output(
+        FileNameForHashSetBenchmark(op, implementation.computer),
+        std::ios::out);
     CHECK(output.is_open());
     std::vector<uint64_t> other_numbers;
     Benchmark(

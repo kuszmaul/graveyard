@@ -1,14 +1,18 @@
 // Measures the probe lengths under a hovering workload.
 
 #include <cstddef>
+#include <cstdint>
+#include <functional> // for equal_to
+#include <memory>     // for allocator
 
+#include "absl/hash/hash.h" // for Hash
+#include "absl/log/log.h"   // for LogMessage, ABSL_LOGGING_INTERNAL_LOG_INFO
 #include "graveyard_set.h"
 
 static size_t rehash_count = 0;
 
 struct NoteRehashCallback {
-  template <class Table>
-  void operator()(Table& table, size_t slot_count) {
+  template <class Table> void operator()(Table &table, size_t slot_count) {
     ++rehash_count;
     table.rehash_internal(slot_count);
   }
@@ -20,15 +24,16 @@ using Int64Traits =
                                         std::allocator<uint64_t>>;
 
 template <class Traits> class NoteRehashTraits : public Traits {
- public:
+public:
   using rehash_callback = NoteRehashCallback;
 };
 
-using GraveyardInstrumented = yobiduck::internal::HashTable<NoteRehashTraits<Int64Traits>>;
+using GraveyardInstrumented =
+    yobiduck::internal::HashTable<NoteRehashTraits<Int64Traits>>;
 
 // 90% full after rehash
 template <class Traits> class NoteRehashTraits90 : public Traits {
- public:
+public:
   using rehash_callback = NoteRehashCallback;
 
   // 95 percent load when full
@@ -43,19 +48,20 @@ template <class Traits> class NoteRehashTraits90 : public Traits {
   static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{1, 3};
 };
 
-using GraveyardInstrumented90 = yobiduck::internal::HashTable<NoteRehashTraits90<Int64Traits>>;
+using GraveyardInstrumented90 =
+    yobiduck::internal::HashTable<NoteRehashTraits90<Int64Traits>>;
 
 // TODO: Turn these traits classes into structs and get rid of the `public:`.
 
 template <class Traits> class NoGraveyard : public NoteRehashTraits90<Traits> {
- public:
+public:
   static constexpr yobiduck::internal::TombstoneRatio kTombstoneRatio{};
 };
 
-using NoGraveyardInstrumented90 = yobiduck::internal::HashTable<NoGraveyard<NoteRehashTraits90<Int64Traits>>>;
+using NoGraveyardInstrumented90 =
+    yobiduck::internal::HashTable<NoGraveyard<NoteRehashTraits90<Int64Traits>>>;
 
-template <class Table>
-void Hover() {
+template <class Table> void Hover() {
   constexpr size_t kN = 10'000'000;
   Table set(kN);
   for (size_t i = 0; i < kN; ++i) {
@@ -66,17 +72,18 @@ void Hover() {
   LOG(INFO) << "size=" << set.size();
   size_t i;
   for (i = 0; i < kN; ++i) {
-  //for (i = 0; i < 10*kN; ++i) {
+    // for (i = 0; i < 10*kN; ++i) {
     if (i % (kN / 10) == 0) {
       auto [successful, unsuccessful, insert] = set.GetProbeStatistics();
-      LOG(INFO) << i << " s=" << successful << " u=" << unsuccessful << " i=" << insert;
+      LOG(INFO) << i << " s=" << successful << " u=" << unsuccessful
+                << " i=" << insert;
     }
     set.erase(next_to_erase++);
     set.insert(next_to_insert++);
   }
   auto [successful, unsuccessful, insert] = set.GetProbeStatistics();
-  LOG(INFO) << i << " s=" << successful << " u=" << unsuccessful << " i=" << insert;
-
+  LOG(INFO) << i << " s=" << successful << " u=" << unsuccessful
+            << " i=" << insert;
 }
 
 int main() {

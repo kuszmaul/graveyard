@@ -1,6 +1,5 @@
 #include "print_numbers.h"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 TEST(PrintNumbers, Precision) {
@@ -14,7 +13,6 @@ TEST(PrintNumbers, Precision) {
 TEST(PrintNumbers, One) {
   EXPECT_EQ(NumberWithBinarySuffix(2093826048, 3), "1.95Gi");
   EXPECT_EQ(NumberWithBinarySuffix(1020022784, 3), "973Mi");
-
 
 #if 0
   EXPECT_EQ(NumberWithBinarySuffix(1, 1), "1");

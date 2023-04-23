@@ -32,10 +32,11 @@ std::string AbslUnparseFlag(absl::flat_hash_set<Operation> operations) {
   return AbslUnparseSetEnumFlag(*operation_enum_and_strings, operations);
 }
 
-bool AbslParseFlag(std::string_view text, absl::flat_hash_set<Operation> *operations,
+bool AbslParseFlag(std::string_view text,
+                   absl::flat_hash_set<Operation> *operations,
                    std::string *error) {
   return AbslParseSetEnumFlag(*operation_enum_and_strings, text, operations,
-			      error);
+                              error);
 }
 
 bool OperationIsFlagged(Operation operation) {
@@ -105,27 +106,36 @@ const typename Table::value_type &FindOrDie(const Table &table,
 
 const EnumsAndStrings<Implementation> *implementation_enum_and_strings =
     EnumsAndStrings<Implementation>::Create(
-        {{Implementation::kGraveyardLow, kTableNames<GraveyardLowLoad>.computer},
-         {Implementation::kGraveyardMedium, kTableNames<GraveyardMediumLoad>.computer},
-	 {Implementation::kGraveyardHighLoad, kTableNames<GraveyardHighLoad>.computer},
-	 {Implementation::kGraveyardHighLoadNoGraveyard, kTableNames<GraveyardHighLoadNoGraveyard>.computer},
-         {Implementation::kGraveyardVeryHighLoad, kTableNames<GraveyardVeryHighLoad>.computer},
+        {{Implementation::kGraveyardLow,
+          kTableNames<GraveyardLowLoad>.computer},
+         {Implementation::kGraveyardMedium,
+          kTableNames<GraveyardMediumLoad>.computer},
+         {Implementation::kGraveyardHighLoad,
+          kTableNames<GraveyardHighLoad>.computer},
+         {Implementation::kGraveyardHighLoadNoGraveyard,
+          kTableNames<GraveyardHighLoadNoGraveyard>.computer},
+         {Implementation::kGraveyardVeryHighLoad,
+          kTableNames<GraveyardVeryHighLoad>.computer},
          {Implementation::kGoogle, kTableNames<GoogleSet>.computer},
          {Implementation::kFacebook, "facebook"},
          {Implementation::kOLP, kTableNames<OLPSet>.computer},
          {Implementation::kGraveyardIdentityHash, "graveyard-idhash"},
 
-         {Implementation::kGoogleIdentityHash, kTableNames<GoogleSetNoHash>.computer},
-         {Implementation::kFacebookIdentityHash, kTableNames<FacebookSetNoHash>.computer},
+         {Implementation::kGoogleIdentityHash,
+          kTableNames<GoogleSetNoHash>.computer},
+         {Implementation::kFacebookIdentityHash,
+          kTableNames<FacebookSetNoHash>.computer},
          {Implementation::kOLPIdentityHash, kTableNames<OLPSetNoHash>.computer},
          // {Implementation::kGraveyard3578, "graveyard3578"},
          {Implementation::kGraveyardLikeAbseil, "graveyard-likeabseil"},
          //{Implementation::kGraveyard2345, "graveyard2345"},
          {Implementation::kGraveyard255, "graveyard255"},
-	 {Implementation::kLibCuckoo, "libcuckoo"}});
+         {Implementation::kLibCuckoo, "libcuckoo"}});
 
-bool AbslParseFlag(std::string_view text, Implementation *implementation, std::string *error) {
-  return AbslParseEnumFlag(*implementation_enum_and_strings, text, implementation, error);
+bool AbslParseFlag(std::string_view text, Implementation *implementation,
+                   std::string *error) {
+  return AbslParseEnumFlag(*implementation_enum_and_strings, text,
+                           implementation, error);
 }
 std::string AbslUnparseFlag(Implementation implementation) {
   return AbslUnparseEnumFlag(*implementation_enum_and_strings, implementation);
@@ -135,14 +145,15 @@ ABSL_FLAG(absl::flat_hash_set<Implementation>, implementations,
           implementation_enum_and_strings->Enums(),
           "comma-separated list of hash table implementations to benchmark");
 
-std::string AbslUnparseFlag(absl::flat_hash_set<Implementation> implementations) {
+std::string
+AbslUnparseFlag(absl::flat_hash_set<Implementation> implementations) {
   return AbslUnparseSetEnumFlag(*implementation_enum_and_strings,
-                                   implementations);
+                                implementations);
 }
 
 bool AbslParseFlag(std::string_view text,
                    absl::flat_hash_set<Implementation> *implementations,
                    std::string *error) {
   return AbslParseSetEnumFlag(*implementation_enum_and_strings, text,
-			      implementations, error);
+                              implementations, error);
 }

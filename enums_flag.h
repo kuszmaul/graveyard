@@ -16,8 +16,9 @@
 #include "enum_print.h"
 
 template <class EnumType>
-std::string EnumFlagErrorString(const EnumsAndStrings<EnumType> &enums_and_strings,
-				std::string_view text) {
+std::string
+EnumFlagErrorString(const EnumsAndStrings<EnumType> &enums_and_strings,
+                    std::string_view text) {
   std::string result = absl::StrCat(text, " is not one of");
   const size_t number_of_enums = enums_and_strings.Pairs().size();
   for (size_t i = 0; i < number_of_enums; ++i) {
@@ -34,9 +35,9 @@ std::string EnumFlagErrorString(const EnumsAndStrings<EnumType> &enums_and_strin
 
 template <class EnumType>
 bool AbslParseSetEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
-			  std::string_view text,
-			  absl::flat_hash_set<EnumType> *parsed,
-			  std::string *error) {
+                          std::string_view text,
+                          absl::flat_hash_set<EnumType> *parsed,
+                          std::string *error) {
   std::vector<std::string_view> op_strings = absl::StrSplit(text, ",");
   absl::flat_hash_set<EnumType> result;
   for (std::string_view op_string : op_strings) {
@@ -54,15 +55,14 @@ bool AbslParseSetEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
 template <class EnumType>
 std::string
 AbslUnparseSetEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
-		       absl::flat_hash_set<EnumType> operations) {
+                       absl::flat_hash_set<EnumType> operations) {
   return absl::StrJoin(operations, ",", enums_and_strings.Formatter());
 }
 
 template <class EnumType>
 bool AbslParseEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
-		       std::string_view text,
-		       EnumType *parsed,
-		       std::string *error) {
+                       std::string_view text, EnumType *parsed,
+                       std::string *error) {
   std::optional<EnumType> enum_value = enums_and_strings.ToEnum(text);
   if (enum_value) {
     *parsed = *enum_value;
@@ -76,7 +76,7 @@ bool AbslParseEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
 template <class EnumType>
 std::string
 AbslUnparseEnumFlag(const EnumsAndStrings<EnumType> &enums_and_strings,
-		    EnumType v) {
+                    EnumType v) {
   return std::string(enums_and_strings.ToString(v));
 }
 

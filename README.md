@@ -9,6 +9,12 @@ Revisted: Tombstones Mark the Death of Primary Clustering".  July 2021, 2021
 The big question is whether Graveyard hashing can compete with industrial-grade
 hash tables such as Google's Abseil or Facebook's F14.
 
+## The `ordered-old-stuff` branch
+
+After a rehash, everything is completely ordered (even within a bin).
+Values inserted since the hehash are out of order, and we use a bit of
+metadata per slot to remember which values those are.
+
 ## Benchmarks for unordered set of `uint64_t`.
 
 `OLP` is simple linear probing running at between $3/4$ and $7/8$ load
@@ -416,4 +422,4 @@ I0000 00:00:1680523430.074642  250787 amortization_benchmark.cc:242]  After dest
     problem is vectorization and how much is cache effects.
 
 - [ ] Implement vanilla linear probing (no ordering, no search
-    distance) for a very low load factor.
+    distance) for a very low load factor.  Compare

@@ -109,9 +109,9 @@ private:
 // Bit 7 (the high-order bit) "ordered"
 //   0   the slot is possibly out of order
 //   1   the slot is in order (possibly empty)
-// Bits 0:6:
-//   127 the slot is empty (in which case bit 7 is 1)
-//   others: the hash % 127.
+// Bit 6 "present"
+//   0   the slot is empty (in which case the byte should be 0x80)
+//   1   the slot is full
 //
 // As a result, _mm_movemask_epi8 (which uses the high-order bit) can
 // tell us if the slot is ordered.
@@ -127,8 +127,9 @@ private:
 class MetaByte {
  public:
   static constexpr uint8_t kOrderedMask = 0x80;
-  static constexpr uint8_t kEmpty = 0xFF;
-  static constexpr uint8_t kModulo = 127;
+  static constexpr uint8_t kAbsentMask = 0x40;
+  static constexpr uint8_t kMaxH2 = 0x3F;
+  static constexpr uint8_t kEmpty = kOrderedMask | kAbsentMask;
   MetaByte() = delete;
   void SetEmpty() {
     meta_byte_ = kEmpty;
@@ -137,18 +138,19 @@ class MetaByte {
     return meta_byte_ == kEmpty;
   }
   void SetOrderedValue(uint8_t v) {
-    assert(v < kEmpty);
+    assert(v <= kMaxH2);
     meta_byte_ = kOrderedMask | v;
   }
   void SetUnorderedValue(uint8_t v) {
-    assert(v < kEmpty);
+    assert(v <= kMaxH2);
     meta_byte_ = v;
   }
-  constexpr uint8_t h2() const { return meta_byte_ & ~kOrderedMask; }
+  constexpr uint8_t h2() const { return meta_byte_ & kMaxH2; }
   constexpr bool IsOrdered() const { return (meta_byte_ & kOrderedMask) != 0; }
   static constexpr size_t ComputeH2(size_t hash) {
-    return hash % kModulo;
+    return hash & kMaxH2;
   }
+  constexpr uint8_t raw() const { return meta_byte_; }
  private:
   uint8_t meta_byte_;
 };
@@ -258,7 +260,7 @@ template <class Traits> struct Bucket {
   }
 
   size_t PortableMatchingElements(uint8_t value) const {
-    assert(value < MetaByte::kModulo);
+    assert(value <= MetaByte::kMaxH2);
     int result = 0;
     for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i) {
       if (h2[i].h2() == value) {
@@ -1081,9 +1083,13 @@ template <class Traits> std::string HashTable<Traits>::ToString() const {
       if (bucket->h2[j].IsEmpty()) {
         result << "_";
       } else {
+        result << std::hex << size_t{bucket->h2[j].raw()};
         if (!bucket->h2[j].IsOrdered()) {
           result << "!";
+        } else {
+          result << ":";
         }
+        result << std::hex << size_t{bucket->h2[j].h2()} << ":";
         result << bucket->slots[j].value();
       }
     }
@@ -1122,7 +1128,7 @@ void HashTable<Traits>::Validate(int line_number) const {
   for (size_t i = 0; i < buckets_.physical_size(); ++i) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (!buckets_[i].h2[j].IsEmpty()) {
-        assert(buckets_[i].h2[j].h2() < MetaByte::kModulo);
+        assert(buckets_[i].h2[j].h2() <= MetaByte::kMaxH2);
         ++actual_size;
         size_t hash = get_hasher_ref()(buckets_[i].slots[j].value());
         size_t h1 = buckets_.H1(hash);

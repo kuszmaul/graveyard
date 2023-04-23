@@ -16,13 +16,13 @@ This README is effectively acting as the TO-DO list for putting together the pap
 
     Result: Yes.
 
-- [ ] Insertion-only workload where we try to get away with fewer
+- [x] Insertion-only workload where we try to get away with fewer
     graveyard tombstones.  Graveyard tombstones increase the query
     probe lengths (for example, we see a 5x increase compared to
     $(X+1)/2$.  Can we use fewer graveyard tombstones without hurting
     insert too much?
 
-    Result: Not much: If we try reducing the graveyard tombstones by
+    Result: Not good: If we try reducing the graveyard tombstones by
     even 20%, it doubles (?) the find-empty probe length.
 
 ## Story Issues
@@ -50,10 +50,16 @@ This README is effectively acting as the TO-DO list for putting together the pap
     high load factors, but it doesn't hurt anything at low load factors.
    
 
+## Further experiments?
+
+- [ ] Implement the idea of keeping the old stuff properly ordered,
+    and use one bit of the metadata to remember which items are out of
+    order.  Merge them.
+
 ## Random Notes
 
+---
 
-----
 Argument: for hovering, you don't really need graveyard. For growing you do.
 
 Theory:

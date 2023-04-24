@@ -147,6 +147,12 @@ class MetaByte {
   }
   constexpr uint8_t h2() const { return meta_byte_ & kMaxH2; }
   constexpr bool IsOrdered() const { return (meta_byte_ & kOrderedMask) != 0; }
+  constexpr bool IsNonemptyAndDisordered() const {
+    return (meta_byte_ & (kOrderedMask | kAbsentMask)) == 0;
+  }
+  constexpr bool IsNonemptyAndOrdered() const {
+    return (meta_byte_ & (kOrderedMask | kAbsentMask)) == kOrderedMask;
+  }
   static constexpr size_t ComputeH2(size_t hash) {
     return hash & kMaxH2;
   }
@@ -717,17 +723,46 @@ private:
                                                   size_t preferred_bucket,
                                                   size_t h2);
 
-  // Inserts a value.  Works well if the values are inserted in
-  // (roughly) ascending order.  All the buckets starting at, and
-  // following, `first_uninitialized_bucket` are uninitialized.  Used
-  // during rehash (and TODO: use during copy).  Doesn't update `size_`.
-  template <bool insert_tombstones>
-  void InsertAscending(value_type value, size_t h1, uint8_t h2,
-                       size_t &first_uninitialized_bucket);
+  // A reference to a disordered value, suitable to put into a heap.
+  // When it's in the heap, the value has logically been removed from
+  // its source (the meta_byte is set empty), but it hasn't actually
+  // been moved yet.  `slot` points to its location.
+  template <bool non_const>
+  struct DisorderedItem {
+    size_t hash;
+    std::conditional_t<non_const, Item<Traits>, const Item<Traits>> *slot;
+    friend bool operator<(const DisorderedItem& a, const DisorderedItem& b) {
+      // We want a min-heap ordered by hash, so define 'operator<' to be '>'.
+      return a.hash > b.hash;
+    }
+  };
 
-  // Finishes the rehash or copy by initializing all the remaining
-  // uninitialized buckets.
-  void FinishInsertAscending(size_t first_uninitialized_bucket);
+  // Scan forward from bucket number `disordered_bucket` (increasing
+  // `disordered_bucket`) as far as the search distance for
+  // `buckets[bucket_number]` says to search.  Put each discovered
+  // disordered value into heap and if `destroy_source` then mark its
+  // meta_byte as empty.
+  template<bool destroy_source>
+  void GetDisorderedValues(std::conditional_t<destroy_source, Buckets<Traits>, const Buckets<Traits>> &buckets,
+                           size_t bucket_number,
+                           size_t &disordered_bucket,
+                           std::vector<DisorderedItem<destroy_source>> &heap);
+
+
+  // Inserts value into the table.  The values are inserted in
+  // monotonically increasing hash order.  The value must be inserted
+  // at `insert_bucket, insert_slot` or later.  Updates
+  // `insert_bucket` and `insert_slot`.
+  //
+  // Invariant: The buckets up to `insert_bucket` are initialized, the
+  // ones after are not.
+  template<bool insert_tombstones>
+  void InsertAscending(size_t &insert_bucket, size_t &insert_slot,
+                       value_type value, size_t hash);
+
+  // Finishes the rehash or copy by initializing all the
+  // buckets after `insert_bucket`.
+  void FinishInsertAscending(size_t insert_bucket);
 
   // Arrange for the values in `buckets` to be inserted into `*this`
   // (incrementing `size_` for every insert).
@@ -735,9 +770,12 @@ private:
   // Requires: `*this` is empty.  Thus, this code can assume that
   // there are no duplicates in `buckets`.
   //
-  // If `is_rehash` then buckets is destroyed.  In that case, this
+  // If `destroy_source` then buckets is destroyed.  In that case, this
   // code may move the values from `buckets` instead of copying them.
-  void RehashFrom(Buckets<Traits> &buckets);
+  template<bool destroy_source>
+  void RehashOrCopyFrom(std::conditional_t<destroy_source, Buckets<Traits>, const Buckets<Traits>> &buckets);
+
+  // Does `RehashOrCopyFrom<false>(buckets)`.
   void CopyFrom(const Buckets<Traits> &buckets);
 
   // The number of present items in all the buckets combined.
@@ -1050,7 +1088,7 @@ HashTable<Traits>::find(const key_arg<K> &key, size_t hash) {
       assert(preferred_bucket + i < buckets_.physical_size());
       Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
       size_t matches = bucket.MatchingElementsMask(h2);
-      while (matches) {
+       while (matches) {
         size_t idx = CountTrailingZeros(matches);
         if (get_key_eq_ref()(Traits::KeyOf(bucket.slots[idx].value()), key)) {
           return iterator{&bucket, idx};
@@ -1130,7 +1168,7 @@ void HashTable<Traits>::Validate(int line_number) const {
       if (!buckets_[i].h2[j].IsEmpty()) {
         assert(buckets_[i].h2[j].h2() <= MetaByte::kMaxH2);
         ++actual_size;
-        size_t hash = get_hasher_ref()(buckets_[i].slots[j].value());
+        size_t hash = get_hasher_ref()(Traits::KeyOf(buckets_[i].slots[j].value()));
         size_t h1 = buckets_.H1(hash);
         CHECK_LE(h1, i);
         CHECK_LT(h1, buckets_.logical_size());
@@ -1142,6 +1180,19 @@ void HashTable<Traits>::Validate(int line_number) const {
     }
   }
   CHECK_EQ(actual_size, size());
+  // Verify that the ordered elements are sorted.
+  std::optional<size_t> previous_hash = std::nullopt;
+  for (const Bucket<Traits> &bucket : buckets_) {
+    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
+      if (bucket.h2[j].IsNonemptyAndOrdered()) {
+        size_t hash = get_hasher_ref()(Traits::KeyOf(bucket.slots[j].value()));
+        if (previous_hash.has_value()) {
+          CHECK_LE(*previous_hash, hash);
+        }
+        previous_hash = hash;
+      }
+    }
+  }
 }
 
 template <class Traits>
@@ -1202,132 +1253,113 @@ static constexpr bool BucketGetsTombstone(size_t bucket_number) {
 }
 
 template <class Traits>
-template <bool insert_tombstones>
-void HashTable<Traits>::InsertAscending(value_type value, const size_t h1,
-                                        uint8_t h2,
-                                        size_t &first_uninitialized_bucket) {
-  //??? const key_type &key = Traits::KeyOf(value);
-  //??? const size_t hash = get_hasher_ref()(key);
-  // const size_t preferred_bucket = buckets_.H1(hash);
-  // const size_t h2 = buckets_.H2(hash);
-  // size_t bucket_to_try = preferred_bucket;
-  size_t bucket_to_try = h1;
-  while (true) {
-    // TODO: Do something better if this CHECK fails.
-    CHECK_LT(bucket_to_try, buckets_.physical_size());
-    assert(bucket_to_try < buckets_.physical_size());
-    Bucket<Traits> &bucket = buckets_[bucket_to_try];
-    while (bucket_to_try >= first_uninitialized_bucket) {
-      buckets_[first_uninitialized_bucket].Init();
-      ++first_uninitialized_bucket;
-    }
-    size_t matches = bucket.FindEmpties();
-    if constexpr (insert_tombstones && Traits::kTombstoneRatio.has_value()) {
-      if (BucketGetsTombstone<Traits>(bucket_to_try)) {
-        // Leave a tombstone in the last bucket of the ones in the
-        // same period.
-        // Assert that we haven't filled the tombstone already.
-        assert(matches % 2 == 1);
-        // remove one possible empty tombstone from the empty list.
-        matches &= ~1;
-        assert(matches % 2 == 0);
-      }
-    }
-    if (matches != 0) {
-      size_t idx = CountTrailingZeros(matches);
-      MetaByte &meta_byte = bucket.h2[idx];
-      assert(meta_byte.IsEmpty());
-      meta_byte.SetUnorderedValue(h2);
-      new (&bucket.slots[idx].value()) value_type(std::move(value));
-      maxf(buckets_[h1].search_distance, bucket_to_try - h1 + 1);
-      // TODO: Factor out the ++size_.
-      return;
-    }
-    ++bucket_to_try;
-  }
-}
-
-template <class Traits>
-void HashTable<Traits>::FinishInsertAscending(
-    size_t first_uninitialized_bucket) {
-  while (first_uninitialized_bucket < buckets_.physical_size()) {
-    buckets_[first_uninitialized_bucket].Init();
-    ++first_uninitialized_bucket;
-  }
-  // Set the end-of-search sentinal.
-  buckets_[first_uninitialized_bucket - 1].search_distance =
-      Traits::kSearchDistanceEndSentinal;
-}
-
-template <class Traits>
 void HashTable<Traits>::CopyFrom(const Buckets<Traits> &buckets) {
-  size_t bucket_number = 0;
-  size_t first_uninitialized_bucket = 0;
-  // TODO: Maybe pipeline the calculation of the hashes (compute the
-  // next hash while executing `InsertAscending`).
-  for (const Bucket<Traits> &bucket : buckets) {
-    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      const MetaByte meta_byte = bucket.h2[j];
-      if (!meta_byte.IsEmpty()) {
-        const value_type &value = bucket.slots[j].value();
-        const key_type &key = Traits::KeyOf(value);
-        const size_t hash = get_hasher_ref()(key);
-        const size_t h1 = buckets_.H1(hash);
-        assert(buckets_.H2(hash) == meta_byte.h2());
-        InsertAscending</*insert_tombstones=*/false>(
-            bucket.slots[j].value(), h1, meta_byte.h2(), first_uninitialized_bucket);
-      }
-    }
-    ++bucket_number;
-  }
-  FinishInsertAscending(first_uninitialized_bucket);
+  RehashOrCopyFrom</*destroy_source=*/false>(buckets);
 }
 
-template <class Traits>
-void HashTable<Traits>::RehashFrom(Buckets<Traits> &buckets) {
-  size_t bucket_number = 0;
-  size_t first_uninitialized_bucket = 0;
-  for (Bucket<Traits> &bucket : buckets) {
-    // Periodically release the memory for the buckets that we no longer need.
-    if (bucket_number % (1ul << 15) == 0) {
-      uintptr_t start = reinterpret_cast<uintptr_t>(buckets.begin());
-      uintptr_t here = reinterpret_cast<uintptr_t>(&bucket);
-      uintptr_t start_rounded_up = (start + 4095) / 4096 * 4096;
-      uintptr_t here_rounded_down = here / 4096 * 4096;
-      if (start_rounded_up < here_rounded_down) {
-        uintptr_t len = here_rounded_down - start_rounded_up;
-        if (madvise(reinterpret_cast<void *>(start_rounded_up), len,
-                    MADV_DONTNEED)) {
-          perror("DONTNEED failed");
+template<class Traits>
+template<bool destroy_source>
+void HashTable<Traits>::GetDisorderedValues(std::conditional_t<destroy_source, Buckets<Traits>, const Buckets<Traits>> &buckets,
+                                            size_t bucket_number,
+                                            size_t &disordered_bucket,
+                                            std::vector<DisorderedItem<destroy_source>> &heap) {
+  assert(bucket_number < buckets.logical_size());
+  size_t search_distance = buckets[bucket_number].search_distance;
+  for (size_t offset = 0; offset < search_distance ; ++offset) {
+    if (disordered_bucket <= bucket_number + offset) {
+      disordered_bucket = bucket_number + offset;
+      auto &bucket = buckets[disordered_bucket];
+      for (size_t slot_number = 0; slot_number < Traits::kSlotsPerBucket; ++ slot_number) {
+        auto &meta_byte = bucket.h2[slot_number];
+        if (meta_byte.IsNonemptyAndDisordered()) {
+          auto &slot = bucket.slots[slot_number];
+          heap.push_back(DisorderedItem<destroy_source>{
+              .hash = get_hasher_ref()(Traits::KeyOf(slot.value())),
+              .slot = &slot});
+          std::push_heap(heap.begin(), heap.end());
+          if constexpr (destroy_source) {
+            meta_byte.SetEmpty();
+          }
         }
       }
     }
-    for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      MetaByte meta_byte = bucket.h2[j];
-      if (!meta_byte.IsEmpty()) {
-        const value_type &value = bucket.slots[j].value();
+  }
+}
+
+template <class Traits>
+template <bool insert_tombstones>
+void HashTable<Traits>::InsertAscending(size_t &insert_bucket, size_t &insert_slot,
+                                        value_type value, size_t hash) {
+  assert(insert_bucket < buckets_.physical_size());
+  assert(insert_slot < Traits::kSlotsPerBucket);
+  size_t h1 = buckets_.H1(hash);
+  if (insert_bucket < h1) {
+    insert_bucket = h1;
+    insert_slot = 0;
+  }
+  Bucket<Traits> &bucket = buckets_[insert_bucket];
+  maxf(bucket.search_distance, insert_bucket - h1 + 1);
+  assert(bucket.h2[insert_slot].IsEmpty());
+  bucket.h2[insert_slot].SetOrderedValue(buckets_.H2(hash));
+  new (&bucket.slots[insert_slot].value()) value_type(std::move(value));
+  ++insert_slot;
+  if (insert_slot == Traits::kSlotsPerBucket) {
+    ++insert_bucket;
+    insert_slot = 0;
+    buckets_[insert_bucket].Init();
+  }
+}
+
+template <class Traits>
+void HashTable<Traits>::FinishInsertAscending(size_t insert_bucket) {
+  ++insert_bucket;
+  for (; insert_bucket < buckets_.physical_size(); ++insert_bucket) {
+    buckets_[insert_bucket].Init();
+  }
+  buckets_[buckets_.physical_size() - 1].search_distance = Traits::kSearchDistanceEndSentinal;
+}
+
+// DONT FORGET TO MADVISE
+
+template <class Traits>
+template <bool destroy_source>
+void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<destroy_source, Buckets<Traits>, const Buckets<Traits>> &buckets) {
+  std::vector<DisorderedItem<destroy_source>> heap;
+  size_t disordered_bucket = 0;
+  size_t insert_bucket = 0;
+  size_t insert_slot = 0;
+  buckets_[0].Init();
+  for (size_t bucket_number = 0; bucket_number < buckets.physical_size(); ++bucket_number) {
+    if (bucket_number < buckets.logical_size()) {
+      // Don't need to get the disordered values after the logical
+      // size, since we'll pick them all up starting from a logical
+      // bucket.
+      GetDisorderedValues<destroy_source>(buckets, bucket_number, disordered_bucket, heap);
+    }
+    auto &bucket = buckets[bucket_number];
+    for (size_t slot_number = 0; slot_number < Traits::kSlotsPerBucket; ++ slot_number) {
+      MetaByte meta_byte = bucket.h2[slot_number];
+      if (meta_byte.IsNonemptyAndOrdered()) {
+        const value_type &value = bucket.slots[slot_number].value();
         const key_type &key = Traits::KeyOf(value);
         const size_t hash = get_hasher_ref()(key);
-        const size_t h1 = buckets_.H1(hash);
-        assert(buckets_.H2(hash) == meta_byte.h2());
-
-        // TODO: When value_type is `pair<const K, V>`, this std::move
-        // doesn't have any effect, resulting in a copy.  We'd like to
-        // have the key type be a `pair<K, V>` that we cast to
-        // `pair<const K, V>&`.  That can only be done if the pair has
-        // standard layout and the offsets of `K` and `V`.
-        InsertAscending</*insert_tombstones*/ true>(
-            std::move(bucket.slots[j].value()), h1, meta_byte.h2(),
-            first_uninitialized_bucket);
-        // Destroy the value so that we can destroy the bucket without
-        // running a bunch of destructors.
-        bucket.slots[j].value().~value_type();
+        while (!heap.empty() && heap.front().hash < hash) {
+          InsertAscending<true>(insert_bucket, insert_slot, std::move(heap.front().slot->value()), heap.front().hash);
+          if constexpr (destroy_source) {
+            heap.front().slot->value().~value_type();
+          }
+          std::pop_heap(heap.begin(), heap.end());
+          heap.pop_back();
+        }
+        InsertAscending</*insert_tombstones*/true>(
+            insert_bucket, insert_slot, std::move(value), hash);
+        if constexpr (destroy_source) {
+          value.~value_type();
+        }
       }
     }
-    ++bucket_number;
   }
-  FinishInsertAscending(first_uninitialized_bucket);
-  buckets.Deallocate();
+  FinishInsertAscending(insert_bucket);
 }
 
 template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
@@ -1346,7 +1378,7 @@ void HashTable<Traits>::rehash_internal(size_t slot_count) {
   Buckets<Traits> buckets(ceil(slot_count, Traits::kSlotsPerBucket));
   buckets.swap(buckets_);
   // Leaves size_ unmodified.
-  RehashFrom(buckets);
+  RehashOrCopyFrom</*destroy_source*/true>(buckets);
   // CheckValidityAfterRehash(__LINE__);
 }
 
@@ -1387,6 +1419,7 @@ HashTable<Traits>::GetSuccessfulProbeLength(const value_type &value) const {
     }
   }
   CHECK(false) << "Invariant failed.   value not found";
+  return 0;
 }
 
 template <class Traits>

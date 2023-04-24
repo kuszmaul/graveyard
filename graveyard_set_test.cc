@@ -126,6 +126,7 @@ TEST(GraveyardSet, Rehash0) {
     set.insert(i);
   }
   set.rehash(0);
+  set.Validate();
 }
 
 // TODO: A test that does a rehash after some erases.
@@ -212,8 +213,8 @@ TEST(GraveyardSet, UserDefinedHashAndEq) {
     EXPECT_TRUE(set.contains(UnhashableInt{0}));
     for (int i = 0; i < 10000; ++i) {
       set.insert(UnhashableInt{i});
-      for (int j = 0; j < i; ++j) {
-        EXPECT_TRUE(set.contains(UnhashableInt{j})) << "i=" << i << " j=" << j;
+      for (int j = 0; j <= i; ++j) {
+        EXPECT_TRUE(set.contains(UnhashableInt{j})) << "i=" << i << " j=" << j << " table=" << set.ToString();
       }
     }
     for (int i = 0; i < 10000; ++i) {
@@ -229,6 +230,9 @@ struct IdentityHasher {
 TEST(GraveyardSet, RehashTime) {
   constexpr size_t kSize = 10000000;
   GraveyardSet<size_t> set;
+  // TODO: Using 'reserve()' makes the first rehash slower because it
+  // puts everything in the heap.  We should be able to put less into
+  // the heap.
   set.reserve(kSize);
   for (size_t i = 0; i < kSize; ++i) {
     set.insert(i);
@@ -400,6 +404,10 @@ private:
   template <typename H> friend H AbslHashValue(H h, const Emplaced &v) {
     return H::combine(std::move(h), v.a_);
   }
+  friend std::ostream &operator<<(std::ostream &stream,
+                                  const Emplaced &a) {
+    return stream << "{" << a.a_ << "," << a.b_ << "}";
+  }
   int a_, b_;
 };
 
@@ -435,6 +443,10 @@ private:
   }
   friend bool operator!=(const EmplacedHet &left, const EmplacedHet &right) {
     return !(left == right);
+  }
+  friend std::ostream &operator<<(std::ostream &stream,
+                                  const EmplacedHet &a) {
+    return stream << "{" << a.a_ << "," << a.b_ << "}";
   }
   int a_, b_;
 };
@@ -620,6 +632,10 @@ private:
   }
   friend bool operator==(const AllocatedInt &a, const AllocatedInt &b) {
     return a.value_ == b.value_;
+  }
+  friend std::ostream &operator<<(std::ostream &stream,
+                                  const AllocatedInt &a) {
+    return stream << a.value_;
   }
   int value_;
 };

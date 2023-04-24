@@ -786,10 +786,11 @@ private:
   // Requires: `*this` is empty.  Thus, this code can assume that
   // there are no duplicates in `buckets`.
   //
-  // If `destroy_source` then buckets is destroyed.  In that case, this
-  // code may move the values from `buckets` instead of copying them.
-  template<bool destroy_source>
-  void RehashOrCopyFrom(std::conditional_t<destroy_source, Buckets<Traits>, const Buckets<Traits>> &buckets);
+  // If `is_rehash` then tombstones are inserted and buckets are
+  // destroyed.  In that case, this code may move the values from
+  // `buckets` instead of copying them.
+  template<bool is_rehash>
+  void RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<Traits>, const Buckets<Traits>> &buckets);
 
   // Does `RehashOrCopyFrom<false>(buckets)`.
   void CopyFrom(const Buckets<Traits> &buckets);
@@ -1271,7 +1272,7 @@ static constexpr bool BucketGetsTombstone(size_t bucket_number) {
 
 template <class Traits>
 void HashTable<Traits>::CopyFrom(const Buckets<Traits> &buckets) {
-  RehashOrCopyFrom</*destroy_source=*/false>(buckets);
+  RehashOrCopyFrom</*is_rehash=*/false>(buckets);
 }
 
 template<class Traits>
@@ -1346,18 +1347,24 @@ void HashTable<Traits>::FinishInsertAscending(size_t insert_bucket) {
 // DONT FORGET TO MADVISE
 
 template <class Traits>
-template <bool destroy_source>
-void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<destroy_source, Buckets<Traits>, const Buckets<Traits>> &buckets) {
-  std::vector<DisorderedItem<destroy_source>> heap;
+template <bool is_rehash>
+void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<Traits>, const Buckets<Traits>> &buckets) {
+  std::vector<DisorderedItem<is_rehash>> heap;
   size_t disordered_bucket = 0;
   size_t insert_bucket = 0;
   size_t insert_slot = 0;
   buckets_[0].Init();
-  auto insert_from_heap = [&]() {
-    InsertAscending<true>(insert_bucket, insert_slot, std::move(heap.front().slot->value()), heap.front().hash);
-    if constexpr (destroy_source) {
-      heap.front().slot->value().~value_type();
+  //size_t max_heap_size = 0;
+  auto insert_and_copy_or_move_and_destroy = [&](auto &value, size_t hash) {
+    if constexpr (is_rehash) {
+      InsertAscending<is_rehash>(insert_bucket, insert_slot, std::move(value), hash);
+      value.~value_type();
+    } else {
+      InsertAscending<is_rehash>(insert_bucket, insert_slot, value, hash);
     }
+  };
+  auto insert_from_heap = [&]() {
+    insert_and_copy_or_move_and_destroy(heap.front().slot->value(), heap.front().hash);
     std::pop_heap(heap.begin(), heap.end());
     heap.pop_back();
   };
@@ -1366,8 +1373,13 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<destroy_source, Buck
       // Don't need to get the disordered values after the logical
       // size, since we'll pick them all up starting from a logical
       // bucket.
-      GetDisorderedValues<destroy_source>(buckets, bucket_number, disordered_bucket, heap);
+      GetDisorderedValues<is_rehash>(buckets, bucket_number, disordered_bucket, heap);
     }
+    while (!heap.empty() && buckets.H1(heap.front().hash) < bucket_number) {
+      // We have something in the heap that goes ahead of everything in the current bucket.
+      insert_from_heap();
+    }
+    //max_heap_size = std::max(max_heap_size, heap.size());
     auto &bucket = buckets[bucket_number];
     for (size_t slot_number = 0; slot_number < Traits::kSlotsPerBucket; ++ slot_number) {
       MetaByte meta_byte = bucket.h2[slot_number];
@@ -1378,10 +1390,9 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<destroy_source, Buck
         while (!heap.empty() && heap.front().hash < hash) {
           insert_from_heap();
         }
-        InsertAscending</*insert_tombstones*/true>(
-            insert_bucket, insert_slot, std::move(value), hash);
-        if constexpr (destroy_source) {
-          value.~value_type();
+        insert_and_copy_or_move_and_destroy(value, hash);
+        if constexpr (is_rehash) {
+          bucket.h2[slot_number].SetEmpty();
         }
       }
     }
@@ -1390,6 +1401,7 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<destroy_source, Buck
     insert_from_heap();
   }
   FinishInsertAscending(insert_bucket);
+  //LOG(INFO) << "Max heap size=" << max_heap_size;
 }
 
 template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {

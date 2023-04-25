@@ -126,7 +126,7 @@ class MetaByte {
  public:
   static constexpr uint8_t kAbsentMask = 0x80u;
   static constexpr uint8_t kOrderedMask = 0x40u;
-  static constexpr uint8_t kInvertOrderedMask = 0b1011'1111; // Cannot write ~kOrderedMask without trigger a -Woverflow warning.
+  static constexpr uint8_t kInvertOrderedMask = ~kOrderedMask;
   static constexpr uint8_t kMaxH2 = 0x3Fu;
   static constexpr uint8_t kEmpty = kAbsentMask;
   MetaByte() = delete;
@@ -696,6 +696,11 @@ public:
   std::string ToString() const;
 
 private:
+  // Converts to a human-readable string.  Buckets after
+  // `maximum_uninitialized_bucket` are assumed to be uninitialized,
+  // so they are not accessed or printed.
+  std::string ToStringInternal(size_t maximum_uninitialized_bucket) const;
+
   // Prefetch the heap-allocated memory region to resolve potential TLB and
   // cache misses. This is intended to overlap with execution of calculating the
   // hash for a key.
@@ -969,6 +974,7 @@ template <class Traits> void HashTable<Traits>::clear() {
 template <class Traits>
 std::pair<typename HashTable<Traits>::iterator, bool>
 HashTable<Traits>::insert(const value_type &value) {
+  Validate();
   if (NeedsRehash(size_ + 1)) {
     // Rehash to be, say 3/4, full.
     rehash(ceil((size_ + 1) * Traits::rehashed_utilization_denominator,
@@ -1020,6 +1026,7 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
       new (&bucket.slots[idx].value()) value_type(value);
       maxf(buckets_[preferred_bucket].search_distance, i + 1);
       ++size_;
+      Validate();
       return iterator{&bucket, idx};
     }
   }
@@ -1125,10 +1132,15 @@ bool HashTable<Traits>::contains(const key_arg<K> &value) const {
 }
 
 template <class Traits> std::string HashTable<Traits>::ToString() const {
+  return ToStringInternal(buckets_.physical_size() - 1);
+}
+
+template <class Traits> std::string HashTable<Traits>::ToStringInternal(size_t maximum_initialized_bucket) const {
   std::stringstream result;
   result << "{size=" << size_ << " logical_size=" << buckets_.logical_size()
          << " physical_size=" << buckets_.physical_size();
-  for (size_t i = 0; i < buckets_.physical_size(); ++i) {
+  assert(maximum_initialized_bucket < buckets_.physical_size());
+  for (size_t i = 0; i < maximum_initialized_bucket; ++i) {
     const Bucket<Traits> *bucket = buckets_.begin() + i;
     result << std::endl
            << " bucket[" << i << "]: search_distance="
@@ -1150,13 +1162,15 @@ template <class Traits> std::string HashTable<Traits>::ToString() const {
       }
     }
   }
+  if (maximum_initialized_bucket + 1 < buckets_.physical_size()) {
+    result << " uninitialized_buckets=[" << maximum_initialized_bucket + 1 << ", " << buckets_.physical_size() << ")";
+  }
   result << "}";
   return std::move(result).str();
 }
 
 template <class Traits>
 void HashTable<Traits>::Validate(int line_number) const {
-  // LOG(INFO) << "Validating" << ToString();
   CHECK_LE(size(), LogicalSlotCount() * Traits::full_utilization_numerator /
                        Traits::full_utilization_denominator);
   for (size_t i = 0; i < buckets_.logical_size(); ++i) {
@@ -1349,13 +1363,18 @@ void HashTable<Traits>::FinishInsertAscending(size_t insert_bucket) {
 template <class Traits>
 template <bool is_rehash>
 void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<Traits>, const Buckets<Traits>> &buckets) {
+  LOG(INFO) << "Before rehash: " << ToString();
   std::vector<DisorderedItem<is_rehash>> heap;
   size_t disordered_bucket = 0;
   size_t insert_bucket = 0;
   size_t insert_slot = 0;
   buckets_[0].Init();
-  //size_t max_heap_size = 0;
-  auto insert_and_copy_or_move_and_destroy = [&](auto &value, size_t hash) {
+  LOG(INFO) << "was " << ToStringInternal(insert_bucket);
+  size_ = 0;
+  //uint64_t sum_heap_sizes = 0;
+  auto insert_and_copy_or_move_and_destroy = [&](auto &value, size_t hash, std::string_view from) {
+    ++size_;
+    LOG(INFO) << "at " << from << " Inserting value=" << value << " hash=" << std::hex << hash << std::dec << " now size_=" << size_;
     if constexpr (is_rehash) {
       InsertAscending<is_rehash>(insert_bucket, insert_slot, std::move(value), hash);
       value.~value_type();
@@ -1364,22 +1383,31 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
     }
   };
   auto insert_from_heap = [&]() {
-    insert_and_copy_or_move_and_destroy(heap.front().slot->value(), heap.front().hash);
+    insert_and_copy_or_move_and_destroy(heap.front().slot->value(), heap.front().hash, "from heap");
     std::pop_heap(heap.begin(), heap.end());
     heap.pop_back();
   };
   for (size_t bucket_number = 0; bucket_number < buckets.physical_size(); ++bucket_number) {
+    LOG(INFO) << "Processing bucket " << bucket_number;
     if (bucket_number < buckets.logical_size()) {
       // Don't need to get the disordered values after the logical
       // size, since we'll pick them all up starting from a logical
       // bucket.
       GetDisorderedValues<is_rehash>(buckets, bucket_number, disordered_bucket, heap);
     }
-    while (!heap.empty() && buckets.H1(heap.front().hash) < bucket_number) {
-      // We have something in the heap that goes ahead of everything in the current bucket.
-      insert_from_heap();
+    // TODO: In the case where there are a *lot* of disordered slots (which
+    // can happen due to a reserve occuring), we want to avoid filling
+    // up the heap.
+    if (0) {
+      // This almost works.  The problem is that the item in the front
+      // of the heap can go before bucket_number but that there are
+      // still small items in bucket_number.
+      while (!heap.empty() && buckets.H1(heap.front().hash) < bucket_number) {
+        // We have something in the heap that goes ahead of everything in the current bucket.
+        insert_from_heap();
+      }
     }
-    //max_heap_size = std::max(max_heap_size, heap.size());
+    //sum_heap_sizes += heap.size();
     auto &bucket = buckets[bucket_number];
     for (size_t slot_number = 0; slot_number < Traits::kSlotsPerBucket; ++ slot_number) {
       MetaByte meta_byte = bucket.h2[slot_number];
@@ -1388,20 +1416,31 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
         const key_type &key = Traits::KeyOf(value);
         const size_t hash = get_hasher_ref()(key);
         while (!heap.empty() && heap.front().hash < hash) {
+          LOG(INFO) << "Inserting from heap because " << std::hex << std::setw(16) << heap.front().hash << " < " << std::hex << std::setw(16) << hash << std::dec;
           insert_from_heap();
         }
-        insert_and_copy_or_move_and_destroy(value, hash);
+        if (heap.empty()) {
+          LOG(INFO) << "heap empty";
+        } else {
+          LOG(INFO) << "heap front hash=" << std::hex << std::setw(16) << heap.front().hash << std::dec;
+        }
+        insert_and_copy_or_move_and_destroy(value, hash, "from bucket");
         if constexpr (is_rehash) {
           bucket.h2[slot_number].SetEmpty();
         }
       }
     }
+    //LOG(INFO) << "Now: (valid through " << insert_bucket << ") " << ToString();
   }
   while (!heap.empty()) {
     insert_from_heap();
   }
   FinishInsertAscending(insert_bucket);
-  //LOG(INFO) << "Max heap size=" << max_heap_size;
+  if(buckets.logical_size()) {
+    //LOG(INFO) << "Average heap size=" << sum_heap_sizes / double(buckets.logical_size());
+  }
+  LOG(INFO) << "Now " << ToString();
+  Validate();
 }
 
 template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
@@ -1413,6 +1452,7 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
 
 template <class Traits>
 void HashTable<Traits>::rehash_internal(size_t slot_count) {
+  Validate();
   if (slot_count == 0) {
     slot_count = ceil(size() * Traits::full_utilization_denominator,
                       Traits::full_utilization_numerator);

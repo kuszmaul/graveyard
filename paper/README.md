@@ -129,3 +129,6 @@ Experiment:
 Note: it's a library hash table, full generality, so that it could be a viable plugin for the google or facebook tables (which in turn are a viable plugin for the standard library).
 
 Even the resizing trick is almost good enough for a paper.  Be sure to emphasize it.
+
+- [ ] Measure rehash cost
+

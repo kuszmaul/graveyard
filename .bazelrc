@@ -1,1 +1,9 @@
 build --cxxopt='-std=c++17' --cxxopt=-Wimplicit-fallthrough --cxxopt=-Wextra --cxxopt=-Wshadow --cxxopt=-Wcast-align --cxxopt=-Wunused --cxxopt=-Wno-unused-function --cxxopt=-Woverloaded-virtual --cxxopt=-Wmisleading-indentation --cxxopt=-Wduplicated-cond  --cxxopt=-Wlogical-op --cxxopt=-Werror
+
+build:asan --strip=never
+build:asan --copt -fsanitize=address
+build:asan --copt -DADDRESS_SANITIZER
+build:asan --copt -O1
+build:asan --copt -g
+build:asan --copt -fno-omit-frame-pointer
+build:asan --linkopt -fsanitize=address

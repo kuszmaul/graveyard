@@ -974,7 +974,6 @@ template <class Traits> void HashTable<Traits>::clear() {
 template <class Traits>
 std::pair<typename HashTable<Traits>::iterator, bool>
 HashTable<Traits>::insert(const value_type &value) {
-  Validate();
   if (NeedsRehash(size_ + 1)) {
     // Rehash to be, say 3/4, full.
     rehash(ceil((size_ + 1) * Traits::rehashed_utilization_denominator,
@@ -1026,7 +1025,6 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
       new (&bucket.slots[idx].value()) value_type(value);
       maxf(buckets_[preferred_bucket].search_distance, i + 1);
       ++size_;
-      Validate();
       return iterator{&bucket, idx};
     }
   }
@@ -1363,18 +1361,14 @@ void HashTable<Traits>::FinishInsertAscending(size_t insert_bucket) {
 template <class Traits>
 template <bool is_rehash>
 void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<Traits>, const Buckets<Traits>> &buckets) {
-  LOG(INFO) << "Before rehash: " << ToString();
   std::vector<DisorderedItem<is_rehash>> heap;
   size_t disordered_bucket = 0;
   size_t insert_bucket = 0;
   size_t insert_slot = 0;
   buckets_[0].Init();
-  LOG(INFO) << "was " << ToStringInternal(insert_bucket);
   size_ = 0;
-  //uint64_t sum_heap_sizes = 0;
   auto insert_and_copy_or_move_and_destroy = [&](auto &value, size_t hash, std::string_view from) {
     ++size_;
-    LOG(INFO) << "at " << from << " Inserting value=" << value << " hash=" << std::hex << hash << std::dec << " now size_=" << size_;
     if constexpr (is_rehash) {
       InsertAscending<is_rehash>(insert_bucket, insert_slot, std::move(value), hash);
       value.~value_type();
@@ -1383,12 +1377,11 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
     }
   };
   auto insert_from_heap = [&]() {
-    insert_and_copy_or_move_and_destroy(heap.front().slot->value(), heap.front().hash, "from heap");
+    insert_and_copy_or_move_and_destroy(heap.front().slot->value(), heap.front().hash);
     std::pop_heap(heap.begin(), heap.end());
     heap.pop_back();
   };
   for (size_t bucket_number = 0; bucket_number < buckets.physical_size(); ++bucket_number) {
-    LOG(INFO) << "Processing bucket " << bucket_number;
     if (bucket_number < buckets.logical_size()) {
       // Don't need to get the disordered values after the logical
       // size, since we'll pick them all up starting from a logical
@@ -1407,7 +1400,6 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
         insert_from_heap();
       }
     }
-    //sum_heap_sizes += heap.size();
     auto &bucket = buckets[bucket_number];
     for (size_t slot_number = 0; slot_number < Traits::kSlotsPerBucket; ++ slot_number) {
       MetaByte meta_byte = bucket.h2[slot_number];
@@ -1416,31 +1408,19 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
         const key_type &key = Traits::KeyOf(value);
         const size_t hash = get_hasher_ref()(key);
         while (!heap.empty() && heap.front().hash < hash) {
-          LOG(INFO) << "Inserting from heap because " << std::hex << std::setw(16) << heap.front().hash << " < " << std::hex << std::setw(16) << hash << std::dec;
           insert_from_heap();
         }
-        if (heap.empty()) {
-          LOG(INFO) << "heap empty";
-        } else {
-          LOG(INFO) << "heap front hash=" << std::hex << std::setw(16) << heap.front().hash << std::dec;
-        }
-        insert_and_copy_or_move_and_destroy(value, hash, "from bucket");
+        insert_and_copy_or_move_and_destroy(value, hash);
         if constexpr (is_rehash) {
           bucket.h2[slot_number].SetEmpty();
         }
       }
     }
-    //LOG(INFO) << "Now: (valid through " << insert_bucket << ") " << ToString();
   }
   while (!heap.empty()) {
     insert_from_heap();
   }
   FinishInsertAscending(insert_bucket);
-  if(buckets.logical_size()) {
-    //LOG(INFO) << "Average heap size=" << sum_heap_sizes / double(buckets.logical_size());
-  }
-  LOG(INFO) << "Now " << ToString();
-  Validate();
 }
 
 template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
@@ -1452,7 +1432,6 @@ template <class Traits> void HashTable<Traits>::rehash(size_t slot_count) {
 
 template <class Traits>
 void HashTable<Traits>::rehash_internal(size_t slot_count) {
-  Validate();
   if (slot_count == 0) {
     slot_count = ceil(size() * Traits::full_utilization_denominator,
                       Traits::full_utilization_numerator);

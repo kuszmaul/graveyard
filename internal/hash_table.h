@@ -1367,7 +1367,7 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
   size_t insert_slot = 0;
   buckets_[0].Init();
   size_ = 0;
-  auto insert_and_copy_or_move_and_destroy = [&](auto &value, size_t hash, std::string_view from) {
+  auto insert_and_copy_or_move_and_destroy = [&](auto &value, size_t hash) {
     ++size_;
     if constexpr (is_rehash) {
       InsertAscending<is_rehash>(insert_bucket, insert_slot, std::move(value), hash);

@@ -86,6 +86,17 @@ cc_library(
 )
 
 cc_test(
+    name = "hash_table_test",
+    srcs = ["internal/hash_table_test.cc"],
+    size = "small",
+    deps = [
+	"@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "graveyard_set_test",
     srcs = ["graveyard_set_test.cc"],
     size = "small",

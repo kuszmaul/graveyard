@@ -83,8 +83,13 @@ public:
 
   using Base::insert;
 
+  using Base::emplace;
+
+  using Base::try_emplace;
+
   template <class K = key_type> T &operator[](const key_arg<K> &key) {
-    return Traits::KeyOf(&*try_emplace(key).first);
+    auto [it, inserted] = try_emplace(key);
+    return it->second;
   }
 
   using Base::count;

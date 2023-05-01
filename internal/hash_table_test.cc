@@ -1,6 +1,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "gmock/gmock.h"
+#include "graveyard_map.h"
 #include "gtest/gtest.h"
 
 #include <ostream>
@@ -46,11 +47,13 @@ class StandardLayout {
   }
   // Copy assignment operator
   StandardLayout& operator=(const StandardLayout& other) {
+    ++counts.copy_assignments;
     x_ = std::make_unique<int>(other.value());
     return *this;
   }
   // Move assignment operator
   StandardLayout& operator=(StandardLayout&& other) {
+    ++counts.move_assignments;
     x_ = std::move(other.x_);
     other.x_ = std::make_unique<int>(0);
     return *this;
@@ -144,3 +147,11 @@ TEST(Layout, StandardLayoutInAbsl) {
 TEST(Layout, NonStandardLayoutInAbsl) {
   TestLayout<NonStandardLayout, absl::flat_hash_map>(false, false);
 }
+#if 0
+TEST(Layout, StandardLayoutInGraveyard) {
+  TestLayout<StandardLayout, yobiduck::GraveyardMap>(true, false);
+}
+TEST(Layout, NonStandardLayoutInGraveyardl) {
+  TestLayout<NonStandardLayout, yobiduck::GraveyardMap>(false, false);
+}
+#endif

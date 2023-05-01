@@ -576,6 +576,63 @@ public:
   void clear();
   std::pair<iterator, bool> insert(const value_type &value);
   template <class... Args> std::pair<iterator, bool> emplace(Args &&...args);
+
+  // Overload:
+  //   pair<iterator, bool> try_emplace(key_type&& k, Args&&...);
+  template <class K = key_type, class... Args,
+            typename std::enable_if_t<
+              !std::is_convertible_v<K, const_iterator>, int> = 0,
+            K* = nullptr>
+  std::pair<iterator, bool>
+  try_emplace(key_arg<K>&& key, Args&&...args) {
+    // TODO: It looks like a bug here.  Shouldn't this be
+    //  std::forward<key_arg<K>>(k)
+    // This bug, if it is a bug, is from absl raw_hash_map.h line 125.
+    return TryEmplace(std::forward<K>(key), std::forward<Args>(args)...);
+  }
+
+  // Overload:
+  //   pair<iterator, bool> try_emplace(key_type& k, Args&&...);
+  template <class K = key_type, class... Args,
+            typename std::enable_if_t<
+              !std::is_convertible_v<K, const_iterator>, int> = 0,
+            K* = nullptr>
+  std::pair<iterator, bool>
+  try_emplace(const key_arg<K>& key, Args &&...args) {
+    return TryEmplace(key, std::forward<Args>(args)...);
+  }
+
+  // Overload:
+  //   iterator try_emplace(const_iterator hint, const key_type& k, Args&&... args)
+  // Just ignores the hint
+  template <class K = key_type, class... Args, K* = nullptr>
+  iterator try_emplace(const_iterator, key_arg<K>&& k, Args&&... args) {
+    return try_emplace(std::forward<K>(k), std::forward<Args>(args)...).first;
+  }
+
+  // Overload:
+  //   iterator try_emplace(const_iterator hint, const key_type& k, Args&&... args)
+  // Just ignores the hint
+  template <class K = key_type, class... Args>
+  iterator try_emplace(const_iterator, const key_arg<K>& k, Args&&... args) {
+    return try_emplace(k, std::forward<Args>(args)...).first;
+  }
+
+ private:
+  template <class K = key_type, class... Args>
+  std::pair<iterator, bool> TryEmplace(K&& key, Args &&...args) {
+    auto [it, inserted] = PrepareInsert(key);
+    if (!inserted) {
+      return {it, false};
+    }
+    new (&*it) value_type(std::piecewise_construct,
+                          std::forward_as_tuple(std::forward<K>(key)),
+                          std::forward_as_tuple(std::forward<Args>(args)...));
+    return {it, true};
+  }
+
+ public:
+
   // Note: As for absl, this overload doesn't return an iterator.
   // If that iterator is needed, simply post increment the iterator:
   //
@@ -731,18 +788,15 @@ private:
     size_t hash;
   };
 
-  // Inserts `value` into `*this`.  Requires that `value` is not
-  // already in `*this` and that the table does not need rehashing.
-  // We don't maintain tombstones.
+  // If a value matching `key` is present, returns an iterator
+  // pointing to it and `false`.
   //
-  // TODO: We can probably save the recompution of h2 if we are careful.
-  void InsertNoRehashNeededAndValueNotPresent(const value_type &value);
-
-  // An overload of `InsertNoRehashNeededAndValueNotPresent` that has already
-  // computed the preferred bucket and h2.
-  iterator InsertNoRehashNeededAndValueNotPresent(const value_type &value,
-                                                  size_t preferred_bucket,
-                                                  size_t h2);
+  // Otherwise, finds the first empty slot, marks it nonempty with the
+  // h2 hash of `key`, and returns an iterator pointing to it and
+  // `true.  (And increments `size_`.)  The slot's item remains
+  // "unconstructed".
+  template <class K = key_type>
+  std::pair<iterator, bool> PrepareInsert(const key_arg<K>& key);
 
   // A reference to a disordered value, suitable to put into a heap.
   // When it's in the heap, the value has logically been removed from
@@ -969,18 +1023,18 @@ template <class Traits> void HashTable<Traits>::clear() {
   buckets_.clear();
 }
 
-// TODO: Deal with the &&value_type insert.
+static constexpr void maxf(uint8_t &v1, uint8_t v2) { v1 = std::max(v1, v2); }
 
 template <class Traits>
+template <class K>
 std::pair<typename HashTable<Traits>::iterator, bool>
-HashTable<Traits>::insert(const value_type &value) {
+HashTable<Traits>::PrepareInsert(const key_arg<K> &key) {
   if (NeedsRehash(size_ + 1)) {
-    // Rehash to be, say 3/4, full.
     rehash(ceil((size_ + 1) * Traits::rehashed_utilization_denominator,
                 Traits::rehashed_utilization_numerator));
   }
   // TODO: Use the Hash in OLP.
-  const size_t hash = get_hasher_ref()(Traits::KeyOf(value));
+  const size_t hash = get_hasher_ref()(key);
   const size_t preferred_bucket = buckets_.H1(hash);
   const size_t h2 = buckets_.H2(hash);
   const size_t distance = buckets_[preferred_bucket].search_distance;
@@ -989,31 +1043,11 @@ HashTable<Traits>::insert(const value_type &value) {
     __builtin_prefetch(&(buckets_.begin() + preferred_bucket + i + 1)->h2);
     assert(preferred_bucket + i < buckets_.physical_size());
     Bucket<Traits> &bucket = buckets_[preferred_bucket + i];
-    size_t idx = bucket.FindElement(h2, Traits::KeyOf(value), get_key_eq_ref());
+    size_t idx = bucket.FindElement(h2, key, get_key_eq_ref());
     if (idx < Traits::kSlotsPerBucket) {
       return {iterator{&bucket, idx}, false};
     }
   }
-  return {InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket, h2),
-          true};
-}
-
-template <class Traits>
-void HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
-    const value_type &value) {
-  const key_type &key = Traits::KeyOf(value);
-  const size_t hash = get_hasher_ref()(key);
-  const size_t preferred_bucket = buckets_.H1(hash);
-  const size_t h2 = buckets_.H2(hash);
-  InsertNoRehashNeededAndValueNotPresent(value, preferred_bucket, h2);
-}
-
-static constexpr void maxf(uint8_t &v1, uint8_t v2) { v1 = std::max(v1, v2); }
-
-template <class Traits>
-typename HashTable<Traits>::iterator
-HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
-    const value_type &value, size_t preferred_bucket, size_t h2) {
   for (size_t i = 0; true; ++i) {
     assert(i < Traits::kSearchDistanceEndSentinal);
     assert(preferred_bucket + i < buckets_.physical_size());
@@ -1022,12 +1056,24 @@ HashTable<Traits>::InsertNoRehashNeededAndValueNotPresent(
     if (matches != 0) {
       size_t idx = CountTrailingZeros(matches);
       bucket.h2[idx].SetUnorderedValue(h2);
-      new (&bucket.slots[idx].value()) value_type(value);
-      maxf(buckets_[preferred_bucket].search_distance, i + 1);
       ++size_;
-      return iterator{&bucket, idx};
+      maxf(buckets_[preferred_bucket].search_distance, i + 1);
+      return {iterator(&bucket, idx), true};
     }
   }
+}
+
+// TODO: Deal with the &&value_type insert.
+
+template <class Traits>
+std::pair<typename HashTable<Traits>::iterator, bool>
+HashTable<Traits>::insert(const value_type &value) {
+  auto [it, inserted] = PrepareInsert(Traits::KeyOf(value));
+  if (!inserted) {
+    return {it, false};
+  }
+  new (&*it) value_type(value);
+  return {it, true};
 }
 
 template <class Traits>

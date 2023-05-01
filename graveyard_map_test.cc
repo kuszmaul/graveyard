@@ -182,3 +182,137 @@ TEST(GraveyardMap, Heterogenous) {
   HeterogeneousStringTest(amap);
   HeterogeneousStringTest(gmap);
 }
+
+// Verify that try_emplace does a std::move.  For this we need to be
+// able to count the number of moves and copies.
+
+template <int count_class>
+struct Counts {
+  size_t default_constructions = 0;
+  size_t copy_constructions = 0;
+  size_t move_constructions = 0;
+  size_t copy_assignments = 0;
+  size_t move_assignments = 0;
+  size_t destructions = 0;
+  Counts() = default;
+  Counts(size_t dc, size_t cc, size_t mc, size_t ca, size_t ma, size_t d) :default_constructions(dc), copy_constructions(cc), move_constructions(mc), copy_assignments(ca), move_assignments(ma), destructions(d) {}
+  void Reset() { *this = Counts(); }
+  friend std::ostream& operator<<(std::ostream& os, const Counts& counts) {
+    return os << "dc=" << counts.default_constructions << " cc=" << counts.copy_constructions << " mc=" << counts.move_constructions << " ca=" << counts.copy_assignments << " ma=" << counts.move_assignments << " d=" << counts.destructions;
+  }
+  friend bool operator==(const Counts &a, const Counts &b) {
+    return
+        a.default_constructions == b.default_constructions &&
+        a.copy_constructions == b.copy_constructions &&
+        a.move_constructions == b.move_constructions &&
+        a.copy_assignments == b.copy_assignments &&
+        a.move_assignments == b.move_assignments &&
+        a.destructions == b.destructions;
+  }
+};
+
+template <int count_class>
+struct Counted {
+  static Counts<count_class> counts;
+  // Default constructor
+  Counted() { ++counts.default_constructions; }
+  // Copy constructor
+  Counted([[maybe_unused]] const Counted& l) { ++counts.copy_constructions; }
+  // Move constructor
+  Counted([[maybe_unused]] Counted&& l) { ++counts.move_constructions; }
+  // Destructor
+  ~Counted() { ++counts.destructions; }
+  // Copy assignmnet
+  Counted& operator=(const Counted& other) {
+    ++counts.copy_assignments;
+    return *this;
+  }
+  // Move assignment
+  Counted& operator=(Counted&& other) {
+    ++counts.move_assignments;
+    return *this;
+  }
+};
+
+template <int count_class>
+Counts<count_class> Counted<count_class>::counts;
+
+template <template <typename, typename> class MapType>
+void TryArgsMovedTest(std::string_view called_from) {
+  using Counts0 = Counts<0>;
+  Counts0 &counts = Counted<0>::counts;
+  using Map = MapType<std::string, Counted<0>>;
+  //using Map = std::unordered_map<std::string, Counted<0>>;
+  counts.Reset();
+  {
+    Map map;
+    EXPECT_EQ(counts, Counts0()) << " from " << called_from;
+    map["a"];
+    EXPECT_EQ(counts, Counts0(1, 0, 0, 0, 0, 0));
+
+  }
+  EXPECT_EQ(counts, Counts0(1, 0, 0, 0, 0, 1));
+
+  counts.Reset();
+  {
+    Map map;
+    map.emplace("a", Counted<0>());
+    // Expect a default construction and then a move, then destruct the original.
+    EXPECT_EQ(counts, Counts0(1, 0, 1, 0, 0, 1)) << " from " << called_from;
+  }
+  EXPECT_EQ(counts, Counts0(1, 0, 1, 0, 0, 2)) << " from " << called_from;
+  LOG(INFO) << counts;
+
+  counts.Reset();
+  {
+    Map map;
+    map.try_emplace("a", Counted<0>());
+    LOG(INFO) << counts;
+  }
+}
+
+TEST(GraveyardMap, AbslTryArgsMoved) {
+  TryArgsMovedTest<absl::flat_hash_map>("absl");
+}
+TEST(GraveyardMap, StdTryArgsMoved) {
+  TryArgsMovedTest<std::unordered_map>("std");
+}
+TEST(GraveyardMap, GraveyardTryArgsMoved) {
+  TryArgsMovedTest<yobiduck::GraveyardMap>("graveyard");
+}
+
+TEST(GraveyardMap, TryEmplace) {
+  absl::flat_hash_map<std::string, std::string> map;
+  //yobiduck::GraveyardMap<std::string, std::string> map;
+  {
+    auto [it, inserted] = map.try_emplace("a", "b");
+    EXPECT_TRUE(inserted);
+    EXPECT_THAT(*it, Pair("a", "b"));
+    EXPECT_TRUE(map.contains("a"));
+
+  }
+  {
+    std::string_view b_original_string("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    std::string b_string(b_original_string);
+    auto [it, inserted] = map.try_emplace("a", b_string);
+    EXPECT_FALSE(inserted);
+    EXPECT_THAT(*it, Pair("a", "b"));
+    // The b_string has not been moved.
+    EXPECT_EQ(b_string, b_original_string);
+  }
+  {
+    std::string_view c_original_string("cccccccccccccccccccccccccccccccccc");
+    std::string c_string(c_original_string);
+    auto [it, inserted] = map.try_emplace("c", c_string);
+    EXPECT_TRUE(inserted);
+    EXPECT_THAT(*it, Pair("c", c_original_string));
+    // The c_string has been moved.
+    EXPECT_NE(c_string, c_original_string);
+  }
+}
+
+TEST(GraveyardMap, OperatorSquareBracket) {
+  yobiduck::GraveyardMap<std::string, std::string> map;
+  map["a"] = "b";
+  EXPECT_TRUE(map.contains("a"));
+}

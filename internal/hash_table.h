@@ -1082,7 +1082,7 @@ std::pair<typename HashTable<Traits>::iterator, bool>
 HashTable<Traits>::emplace(Args &&...args) {
   // TODO: Deal with the case where we can calculate a key without constructing
   // the value.
-  return insert(value_type(args...));
+  return try_emplace(std::forward<Args>(args)...);
 }
 
 template <class Traits>

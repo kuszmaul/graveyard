@@ -2,6 +2,7 @@
 
 #include <cstddef> // for size_t, ptrdiff_t
 #include <cstdint> // for uint64_t
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <type_traits> // for is_same_v
@@ -186,7 +187,6 @@ TEST(GraveyardMap, Heterogenous) {
 // Verify that try_emplace does a std::move.  For this we need to be
 // able to count the number of moves and copies.
 
-template <int count_class>
 struct Counts {
   size_t default_constructions = 0;
   size_t copy_constructions = 0;
@@ -212,30 +212,50 @@ struct Counts {
 };
 
 template <int count_class>
-struct Counted {
-  static Counts<count_class> counts;
+struct CountedTemplate {
+  static Counts counts;
   // Default constructor
-  Counted() { ++counts.default_constructions; }
+  CountedTemplate() { ++counts.default_constructions; }
   // Copy constructor
-  Counted([[maybe_unused]] const Counted& l) { ++counts.copy_constructions; }
+  CountedTemplate([[maybe_unused]] const CountedTemplate& l) :v(l.v) { ++counts.copy_constructions; }
   // Move constructor
-  Counted([[maybe_unused]] Counted&& l) { ++counts.move_constructions; }
+  CountedTemplate([[maybe_unused]] CountedTemplate&& l) :v(l.v) { ++counts.move_constructions; }
   // Destructor
-  ~Counted() { ++counts.destructions; }
+  ~CountedTemplate() { ++counts.destructions; }
   // Copy assignmnet
-  Counted& operator=(const Counted& other) {
+  CountedTemplate& operator=(const CountedTemplate& other) {
+    v = other.v;
     ++counts.copy_assignments;
     return *this;
   }
   // Move assignment
-  Counted& operator=(Counted&& other) {
+  CountedTemplate& operator=(CountedTemplate&& other) {
+    v = other.v;
     ++counts.move_assignments;
     return *this;
   }
+  explicit CountedTemplate(size_t value) :v(value) {}
+  friend bool operator==(const CountedTemplate &a, const CountedTemplate &b) {
+    return a.v == b.v;
+  }
+  friend std::ostream& operator<<(std::ostream& os, const CountedTemplate &a) {
+    return os << "<" << a.v << ">";
+  }
+  class Hash {
+   public:
+    size_t operator()(const CountedTemplate &v) const {
+      return v.v;
+    }
+  };
+  size_t v = 0;
 };
 
+// Define the static variables.
 template <int count_class>
-Counts<count_class> Counted<count_class>::counts;
+Counts CountedTemplate<count_class>::counts;
+
+using Counted = CountedTemplate<0>;
+
 
 // Verify that Graveyard, Abseil, and Unordered map call the same
 // numbers of default constructors, move constructors, copy
@@ -243,33 +263,32 @@ Counts<count_class> Counted<count_class>::counts;
 // for various ways of inserting values into an empty table.
 template <template <typename, typename> class MapType>
 void TryArgsMovedTest(std::string_view called_from) {
-  using Counts0 = Counts<0>;
-  Counts0 &counts = Counted<0>::counts;
-  using Map = MapType<std::string, Counted<0>>;
+  Counts &counts = Counted::counts;
+  using Map = MapType<std::string, Counted>;
   //using Map = std::unordered_map<std::string, Counted<0>>;
   counts.Reset();
   {
     Map map;
-    EXPECT_EQ(counts, Counts0()) << " from " << called_from;
+    EXPECT_EQ(counts, Counts()) << " from " << called_from;
     map["a"];
-    EXPECT_EQ(counts, Counts0(1, 0, 0, 0, 0, 0));
+    EXPECT_EQ(counts, Counts(1, 0, 0, 0, 0, 0));
 
   }
-  EXPECT_EQ(counts, Counts0(1, 0, 0, 0, 0, 1));
+  EXPECT_EQ(counts, Counts(1, 0, 0, 0, 0, 1));
 
   counts.Reset();
   {
     Map map;
-    map.emplace("a", Counted<0>());
-    EXPECT_EQ(counts, Counts0(1, 0, 1, 0, 0, 1)) << " from " << called_from;
+    map.emplace("a", Counted());
+    EXPECT_EQ(counts, Counts(1, 0, 1, 0, 0, 1)) << " from " << called_from;
   }
-  EXPECT_EQ(counts, Counts0(1, 0, 1, 0, 0, 2)) << " from " << called_from;
+  EXPECT_EQ(counts, Counts(1, 0, 1, 0, 0, 2)) << " from " << called_from;
 
   counts.Reset();
   {
     Map map;
-    map.try_emplace("a", Counted<0>());
-    EXPECT_EQ(counts, Counts0(1, 0, 1, 0, 0, 1));
+    map.try_emplace("a", Counted());
+    EXPECT_EQ(counts, Counts(1, 0, 1, 0, 0, 1));
   }
 }
 
@@ -328,4 +347,117 @@ TEST(GraveyardMap, OperatorSquareBracket) {
   yobiduck::GraveyardMap<std::string, std::string> map;
   map["a"] = "b";
   EXPECT_TRUE(map.contains("a"));
+}
+
+// When the value_type is a `pair<const K, V>` that can safely be cast
+// to `pair<K, V>`, we should move it rather than copying it.
+template <template <typename, typename, typename> class MapType, bool is_open_addressed>
+void MovesMovableTest() {
+  Counts &counts = Counted::counts;
+  counts.Reset();
+  MapType<Counted, Counted, Counted::Hash> map;
+  map.emplace(Counted(1), Counted(2));
+  // Expect two move constructors and two deletions.
+  EXPECT_EQ(counts, Counts(0, 0, 2, 0, 0, 2));
+  {
+    auto it = map.find(Counted(1));
+    EXPECT_TRUE(it != map.end());
+  }
+  counts.Reset();
+  auto map2 = std::move(map);
+  // Moving a map causes no element moves to happen
+  EXPECT_EQ(counts, Counts());
+  // Rehashhing is interesting, however.
+  map2.rehash(0);
+  if (is_open_addressed) {
+    // E.g., absl::flat_hash_map and Graveyardmap do move the two item
+    // and destruct the moved-from items.
+    EXPECT_EQ(counts, Counts(0, 0, 2, 0, 0, 2));
+  } else {
+    // E.g., std::unordered_map does not moves or copies to rehash.
+    EXPECT_EQ(counts, Counts());
+  }
+}
+
+TEST(GraveyardMap, MovesMovablePairStd) {
+  MovesMovableTest<std::unordered_map, false>();
+}
+TEST(GraveyardMap, MovesMovablePairAbsl) {
+  MovesMovableTest<absl::flat_hash_map, true>();
+}
+TEST(GraveyardMap, MovesMovablePairGraveyard) {
+  MovesMovableTest<yobiduck::GraveyardMap, true>();
+}
+
+// When the value_type is a `pair<const K, V>` that can *not* safely
+// be cast to `pair<K, V>`, we should copy it rather than move it.
+//
+// This class, when used as `K`, cannot be cast because its virtual
+// method makes it a nonstandard layout.
+//
+// The actual cast involved, internally is a union
+//   union Union {
+//     std::pair<K, V> mutable_value;
+//     std::pair<const K, V> immutable_value;
+//   };
+//
+// We want to store into the immutable value and then use the mutable
+// value when we want to rehash, doing
+//   in `emplace`:
+//     new (&u.imutable_value) std::pair<K, V>(key, value);
+//   in `rehash`:
+//     std::move(u.mutable_value);
+//   in `operator[]`:
+//     return u.immutable_value;
+
+// It is that last operation that is allowed by the following sentence
+// in https://en.cppreference.com/w/cpp/language/union
+//
+//    If two union members are standard-layout types, it's
+//    well-defined to examine their common subsequence on any
+//    compiler.
+//
+// The relevant section of the standard is
+// https://timsong-cpp.github.io/cppwp/n3337/class.mem#19 (9.2.19)
+class CountedNonStandard : public Counted {
+  using Counted::Counted;
+  virtual void Foo() {}
+};
+
+template <template <typename, typename, typename> class MapType, bool is_open_addressed>
+void DoesntMoveNonmovableTest() {
+  Counts &counts = Counted::counts;
+  counts.Reset();
+  MapType<CountedNonStandard, Counted, Counted::Hash> map;
+  map.emplace(CountedNonStandard(1), Counted(2));
+  // Expect two move constructors and two deletions.
+  EXPECT_EQ(counts, Counts(0, 0, 2, 0, 0, 2));
+  {
+    auto it = map.find(CountedNonStandard(1));
+    EXPECT_TRUE(it != map.end());
+  }
+  counts.Reset();
+  auto map2 = std::move(map);
+  // Moving a map causes no element moves to happen
+  EXPECT_EQ(counts, Counts());
+  // Rehashhing is interesting, however.
+  map2.rehash(0);
+  if (is_open_addressed) {
+    // E.g., absl::flat_hash_map and Graveyardmap copy the key (so 1
+    // copy and 1 move).
+    EXPECT_EQ(counts, Counts(0, 1, 1, 0, 0, 2));
+  } else {
+    // E.g., std::unordered_map does not moves or copies to rehash.
+    EXPECT_EQ(counts, Counts());
+  }
+}
+
+TEST(GraveyardMap, DoesntMoveNonmovablePairStd) {
+  DoesntMoveNonmovableTest<std::unordered_map, false>();
+}
+TEST(GraveyardMap, DoesntMoveNonmovablePairAbsl) {
+  DoesntMoveNonmovableTest<absl::flat_hash_map, true>();
+}
+TEST(GraveyardMap, DoesntMoveNonmovablePairGraveyard) {
+  DoesntMoveNonmovableTest<yobiduck::GraveyardMap, true>();
 }

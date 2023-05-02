@@ -15,6 +15,7 @@
 
 #include "absl/log/check.h"
 #include "internal/object_holder.h"
+#include "internal/sse.h"
 
 // IWYU has some strange behavior around std::swap.  It wants to get
 // rid of utility and add variant. But then it's still not happy and
@@ -33,22 +34,12 @@
 
 #include "absl/log/log.h"
 
-#if defined(__SSE2__) ||                                                       \
-    (defined(_MSC_VER) &&                                                      \
-     (defined(_M_X64) || (defined(_M_IX86) && _M_IX86_FP >= 2)))
-#define YOBIDUCK_HAVE_SSE2 1
-#include <emmintrin.h>
-#else
-#define YOBIDUCK_HAVE_SSE2 0
-#endif
 
 // Note that we use GoogleStyleNaming for private member functions
 // but cplusplus_library_standard_naming for the parts of the API that
 // look like the C++ standard libary.
 
 namespace yobiduck::internal {
-
-static constexpr bool kHaveSse2 = (YOBIDUCK_HAVE_SSE2 != 0);
 
 // Returns the ceiling of (a/b).
 inline constexpr size_t ceil(size_t a, size_t b) { return (a + b - 1) / b; }

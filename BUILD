@@ -141,10 +141,17 @@ cc_library(
 )
 
 cc_library(
+    name = "sse",
+    visibility = ["//visibility:private"],
+    hdrs = ["internal/sse.h"],
+)
+
+cc_library(
     name = "hash_table",
     hdrs = ["internal/hash_table.h"],
     visibility = ["//visibility:private"],
     deps = [":object_holder",
+        ":sse",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/container:flat_hash_set",

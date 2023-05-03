@@ -236,8 +236,6 @@ template <class Traits> struct alignas(typename Traits::value_type) Item {
   }
 };
 
-template <class Traits> class SortedBucketsIterator;
-
 template <class Traits> struct Bucket {
   using key_type = typename Traits::key_type;
 
@@ -680,11 +678,6 @@ public:
   ProbeStatistics GetProbeStatistics() const;
   size_t GetSuccessfulProbeLength(const value_type &value) const;
   size_t GetInsertProbeLength(const size_t logical_bucket_number) const;
-
-  using hash_sorted_iterator = SortedBucketsIterator<Traits>;
-  hash_sorted_iterator GetSortedBucketsIterator() {
-    return hash_sorted_iterator(*this);
-  }
 
   void Validate(int line_number = 0) const;
   void ValidateUnderDebugging(int line_number) const;

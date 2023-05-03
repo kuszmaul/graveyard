@@ -132,7 +132,6 @@ class GraveyardMap
   using Base::GetProbeStatistics;
   using Base::GetSuccessfulProbeLength;
 
-  using Base::GetSortedBucketsIterator;
 };
 
 } // namespace yobiduck

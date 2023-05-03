@@ -126,8 +126,6 @@ public:
   using Base::GetProbeStatistics;
   using Base::GetSuccessfulProbeLength;
 
-  using Base::GetSortedBucketsIterator;
-
   using Base::ToString;
   using Base::Validate;
 };

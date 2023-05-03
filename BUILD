@@ -117,7 +117,7 @@ cc_library(
     hdrs = ["graveyard_map.h"],
     deps = [
         "@com_google_absl//absl/container:flat_hash_set",
-        ":hash_table",
+        ":hash_map",
     ],
 )
 
@@ -144,6 +144,15 @@ cc_library(
     name = "sse",
     visibility = ["//visibility:private"],
     hdrs = ["internal/sse.h"],
+)
+
+cc_library(
+    name = "hash_map",
+    hdrs = ["internal/hash_map.h"],
+    visibility = ["//visibility:private"],
+    deps = [
+       ":hash_table",
+       ],
 )
 
 cc_library(

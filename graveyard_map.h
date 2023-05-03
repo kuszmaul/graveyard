@@ -8,7 +8,7 @@
 #include <utility> // IWYU pragma: keep
 
 #include "absl/container/flat_hash_set.h" // For hash_default_hash (TODO: use internal/hash_function_defaults.h
-#include "internal/hash_table.h"
+#include "internal/hash_map.h"
 
 // IWYU pragma: no_include <iterator>
 
@@ -20,15 +20,16 @@ template <class Key, class T,
           class KeyEqual = absl::container_internal::hash_default_eq<Key>,
           class Allocator = std::allocator<std::pair<const Key, T>>>
 class GraveyardMap
-    : private yobiduck::internal::HashTable<yobiduck::internal::HashTableTraits<
+    : private yobiduck::internal::HashMap<yobiduck::internal::HashTableTraits<
           Key, T, Hash, KeyEqual, Allocator>> {
   using Traits =
       yobiduck::internal::HashTableTraits<Key, T, Hash, KeyEqual, Allocator>;
-  using Base = yobiduck::internal::HashTable<Traits>;
+  using Base = yobiduck::internal::HashMap<Traits>;
+
+ public:
 
   template <class K> using key_arg = typename Traits::template key_arg<K>;
 
-public:
   // The order as found in
   // https://en.cppreference.com/w/cpp/container/unordered_set.  Put blank lines
   // between items to prevent clang_format from reordering them.

@@ -517,9 +517,10 @@ public:
   using const_pointer =
       typename std::allocator_traits<allocator_type>::const_pointer;
 
-public:
+ protected:
   template <class K> using key_arg = typename Traits::template key_arg<K>;
 
+ public:
   HashTable();
   explicit HashTable(size_t initial_capacity, hasher const &hash = hasher(),
                      key_equal const &key_eq = key_equal(),
@@ -567,60 +568,6 @@ public:
   void clear();
   std::pair<iterator, bool> insert(const value_type &value);
   template <class... Args> std::pair<iterator, bool> emplace(Args &&...args);
-
-  // Overload:
-  //   pair<iterator, bool> try_emplace(key_type&& k, Args&&...);
-  template <class K = key_type, class... Args,
-            typename std::enable_if_t<
-              !std::is_convertible_v<K, const_iterator>, int> = 0,
-            K* = nullptr>
-  std::pair<iterator, bool>
-  try_emplace(key_arg<K>&& key, Args&&...args) {
-    // TODO: It looks like a bug here.  Shouldn't this be
-    //  std::forward<key_arg<K>>(k)
-    // This bug, if it is a bug, is from absl raw_hash_map.h line 125.
-    return TryEmplace(std::forward<K>(key), std::forward<Args>(args)...);
-  }
-
-  // Overload:
-  //   pair<iterator, bool> try_emplace(key_type& k, Args&&...);
-  template <class K = key_type, class... Args,
-            typename std::enable_if_t<
-              !std::is_convertible_v<K, const_iterator>, int> = 0,
-            K* = nullptr>
-  std::pair<iterator, bool>
-  try_emplace(const key_arg<K>& key, Args &&...args) {
-    return TryEmplace(key, std::forward<Args>(args)...);
-  }
-
-  // Overload:
-  //   iterator try_emplace(const_iterator hint, const key_type& k, Args&&... args)
-  // Just ignores the hint
-  template <class K = key_type, class... Args, K* = nullptr>
-  iterator try_emplace(const_iterator, key_arg<K>&& k, Args&&... args) {
-    return try_emplace(std::forward<K>(k), std::forward<Args>(args)...).first;
-  }
-
-  // Overload:
-  //   iterator try_emplace(const_iterator hint, const key_type& k, Args&&... args)
-  // Just ignores the hint
-  template <class K = key_type, class... Args>
-  iterator try_emplace(const_iterator, const key_arg<K>& k, Args&&... args) {
-    return try_emplace(k, std::forward<Args>(args)...).first;
-  }
-
- private:
-  template <class K = key_type, class... Args>
-  std::pair<iterator, bool> TryEmplace(K&& key, Args &&...args) {
-    auto [it, inserted] = PrepareInsert(key);
-    if (!inserted) {
-      return {it, false};
-    }
-    new (&*it) value_type(std::piecewise_construct,
-                          std::forward_as_tuple(std::forward<K>(key)),
-                          std::forward_as_tuple(std::forward<Args>(args)...));
-    return {it, true};
-  }
 
  public:
 
@@ -779,6 +726,7 @@ private:
     size_t hash;
   };
 
+ protected:
   // If a value matching `key` is present, returns an iterator
   // pointing to it and `false`.
   //
@@ -789,6 +737,7 @@ private:
   template <class K = key_type>
   std::pair<iterator, bool> PrepareInsert(const key_arg<K>& key);
 
+ private:
   // A reference to a disordered value, suitable to put into a heap.
   // When it's in the heap, the value has logically been removed from
   // its source (the meta_byte is set empty), but it hasn't actually
@@ -1071,9 +1020,13 @@ template <class Traits>
 template <class... Args>
 std::pair<typename HashTable<Traits>::iterator, bool>
 HashTable<Traits>::emplace(Args &&...args) {
-  // TODO: Deal with the case where we can calculate a key without constructing
-  // the value.
-  return try_emplace(std::forward<Args>(args)...);
+  value_type value{std::forward<Args>(args)...};
+  auto prepare_result = PrepareInsert(Traits::KeyOf(value));
+  auto &[it, inserted] = prepare_result;
+  if (inserted) {
+    new (&*it) value_type(std::move(value));
+  }
+  return prepare_result;
 }
 
 template <class Traits>

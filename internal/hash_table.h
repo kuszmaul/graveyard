@@ -15,7 +15,10 @@
 
 #include "absl/log/check.h"
 #include "internal/object_holder.h"
+#include "internal/map_slot.h"
+#include "internal/set_slot.h"
 #include "internal/sse.h"
+
 
 // IWYU has some strange behavior around std::swap.  It wants to get
 // rid of utility and add variant. But then it's still not happy and
@@ -158,9 +161,11 @@ template <class KeyType, class MappedTypeOrVoid, class Hash, class KeyEqual,
 struct HashTableTraits {
   using key_type = KeyType;
   using mapped_type_or_void = MappedTypeOrVoid;
-  using value_type = typename std::conditional<
-      std::is_same<mapped_type_or_void, void>::value, key_type,
-      std::pair<const key_type, mapped_type_or_void>>::type;
+  static constexpr bool is_map = !std::is_same_v<mapped_type_or_void, void>;
+  using value_type = typename std::conditional_t<
+      is_map,
+      std::pair<const key_type, mapped_type_or_void>,
+      key_type>;
   using hasher = Hash;
   using key_equal = KeyEqual;
   using allocator = Allocator;
@@ -177,12 +182,14 @@ struct HashTableTraits {
   using key_arg = typename KeyArgImpl::template type<K, key_type>;
 
   static const key_type &KeyOf(const value_type &value) {
-    if constexpr (std::is_same<mapped_type_or_void, void>::value) {
-      return value;
-    } else {
+    if constexpr (is_map) {
       return value.first;
+    } else {
+      return value;
     }
   }
+
+  using Slot = std::conditional_t<is_map, MapSlot<key_type, mapped_type_or_void>, SetSlot<value_type>>;
 
   static constexpr uint8_t kSearchDistanceEndSentinal = 255;
   static constexpr size_t kCacheLineSize = 64;

@@ -147,6 +147,18 @@ cc_library(
 )
 
 cc_library(
+    name = "set_slot",
+    visibility = ["//visibility:private"],
+    hdrs = ["internal/set_slot.h"],
+)
+
+cc_library(
+    name = "map_slot",
+    visibility = ["//visibility:private"],
+    hdrs = ["internal/map_slot.h"],
+)
+
+cc_library(
     name = "hash_map",
     hdrs = ["internal/hash_map.h"],
     visibility = ["//visibility:private"],
@@ -160,6 +172,8 @@ cc_library(
     hdrs = ["internal/hash_table.h"],
     visibility = ["//visibility:private"],
     deps = [":object_holder",
+	":map_slot",
+	":set_slot",
         ":sse",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",

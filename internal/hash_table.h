@@ -183,7 +183,9 @@ struct HashTableTraits {
   template <class K>
   using key_arg = typename KeyArgImpl::template type<K, key_type>;
 
-  static const key_type &KeyOf(const value_type &value) {
+  template <class ValueOrStoredValue>
+  static const key_type &KeyOf(const ValueOrStoredValue &value) {
+    LOG(INFO) << "Doing KeyOf";
     if constexpr (is_map) {
       return value.first;
     } else {
@@ -763,7 +765,7 @@ private:
   // ones after are not.
   template<bool insert_tombstones>
   void InsertAscending(size_t &insert_bucket, size_t &insert_slot,
-                       value_type value, size_t hash);
+                       typename Traits::Slot::StoredType value, size_t hash);
 
   // Finishes the rehash or copy by initializing all the
   // buckets after `insert_bucket`.
@@ -1013,8 +1015,14 @@ template <class Traits>
 template <class... Args>
 std::pair<typename HashTable<Traits>::iterator, bool>
 HashTable<Traits>::emplace(Args &&...args) {
-  value_type value{std::forward<Args>(args)...};
-  auto prepare_result = PrepareInsert(Traits::KeyOf(value));
+  LOG(INFO) << "Making Stored Type";
+  typename Traits::Slot::StoredType
+      value{std::forward<Args>(args)...};
+  LOG(INFO) << "Made Stored Type, now preparing key";
+  auto& key = Traits::KeyOf(value);
+  LOG(INFO) << "Now prepareinsert";
+  auto prepare_result = PrepareInsert(key);
+  LOG(INFO) << "Prepared result";
   auto &[it, inserted] = prepare_result;
   if (inserted) {
     it.bucket_->slots[it.index_].Store(std::move(value));
@@ -1302,7 +1310,7 @@ void HashTable<Traits>::GetDisorderedValues(std::conditional_t<destroy_source, B
 template <class Traits>
 template <bool insert_tombstones>
 void HashTable<Traits>::InsertAscending(size_t &insert_bucket, size_t &insert_slot,
-                                        value_type value, size_t hash) {
+                                        typename Traits::Slot::StoredType value, size_t hash) {
   assert(insert_bucket < buckets_.physical_size());
   assert(insert_slot < Traits::kSlotsPerBucket);
   size_t h1 = buckets_.H1(hash);
@@ -1323,7 +1331,9 @@ void HashTable<Traits>::InsertAscending(size_t &insert_bucket, size_t &insert_sl
   maxf(buckets_[h1].search_distance, insert_bucket - h1 + 1);
   assert(bucket.h2[insert_slot].IsEmpty());
   bucket.h2[insert_slot].SetOrderedValue(buckets_.H2(hash));
+  LOG(INFO) << "Doing store";
   bucket.slots[insert_slot].Store(std::move(value));
+  LOG(INFO) << "Did store";
   ++insert_slot;
   if (insert_slot == Traits::kSlotsPerBucket) {
     next_bucket();
@@ -1352,11 +1362,14 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
   size_ = 0;
   auto insert_and_copy_or_move_and_destroy = [&](auto &slot, size_t hash) {
     ++size_;
+    LOG(INFO) << "doing copy or move and destroy";
     if constexpr (is_rehash) {
+      LOG(INFO) << "doing move and destroy";
       InsertAscending<is_rehash>(insert_bucket, insert_slot, slot.MoveAndDestroy(), hash);
     } else {
       InsertAscending<is_rehash>(insert_bucket, insert_slot, slot.GetValue(), hash);
     }
+    LOG(INFO) << "did copy or move and destroy";
   };
   auto insert_from_heap = [&]() {
     insert_and_copy_or_move_and_destroy(*heap.front().slot, heap.front().hash);

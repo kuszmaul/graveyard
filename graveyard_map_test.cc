@@ -188,26 +188,67 @@ TEST(GraveyardMap, Heterogenous) {
 // able to count the number of moves and copies.
 
 struct Counts {
-  size_t default_constructions = 0;
+  size_t def = 0; // default constructions
   size_t copy_constructions = 0;
-  size_t move_constructions = 0;
+  size_t mc = 0; // move constructions
+  size_t ec = 0; // explicit constructions
   size_t copy_assignments = 0;
   size_t move_assignments = 0;
-  size_t destructions = 0;
+  size_t des = 0; // destructions
   Counts() = default;
-  Counts(size_t dc, size_t cc, size_t mc, size_t ca, size_t ma, size_t d) :default_constructions(dc), copy_constructions(cc), move_constructions(mc), copy_assignments(ca), move_assignments(ma), destructions(d) {}
+  Counts& Def(size_t dc) { def += dc; return *this; }
+  Counts& CC(size_t c) { copy_constructions += c; return *this; }
+  Counts& MC(size_t c) { mc += c; return *this; }
+  Counts& EC(size_t c) { ec += c; return *this; }
+  Counts& Des(size_t de) { des += de; return *this; }
+  //  Counts(size_t dc, size_t cc, size_t mc, size_t ec, size_t ca, size_t ma, size_t d) :def(dc), copy_constructions(cc), mc(mc), ec(ec), copy_assignments(ca), move_assignments(ma), des(d) {}
   void Reset() { *this = Counts(); }
   friend std::ostream& operator<<(std::ostream& os, const Counts& counts) {
-    return os << "Counts(" << counts.default_constructions << ", " << counts.copy_constructions << ", " << counts.move_constructions << ", " << counts.copy_assignments << ", " << counts.move_assignments << ", " << counts.destructions << ")";
+    os << "Counts{";
+    bool need_space = false;
+    auto spacing = [&]() {
+      if (need_space) os << " ";
+      need_space = true;
+    };
+    if (counts.def) {
+      spacing();
+      os << ".def=" << counts.def;
+    }
+    if (counts.copy_constructions) {
+      spacing();
+      os << ".cc=" << counts.copy_constructions;
+    }
+    if (counts.mc) {
+      spacing();
+      os << ".mc=" << counts.mc;
+    }
+    if (counts.ec) {
+      spacing();
+      os << ".ec=" << counts.ec;
+    }
+    if (counts.copy_assignments) {
+      spacing();
+      os << ".ca=" << counts.copy_assignments;
+    }
+    if (counts.move_assignments) {
+      spacing();
+      os << ".ma=" << counts.move_assignments;
+    }
+    if (counts.des) {
+      spacing();
+      os << ".des=" << counts.des;
+    }
+    return os << "}";
   }
   friend bool operator==(const Counts &a, const Counts &b) {
     return
-        a.default_constructions == b.default_constructions &&
+        a.def == b.def &&
         a.copy_constructions == b.copy_constructions &&
-        a.move_constructions == b.move_constructions &&
+        a.mc == b.mc &&
+        a.ec == b.ec &&
         a.copy_assignments == b.copy_assignments &&
         a.move_assignments == b.move_assignments &&
-        a.destructions == b.destructions;
+        a.des == b.des;
   }
 };
 
@@ -215,13 +256,13 @@ template <int count_class>
 struct CountedTemplate {
   static Counts counts;
   // Default constructor
-  CountedTemplate() { ++counts.default_constructions; }
+  CountedTemplate() { counts.Def(1); }
   // Copy constructor
   CountedTemplate([[maybe_unused]] const CountedTemplate& l) :v(l.v) { ++counts.copy_constructions; }
   // Move constructor
-  CountedTemplate([[maybe_unused]] CountedTemplate&& l) :v(l.v) { ++counts.move_constructions; }
+  CountedTemplate([[maybe_unused]] CountedTemplate&& l) :v(l.v) { counts.MC(1); }
   // Destructor
-  ~CountedTemplate() { ++counts.destructions; }
+  ~CountedTemplate() { counts.Des(1); }
   // Copy assignmnet
   CountedTemplate& operator=(const CountedTemplate& other) {
     v = other.v;
@@ -234,7 +275,9 @@ struct CountedTemplate {
     ++counts.move_assignments;
     return *this;
   }
-  explicit CountedTemplate(size_t value) :v(value) {}
+  explicit CountedTemplate(size_t value) :v(value) {
+    counts.EC(1);
+  }
   friend bool operator==(const CountedTemplate &a, const CountedTemplate &b) {
     return a.v == b.v;
   }
@@ -271,24 +314,24 @@ void TryArgsMovedTest(std::string_view called_from) {
     Map map;
     EXPECT_EQ(counts, Counts()) << " from " << called_from;
     map["a"];
-    EXPECT_EQ(counts, Counts(1, 0, 0, 0, 0, 0));
+    EXPECT_EQ(counts, Counts{.def=1});
 
   }
-  EXPECT_EQ(counts, Counts(1, 0, 0, 0, 0, 1));
+  EXPECT_EQ(counts, Counts().Def(1).Des(1));
 
   counts.Reset();
   {
     Map map;
     map.emplace("a", Counted());
-    EXPECT_EQ(counts, Counts(1, 0, 1, 0, 0, 1)) << " from " << called_from;
+    EXPECT_EQ(counts, (Counts{.def=1, .mc=1, .des=1})) << " from " << called_from;
   }
-  EXPECT_EQ(counts, Counts(1, 0, 1, 0, 0, 2)) << " from " << called_from;
+  EXPECT_EQ(counts, (Counts{.def=1, .mc=1, .des=2})) << " from " << called_from;
 
   counts.Reset();
   {
     Map map;
     map.try_emplace("a", Counted());
-    EXPECT_EQ(counts, Counts(1, 0, 1, 0, 0, 1));
+    EXPECT_EQ(counts, Counts().Def(1).MC(1).Des(1));
   }
 }
 
@@ -354,11 +397,31 @@ TEST(GraveyardMap, OperatorSquareBracket) {
 template <template <typename, typename, typename> class MapType, bool is_open_addressed>
 void MovesMovableTest() {
   Counts &counts = Counted::counts;
+
+  {
+    counts.Reset();
+    MapType<Counted, int, Counted::Hash> map;
+    map.emplace(std::make_pair(Counted(2), 0));
+    EXPECT_FALSE(map.empty());
+    EXPECT_EQ(counts, (Counts{.mc=2, .ec=1, .des=2}));
+    for (auto& [k,v] : map) {
+      LOG(INFO) << " " << k << " " << v;
+    }
+  }
+  EXPECT_EQ(counts, (Counts{.mc=2, .ec=1, .des=3}));
+
+  {
+    counts.Reset();
+    MapType<Counted, int, Counted::Hash> map;
+    map.emplace(Counted(2), 0);
+    EXPECT_EQ(counts, (Counts{.mc=1, .ec=1, .des=1}));
+  }
+
   counts.Reset();
   MapType<Counted, Counted, Counted::Hash> map;
   map.emplace(Counted(1), Counted(2));
   // Expect two move constructors and two deletions.
-  EXPECT_EQ(counts, Counts(0, 0, 2, 0, 0, 2));
+  EXPECT_EQ(counts, (Counts{.mc=2, .ec=2, .des=2}));
   {
     auto it = map.find(Counted(1));
     EXPECT_TRUE(it != map.end());
@@ -372,7 +435,7 @@ void MovesMovableTest() {
   if (is_open_addressed) {
     // E.g., absl::flat_hash_map and Graveyardmap do move the two item
     // and destruct the moved-from items.
-    EXPECT_EQ(counts, Counts(0, 0, 2, 0, 0, 2));
+    EXPECT_EQ(counts, Counts().MC(2).Des(2));
   } else {
     // E.g., std::unordered_map does not moves or copies to rehash.
     EXPECT_EQ(counts, Counts());
@@ -431,7 +494,7 @@ void DoesntMoveNonmovableTest() {
   MapType<CountedNonStandard, Counted, Counted::Hash> map;
   map.emplace(CountedNonStandard(1), Counted(2));
   // Expect two move constructors and two deletions.
-  EXPECT_EQ(counts, Counts(0, 0, 2, 0, 0, 2));
+  EXPECT_EQ(counts, (Counts{.mc=2, .ec=2, .des=2}));
   {
     auto it = map.find(CountedNonStandard(1));
     EXPECT_TRUE(it != map.end());
@@ -445,7 +508,7 @@ void DoesntMoveNonmovableTest() {
   if (is_open_addressed) {
     // E.g., absl::flat_hash_map and Graveyardmap copy the key (so 1
     // copy and 1 move).
-    EXPECT_EQ(counts, Counts(0, 1, 1, 0, 0, 2));
+    EXPECT_EQ(counts, Counts().CC(1).MC(1).Des(2));
   } else {
     // E.g., std::unordered_map does not moves or copies to rehash.
     EXPECT_EQ(counts, Counts());

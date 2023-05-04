@@ -763,9 +763,9 @@ private:
   //
   // Invariant: The buckets up to `insert_bucket` are initialized, the
   // ones after are not.
-  template<bool insert_tombstones>
+  template<bool insert_tombstones, class GetValueAndStore>
   void InsertAscending(size_t &insert_bucket, size_t &insert_slot,
-                       typename Traits::Slot::StoredType value, size_t hash);
+                       GetValueAndStore get_value_and_store, size_t hash);
 
   // Finishes the rehash or copy by initializing all the
   // buckets after `insert_bucket`.
@@ -1308,9 +1308,9 @@ void HashTable<Traits>::GetDisorderedValues(std::conditional_t<destroy_source, B
 }
 
 template <class Traits>
-template <bool insert_tombstones>
+template <bool insert_tombstones, class GetValueAndStore>
 void HashTable<Traits>::InsertAscending(size_t &insert_bucket, size_t &insert_slot,
-                                        typename Traits::Slot::StoredType value, size_t hash) {
+                                        GetValueAndStore get_value_and_store, size_t hash) {
   assert(insert_bucket < buckets_.physical_size());
   assert(insert_slot < Traits::kSlotsPerBucket);
   size_t h1 = buckets_.H1(hash);
@@ -1332,7 +1332,7 @@ void HashTable<Traits>::InsertAscending(size_t &insert_bucket, size_t &insert_sl
   assert(bucket.h2[insert_slot].IsEmpty());
   bucket.h2[insert_slot].SetOrderedValue(buckets_.H2(hash));
   LOG(INFO) << "Doing store";
-  bucket.slots[insert_slot].Store(std::move(value));
+  get_value_and_store(bucket.slots[insert_slot]);
   LOG(INFO) << "Did store";
   ++insert_slot;
   if (insert_slot == Traits::kSlotsPerBucket) {
@@ -1365,9 +1365,15 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
     LOG(INFO) << "doing copy or move and destroy";
     if constexpr (is_rehash) {
       LOG(INFO) << "doing move and destroy";
-      InsertAscending<is_rehash>(insert_bucket, insert_slot, slot.MoveAndDestroy(), hash);
+      auto get_value_and_store = [&](typename Traits::Slot &dest_slot) {
+        dest_slot.Store(slot.MoveAndDestroy());
+      };
+      InsertAscending<is_rehash>(insert_bucket, insert_slot, get_value_and_store, hash);
     } else {
-      InsertAscending<is_rehash>(insert_bucket, insert_slot, slot.GetValue(), hash);
+      auto get_value_and_store = [&](typename Traits::Slot &dest_slot) {
+        dest_slot.Store(slot.GetValue());
+      };
+      InsertAscending<is_rehash>(insert_bucket, insert_slot, get_value_and_store, hash);
     }
     LOG(INFO) << "did copy or move and destroy";
   };

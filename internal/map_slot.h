@@ -56,6 +56,13 @@ class MapSlot {
     new (&u_.stored) StoredType(std::move(value));
   }
 
+  // Effectly does `Store(from.MoveAndDestroy())` but without doing so
+  // many move assignments.
+  void Transfer(MapSlot &from) {
+    new (&u_.stored) StoredType(std::move(from.u_.stored));
+    from.Destroy();
+  }
+
   // Return a reference to the ConstPair.  If it's overlayable, then
   // we have to do a cast to convert the MutablePair to a ConstPair.
   // Otherwise MutablePair and ConstPair are the same.

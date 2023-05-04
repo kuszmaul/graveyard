@@ -198,7 +198,7 @@ struct Counts {
   Counts(size_t dc, size_t cc, size_t mc, size_t ca, size_t ma, size_t d) :default_constructions(dc), copy_constructions(cc), move_constructions(mc), copy_assignments(ca), move_assignments(ma), destructions(d) {}
   void Reset() { *this = Counts(); }
   friend std::ostream& operator<<(std::ostream& os, const Counts& counts) {
-    return os << "dc=" << counts.default_constructions << " cc=" << counts.copy_constructions << " mc=" << counts.move_constructions << " ca=" << counts.copy_assignments << " ma=" << counts.move_assignments << " d=" << counts.destructions;
+    return os << "Counts(" << counts.default_constructions << ", " << counts.copy_constructions << ", " << counts.move_constructions << ", " << counts.copy_assignments << ", " << counts.move_assignments << ", " << counts.destructions << ")";
   }
   friend bool operator==(const Counts &a, const Counts &b) {
     return

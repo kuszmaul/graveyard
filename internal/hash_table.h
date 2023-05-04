@@ -166,6 +166,8 @@ struct HashTableTraits {
       is_map,
       std::pair<const key_type, mapped_type_or_void>,
       key_type>;
+  using iterator_pointer_type = typename std::conditional_t<is_map, value_type*, const key_type*>;
+  using iterator_reference_type = typename std::conditional_t<is_map, value_type&, const key_type&>;
   using hasher = Hash;
   using key_equal = KeyEqual;
   using allocator = Allocator;
@@ -232,17 +234,6 @@ struct HashTableTraits {
   using rehash_callback = NullRehashCallback;
 };
 
-template <class Traits> struct alignas(typename Traits::value_type) Item {
-  char bytes[sizeof(typename Traits::value_type)];
-  // typename Traits::value_type value;
-  typename Traits::value_type &value() {
-    return *reinterpret_cast<typename Traits::value_type *>(&bytes[0]);
-  }
-  const typename Traits::value_type &value() const {
-    return *reinterpret_cast<const typename Traits::value_type *>(&bytes[0]);
-  }
-};
-
 template <class Traits> struct Bucket {
   using key_type = typename Traits::key_type;
 
@@ -254,7 +245,6 @@ template <class Traits> struct Bucket {
   // constructor, move assignment, and destructor.
 
   void Init() {
-    static_assert(std::is_trivial<Bucket>::value, "Bucket should be POD");
     search_distance = 0;
     for (size_t i = 0; i < Traits::kSlotsPerBucket; ++i)
       h2[i].SetEmpty();
@@ -302,7 +292,7 @@ template <class Traits> struct Bucket {
     size_t matches = MatchingElementsMask(needle);
     while (matches) {
       int idx = CountTrailingZeros(matches);
-      if (key_eq(Traits::KeyOf(slots[idx].value()), key)) {
+      if (key_eq(Traits::KeyOf(slots[idx].GetValue()), key)) {
         return idx;
       }
       matches &= (matches - 1);
@@ -341,7 +331,7 @@ template <class Traits> struct Bucket {
   // The number of buckets we must search in an unsuccessful lookup that starts
   // here.
   uint8_t search_distance;
-  std::array<Item<Traits>, Traits::kSlotsPerBucket> slots;
+  std::array<typename Traits::Slot, Traits::kSlotsPerBucket> slots;
 };
 
 template <class Traits> class Buckets {
@@ -404,7 +394,7 @@ public:
       for (Bucket<Traits> &bucket : *this) {
         for (size_t slot = 0; slot < Traits::kSlotsPerBucket; ++slot) {
           if (!bucket.h2[slot].IsEmpty()) {
-            bucket.slots[slot].value().~value_type();
+            bucket.slots[slot].Destroy();
           }
         }
       }
@@ -745,7 +735,7 @@ private:
   template <bool non_const>
   struct DisorderedItem {
     size_t hash;
-    std::conditional_t<non_const, Item<Traits>, const Item<Traits>> *slot;
+    std::conditional_t<non_const, typename Traits::Slot, const typename Traits::Slot> *slot;
     friend bool operator<(const DisorderedItem& a, const DisorderedItem& b) {
       // We want a min-heap ordered by hash, so define 'operator<' to be '>'.
       return a.hash > b.hash;
@@ -879,7 +869,10 @@ class HashTable<Traits>::Iterator {
 
 public:
   using difference_type = ptrdiff_t;
-  using value_type = std::conditional_t<is_const, const original_value_type,
+  // The value_type should be const if this not a map, or if this is a
+  // const iterator.
+  using value_type = std::conditional_t<is_const || !Traits::is_map,
+                                        const original_value_type,
                                         original_value_type>;
   using pointer = value_type *;
   using reference = value_type &;
@@ -903,10 +896,10 @@ public:
     ;
   }
 
-  reference operator*() { return bucket_->slots[index_].value(); }
-  pointer operator->() { return &bucket_->slots[index_].value(); }
+  reference operator*() { return bucket_->slots[index_].GetValue(); }
+  pointer operator->() { return &bucket_->slots[index_].GetValue(); }
 
-private:
+ private:
   using traits = Traits;
 
   friend const_iterator;
@@ -1012,7 +1005,7 @@ HashTable<Traits>::insert(const value_type &value) {
   if (!inserted) {
     return {it, false};
   }
-  new (&*it) value_type(value);
+  it.bucket_->slots[it.index_].Store(value);
   return {it, true};
 }
 
@@ -1024,7 +1017,7 @@ HashTable<Traits>::emplace(Args &&...args) {
   auto prepare_result = PrepareInsert(Traits::KeyOf(value));
   auto &[it, inserted] = prepare_result;
   if (inserted) {
-    new (&*it) value_type(std::move(value));
+    it.bucket_->slots[it.index_].Store(std::move(value));
   }
   return prepare_result;
 }
@@ -1046,7 +1039,7 @@ template <class Traits> void HashTable<Traits>::erase(const_iterator pos) {
   assert(!bucket->h2[index].IsEmpty());
   assert(size_ > 0);
   bucket->h2[index].SetEmpty();
-  bucket->slots[index].value().~value_type();
+  bucket->slots[index].Destroy();
   --size_;
   return;
 }
@@ -1102,7 +1095,7 @@ HashTable<Traits>::find(const key_arg<K> &key, size_t hash) {
       size_t matches = bucket.MatchingElementsMask(h2);
        while (matches) {
         size_t idx = CountTrailingZeros(matches);
-        if (get_key_eq_ref()(Traits::KeyOf(bucket.slots[idx].value()), key)) {
+        if (get_key_eq_ref()(Traits::KeyOf(bucket.slots[idx].GetValue()), key)) {
           return iterator{&bucket, idx};
         }
         matches &= (matches - 1);
@@ -1138,7 +1131,7 @@ template <class Traits> std::string HashTable<Traits>::ToStringInternal(size_t m
       if (bucket->h2[j].IsEmpty()) {
         result << "_";
       } else {
-        size_t hash = get_hasher_ref()(Traits::KeyOf(bucket->slots[j].value()));
+        size_t hash = get_hasher_ref()(Traits::KeyOf(bucket->slots[j].GetValue()));
         result << "h<" << buckets_.H1(hash) << ","
                << size_t{bucket->h2[j].h2()} << "," << std::hex << std::setw(16) << hash << std::dec << ">";
         if (!bucket->h2[j].IsOrdered()) {
@@ -1146,7 +1139,7 @@ template <class Traits> std::string HashTable<Traits>::ToStringInternal(size_t m
         } else {
           result << ":";
         }
-        result << bucket->slots[j].value();
+        result << bucket->slots[j].GetValue();
       }
     }
   }
@@ -1188,7 +1181,7 @@ void HashTable<Traits>::Validate(int line_number) const {
       if (!buckets_[i].h2[j].IsEmpty()) {
         assert(buckets_[i].h2[j].h2() <= MetaByte::kMaxH2);
         ++actual_size;
-        size_t hash = get_hasher_ref()(Traits::KeyOf(buckets_[i].slots[j].value()));
+        size_t hash = get_hasher_ref()(Traits::KeyOf(buckets_[i].slots[j].GetValue()));
         size_t h1 = buckets_.H1(hash);
         CHECK_LE(h1, i);
         CHECK_LT(h1, buckets_.logical_size());
@@ -1205,7 +1198,7 @@ void HashTable<Traits>::Validate(int line_number) const {
   for (const Bucket<Traits> &bucket : buckets_) {
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
       if (bucket.h2[j].IsNonemptyAndOrdered()) {
-        size_t hash = get_hasher_ref()(Traits::KeyOf(bucket.slots[j].value()));
+        size_t hash = get_hasher_ref()(Traits::KeyOf(bucket.slots[j].GetValue()));
         if (previous_hash.has_value()) {
           CHECK_LE(*previous_hash, hash);
         }
@@ -1294,7 +1287,7 @@ void HashTable<Traits>::GetDisorderedValues(std::conditional_t<destroy_source, B
         if (meta_byte.IsNonemptyAndDisordered()) {
           auto &slot = bucket.slots[slot_number];
           heap.push_back(DisorderedItem<destroy_source>{
-              .hash = get_hasher_ref()(Traits::KeyOf(slot.value())),
+              .hash = get_hasher_ref()(Traits::KeyOf(slot.GetValue())),
               .slot = &slot});
           std::push_heap(heap.begin(), heap.end());
           if constexpr (destroy_source) {
@@ -1330,7 +1323,7 @@ void HashTable<Traits>::InsertAscending(size_t &insert_bucket, size_t &insert_sl
   maxf(buckets_[h1].search_distance, insert_bucket - h1 + 1);
   assert(bucket.h2[insert_slot].IsEmpty());
   bucket.h2[insert_slot].SetOrderedValue(buckets_.H2(hash));
-  new (&bucket.slots[insert_slot].value()) value_type(std::move(value));
+  bucket.slots[insert_slot].Store(std::move(value));
   ++insert_slot;
   if (insert_slot == Traits::kSlotsPerBucket) {
     next_bucket();
@@ -1357,17 +1350,16 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
   size_t insert_slot = 0;
   buckets_[0].Init();
   size_ = 0;
-  auto insert_and_copy_or_move_and_destroy = [&](auto &value, size_t hash) {
+  auto insert_and_copy_or_move_and_destroy = [&](auto &slot, size_t hash) {
     ++size_;
     if constexpr (is_rehash) {
-      InsertAscending<is_rehash>(insert_bucket, insert_slot, std::move(value), hash);
-      value.~value_type();
+      InsertAscending<is_rehash>(insert_bucket, insert_slot, slot.MoveAndDestroy(), hash);
     } else {
-      InsertAscending<is_rehash>(insert_bucket, insert_slot, value, hash);
+      InsertAscending<is_rehash>(insert_bucket, insert_slot, slot.GetValue(), hash);
     }
   };
   auto insert_from_heap = [&]() {
-    insert_and_copy_or_move_and_destroy(heap.front().slot->value(), heap.front().hash);
+    insert_and_copy_or_move_and_destroy(*heap.front().slot, heap.front().hash);
     std::pop_heap(heap.begin(), heap.end());
     heap.pop_back();
   };
@@ -1394,13 +1386,13 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
     for (size_t slot_number = 0; slot_number < Traits::kSlotsPerBucket; ++ slot_number) {
       MetaByte meta_byte = bucket.h2[slot_number];
       if (meta_byte.IsNonemptyAndOrdered()) {
-        const value_type &value = bucket.slots[slot_number].value();
+        const value_type &value = bucket.slots[slot_number].GetValue();
         const key_type &key = Traits::KeyOf(value);
         const size_t hash = get_hasher_ref()(key);
         while (!heap.empty() && heap.front().hash < hash) {
           insert_from_heap();
         }
-        insert_and_copy_or_move_and_destroy(value, hash);
+        insert_and_copy_or_move_and_destroy(bucket.slots[slot_number], hash);
         if constexpr (is_rehash) {
           bucket.h2[slot_number].SetEmpty();
         }
@@ -1465,7 +1457,7 @@ HashTable<Traits>::GetSuccessfulProbeLength(const value_type &value) const {
   for (size_t i = 0; i <= search_distance; ++i) {
     const Bucket<Traits> &bucket = buckets_[h1 + i];
     for (size_t j = 0; j < Traits::kSlotsPerBucket; ++j) {
-      if (!bucket.h2[j].IsEmpty() && bucket.slots[j].value() == value) {
+      if (!bucket.h2[j].IsEmpty() && bucket.slots[j].GetValue() == value) {
         return i + 1;
       }
     }

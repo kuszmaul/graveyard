@@ -13,15 +13,18 @@ class SetSlot {
   using StoredType = Value;
   using VisibleType = Value;
   void Store(StoredType value) {
-    new (~u_.value) StoredType(std::move(value));
+    new (&u_.value) StoredType(std::move(value));
   }
   const VisibleType& GetValue() const {
     return u_.value;
   }
   StoredType MoveAndDestroy() {
     StoredType result = std::move(u_.value);
-    u_.value.~StoredType();
+    Destroy();
     return result;
+  }
+  void Destroy() {
+    u_.value.~StoredType();
   }
  private:
   union {

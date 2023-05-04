@@ -21,14 +21,25 @@ class MapSlot {
   // Really it is the key that is mutable or const.
   using MutablePair = std::pair<key_type, mapped_type>;
   using ConstPair = std::pair<const key_type, mapped_type>;
-  static constexpr bool is_overlayable =
-      std::is_standard_layout_v<MutablePair> &&
-      std::is_standard_layout_v<ConstPair> &&
-      sizeof(MutablePair) == sizeof(ConstPair) &&
-      alignof(MutablePair) == alignof(ConstPair) &&
-      offsetof(MutablePair, first) == offsetof(ConstPair, first) &&
-      offsetof(MutablePair, second) == offsetof(MutablePair, second);
-  // TODO: Think about when we need to `std::launder` the memory.
+  template <class Pair1, class Pair2>
+  static constexpr bool LayoutCompatible() {
+    // Some compilers require us to write this rather than just having
+    // a constexpr conjunction: They warn about offsetof being
+    // conditionally supported.  By using `if constexpr` we avoid that
+    // warning.
+    if constexpr (std::is_standard_layout_v<Pair1> &&
+                  std::is_standard_layout_v<Pair2>) {
+      return
+          sizeof(Pair1) == sizeof(Pair2) &&
+          alignof(Pair1) == alignof(Pair2) &&
+          offsetof(Pair1, first) == offsetof(Pair2, first) &&
+          offsetof(Pair1, second) == offsetof(Pair1, second);
+    } else {
+      return false;
+    }
+  }
+
+  static constexpr bool is_overlayable = LayoutCompatible<MutablePair, ConstPair>();
 
  public:
   using StoredType = std::conditional_t<is_overlayable, MutablePair, ConstPair>;
@@ -42,20 +53,39 @@ class MapSlot {
   //
 
   void Store(StoredType value) {
-    new (~u_.stored) StoredType(std::move(value));
+    new (&u_.stored) StoredType(std::move(value));
   }
 
   // Return a reference to the ConstPair.  If it's overlayable, then
   // we have to do a cast to convert the MutablePair to a ConstPair.
   // Otherwise MutablePair and ConstPair are the same.
+  //
+  // The returned reference isn't `const`, since it can be used to
+  // modify `second`.  But `first` is const.
   const VisibleType& GetValue() const {
     // If it's overlayable, this reinterpret cast actually does something.
-    return reinterpret_cast<VisibleType&>(u_.stored);
+    if constexpr (std::is_same_v<VisibleType, StoredType>) {
+      // If the types are the same, then avoid calling std::launder,
+      // which inhibits certain optimizations.
+      return u_.stored;
+    } else {
+      return *std::launder(reinterpret_cast<const VisibleType*>(&u_.stored));
+    }
+  }
+  VisibleType& GetValue() {
+    if constexpr (std::is_same_v<VisibleType, StoredType>) {
+      return u_.stored;
+    } else {
+      return *std::launder(reinterpret_cast<VisibleType*>(&u_.stored));
+    }
   }
   StoredType MoveAndDestroy() {
     StoredType result = std::move(u_.stored);
-    u_.stored.~StoredType();
+    Destroy();
     return result;
+  }
+  void Destroy() {
+    u_.stored.~StoredType();
   }
 
  private:

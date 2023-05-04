@@ -15,6 +15,10 @@ class SetSlot {
   void Store(StoredType value) {
     new (&u_.value) StoredType(std::move(value));
   }
+  void Transfer(SetSlot &from) {
+    new (&u_.value) StoredType(std::move(from.u_.value));
+    from.Destroy();
+  }
   const VisibleType& GetValue() const {
     return u_.value;
   }

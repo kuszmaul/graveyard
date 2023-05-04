@@ -185,7 +185,6 @@ struct HashTableTraits {
 
   template <class ValueOrStoredValue>
   static const key_type &KeyOf(const ValueOrStoredValue &value) {
-    LOG(INFO) << "Doing KeyOf";
     if constexpr (is_map) {
       return value.first;
     } else {
@@ -1015,14 +1014,10 @@ template <class Traits>
 template <class... Args>
 std::pair<typename HashTable<Traits>::iterator, bool>
 HashTable<Traits>::emplace(Args &&...args) {
-  LOG(INFO) << "Making Stored Type";
   typename Traits::Slot::StoredType
       value{std::forward<Args>(args)...};
-  LOG(INFO) << "Made Stored Type, now preparing key";
   auto& key = Traits::KeyOf(value);
-  LOG(INFO) << "Now prepareinsert";
   auto prepare_result = PrepareInsert(key);
-  LOG(INFO) << "Prepared result";
   auto &[it, inserted] = prepare_result;
   if (inserted) {
     it.bucket_->slots[it.index_].Store(std::move(value));
@@ -1331,9 +1326,7 @@ void HashTable<Traits>::InsertAscending(size_t &insert_bucket, size_t &insert_sl
   maxf(buckets_[h1].search_distance, insert_bucket - h1 + 1);
   assert(bucket.h2[insert_slot].IsEmpty());
   bucket.h2[insert_slot].SetOrderedValue(buckets_.H2(hash));
-  LOG(INFO) << "Doing store";
   get_value_and_store(bucket.slots[insert_slot]);
-  LOG(INFO) << "Did store";
   ++insert_slot;
   if (insert_slot == Traits::kSlotsPerBucket) {
     next_bucket();
@@ -1362,20 +1355,19 @@ void HashTable<Traits>::RehashOrCopyFrom(std::conditional_t<is_rehash, Buckets<T
   size_ = 0;
   auto insert_and_copy_or_move_and_destroy = [&](auto &slot, size_t hash) {
     ++size_;
-    LOG(INFO) << "doing copy or move and destroy";
     if constexpr (is_rehash) {
-      LOG(INFO) << "doing move and destroy";
       auto get_value_and_store = [&](typename Traits::Slot &dest_slot) {
         dest_slot.Transfer(slot);
       };
       InsertAscending<is_rehash>(insert_bucket, insert_slot, get_value_and_store, hash);
     } else {
+      // TODO: Use a hypothetical dest_slot.Copy(slot) to reduce the
+      // number of moves in copying.
       auto get_value_and_store = [&](typename Traits::Slot &dest_slot) {
         dest_slot.Store(slot.GetValue());
       };
       InsertAscending<is_rehash>(insert_bucket, insert_slot, get_value_and_store, hash);
     }
-    LOG(INFO) << "did copy or move and destroy";
   };
   auto insert_from_heap = [&]() {
     insert_and_copy_or_move_and_destroy(*heap.front().slot, heap.front().hash);

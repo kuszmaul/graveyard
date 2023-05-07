@@ -403,17 +403,17 @@ A \defn{graveyard hash table} is an ordered linear-probing hash table with the f
 
 The artificial tombstones make it so that, at a load factor of $1- 1/x$, the expected amortized time per insertion is now $O(x)$ (not the $O(x^2)$ bound that clustering would give!). Additionally, since graveyard hashing still uses Amble and Knuth's ordering trick, queries are also $O(x)$ expected time. On the other hand, this means that graveyard hashing also still suffers from both of the Instability and Hashing Overhead problems discussed above.
 
-\subsection{This Paper: Query-Optimized Graveyard Hashing}
+\subsection{This Paper: Implicit Graveyard Hashing}
 \todo{Michael doesn't like name: polished, library-quality, .... what adjective should we use?}
 
-This paper introduces query-optimized graveyard hashing, a new version of graveyard hashing that eliminates both the Instability and the Hashing Overhead problems described in the previous subsection. As we shall see in later subsections, this allows for us to implement a practical and theoretically sound library hash table that scales well to high load factors (without any of the classical clustering effects associated with linear probing!).
+This paper introduces implicit graveyard hashing, a new version of graveyard hashing that eliminates both the Instability and the Hashing Overhead problems described in the previous subsection. As we shall see in later subsections, this allows for us to implement a practical and theoretically sound library hash table that scales well to high load factors (without any of the classical clustering effects associated with linear probing!).
 
-Before we describe query-optimized graveyard hashing, it is worth foreshadowing what makes it interesting. The artificial tombstones, which were introduced as a tool to speed up \emph{insertions}, will now play a critical role in ensuring fast \emph{queries} as well. Indeed, they are what will make it possible for us to overcome the issues traditionally associated with ordered linear probing (instability and hashing overhead) without compromising asymptotic query performance.
+Before we describe implicit graveyard hashing, it is worth foreshadowing what makes it interesting. The artificial tombstones, which were introduced as a tool to speed up \emph{insertions}, will now play a critical role in ensuring fast \emph{queries} as well. Indeed, they are what will make it possible for us to overcome the issues traditionally associated with ordered linear probing (instability and hashing overhead) without compromising asymptotic query performance.
 
-\paragraph{Query-Optimized Graveyard Hashing.}
+\paragraph{Implicit graveyard hashing.}
 To facilitate our discussion, we will think of the array as being partitioned into \defn{bins} of size $\Theta(x)$. We say that an element $u$ \defn{hashes to a bin $B$} if $h(u) \in B$ (note that $u$ could hash to a bin $B$ but end up residing in a different bin). 
 
-The first thing to know about query-optimized Graveyard hashing is that it is only \emph{partially}\todo{``partly'' is probably better than ``partially'', since ``partially ordered'' has a meaning} ordered. Whenever a rebuild occurs, the elements are reordered to be in sorted order by hash. But insertions that occur between rebuilds do not worry about maintaining the ordering invariant. They can simply make use of whatever tombstones or free slot they first encounter. This partial ordering property is what (1) gives the hash table stability between rebuilds and (2) eliminates hashing overhead for insertions. (Note that it does not eliminate hashing overhead during rebuilds, but rebuilds have to rehash items anyway in order to insert/delete tombstones and handle resizing.)
+The first thing to know about implicit Graveyard hashing is that it is only \emph{partially}\todo{``partly'' is probably better than ``partially'', since ``partially ordered'' has a meaning} ordered. Whenever a rebuild occurs, the elements are reordered to be in sorted order by hash. But insertions that occur between rebuilds do not worry about maintaining the ordering invariant. They can simply make use of whatever tombstones or free slot they first encounter. This partial ordering property is what (1) gives the hash table stability between rebuilds and (2) eliminates hashing overhead for insertions. (Note that it does not eliminate hashing overhead during rebuilds, but rebuilds have to rehash items anyway in order to insert/delete tombstones and handle resizing.)
 
 The partial ordering property creates a problem for queries, however. Notably, a query for some element $u$ can no longer simply terminate as soon as it finds some element $u'$ satisfying $h(u') > h(u)$. (Also, we don't want the query to have to compute the hashes of the elements it encounters, but that's a separate issue.)\todo{It still feels that we should explain why pre-computing/storing the hashes, say, in compressed form is problematic.}
 
@@ -427,21 +427,92 @@ Note that query counters would be useless for classical linear probing. Indeed, 
 
 The pseudocode for insertions/deletions/queries/rebuilds is given in Algorithm \ref{??}.
 
-\paragraph{The analysis.}
-In the rest of the section, we prove the following theorem:
+\paragraph{The analysis.} In the rest of the section, we prove the following theorem:
 \begin{theorem}
-Consider a query-optimized graveyard hash table that is dynamically resized to have load factor $1 - \Theta(1/x)$ at all points in time. Then queries take expected time $O(x)$ and insertions/deletions take amortized expected time $O(x)$. 
+Consider an implicit graveyard hash table implemented using a fully random hash function. And suppose that the hash table is dynamically resized to have load factor between $1 - 1/x$ and $1 - 0.75/x$ at all points in time. Then queries take expected time $O(x)$ and insertions/deletions take amortized expected time $O(x)$. 
+\label{thm:graveyard}
 \end{theorem}
 
-... Analysis works with good families of hash functions...
+We begin with a high-level overview of the analysis. Recall that, after the rebuild is performed, there are $n/(2x)$ tombstones spread evenly across the hash table. Call the slots containing these tombstones \defn{special}, and let us pretend for a moment that these are the only slots in the hash table that insertions can make use of. Then the special slots act essentially as a linear-probing hash table with capacity $n / 2x$ that starts off as empty and gets filled to a load factor of $1/2$. It follows that each insertion should expect to encounter only $O(1)$ special slots. As the special slots appear every $2x$ positions, this implies that each insertion should expect to take time $O(x)$.  
 
-... Corollary for external-memory hash tables...
+On the other hand, as noted earlier, the fact that most insertions take time $O(x)$ also helps queries. It means that insertions rarely increase any query counter to be larger than $O(x)$. Thus, the typical experience of a query counter $q_B$ is that: (1) directly after a rebuild, $q_B$ is $O(x)$, because the rebuild uses ordered linear probing; and then (2) between rebuilds, the $q_B$ remains $O(x)$ because freshly inserted elements have offsets $O(x)$. In this way, the $O(x)$ insertion bound is what causes the queries to \emph{also} take $O(x)$ expected time.
 
-... Corollary for vectorized version ...
+To formalize the analysis, we will need two technical claims that are used in the classical analysis of linear probing. For any set $S$ of elements, hash function $h: S \rightarrow [n]$, and parameter $\epsilon \in (0, 1)$, we that an interval $I \subseteq [n]$ experiences an \defn{$\epsilon$-overflow} on $S$ if $|\{h(S) \cap I\}| \ge |S| \cdot \frac{|I|}{n} \cdot (1 + \epsilon)$; and we say that $I$ incurs a \defn{$\epsilon$-bolus} on $(S, h)$ of size $b \ge 0$ if $|\{h(S) \cap I\}| = |S| \cdot \frac{|I|}{n} \cdot (1 + \epsilon) + b$.
 
+
+\begin{claim}
+Let $\epsilon \in (0, 1)$, $n \in \mathbb{N}$, and $\mu < 1$ be parameters. Let $S$ be a set of $\mu n$ elements, let $h$ be a random hash function mapping $S$ to $[n]$, and let $u \in S$. Let $I \subseteq [n]$ be the largest interval containing $h(u)$ that experiences an $\epsilon$-overflow on $(S, h)$. Then $\E[|I|] \le O(\mu^{-1} \epsilon^{-2})$. 
+\label{clm:largeinterval}
+\end{claim}
+
+\begin{claim}
+Let $\epsilon \in (0, 1)$, $n \in \mathbb{N}$, and $\mu < 1$ be parameters. Let $S$ be a set of $\mu n$, let $h$ be a random hash function mapping $S$ to $[n]$, and let $u \in S$. Let $b$ be the largest $\epsilon$-bolus incurred by any interval of the form $[j, h(u)]$ on $(S, h)$. Then $\E[b] \le O(\mu^{-1} \epsilon^{-1})$. 
+\label{clm:largebolus}
+\end{claim}
+
+Both Claims \ref{clm:largeinterval} and \ref{clm:largebolus} follow straightforwardly from the classical analysis of linear probing (see, e.g., Lemma 15 of \cite{us}). The claims also hold a hash function $h$ that is not fully random, but that is instead selected from a 5-wise independent hash family---in this case, the claims follow from Equation 23 of \cite{thorup}. 
+
+To understand what these claims have to do with linear probing, observe that Claim \ref{clm:largeinterval} is actually the direct source of Knuth's classic clustering result. Indeed, in a linear-probing hash table filled to load factor $1 - 1/x$, the size of the largest run containing a given element $h(u)$ will be exactly equal to the size of the largest interval $I \ni h(u)$ that experiences $1/x$-overflow. Similarly, Claim \ref{clm:largebolus} is what allows for one to analyze \emph{ordered} linear probing. Indeed, the only way that an element $u$ can incur an offset of $t$, is if there exists an interval of the form $[j, h(u)]$ with $1/x$-bolus at least $t$.
+
+
+Although we will defer the proofs to \cite{us} and \cite{thorup}, it is worth noting that the intuition behind Claims \ref{clm:largeinterval} and \ref{clm:largebolus} is very simple. Suppose that $\mu = \Theta(1)$, so we are considering a set $S$ of $\Theta(n)$ elements. Consider an interval $I$ of size $\Theta(\epsilon^{-2})$. The expected number of items $s \in S$ that satisfy $h(s) \in I$ is given by $\mu |I| = \Theta(\epsilon^{-2})$. On the other hand, the \emph{standard deviation} for the number of items $s \in S$ that satisfy $h(s) \in I$ is given by $\Theta(\sqrt{\mu |I|}) = \Theta(\epsilon^{-1})$. Thus, it is quite common for intervals of size $\Theta(\epsilon^{-2})$ to experience $\epsilon$-overflow. And, when such an interval experiences $\epsilon$-overflow, it is quite common for the $\epsilon$-bolus to be $\Theta(\epsilon^{-1})$. On the other hand, intervals of size $\omega(\epsilon^{-2})$ will very rarely experience $\epsilon$-overflow (and will therefore rarely incur any $\epsilon$-bolus). It, therefore, makes natural sense that the expected size of the largest interval $I \ni h(u)$ to experience $\epsilon$-overflow would be $\Theta(\epsilon^{-2})$ and that the expected size of the largest $\epsilon$-bolus of any such interval would be $\Theta(\epsilon^{-1})$. 
+
+We will now show how to repurpose the claims in order to analyze implicit graveyard hashing. We begin by bounding the query counter of a given bin directly after a rebuild has occurred. This is essentially equivalent to analyzing queries in ordered linear probing.
+
+\begin{lemma}
+Consider the bin $B$ that a given element $u$ hashes to. Directly after a rebuild is performed, we have that $\E[q_B] = O(x)$.
+\label{lem:counterafterrebuild}
+\end{lemma}
+\begin{proof}
+Recall that, directly after a rebuild, the hash table is organized via ordered linear probing. Let $S$ be the set of $(1 -\Theta(1/x))n$ elements present and $h$ be the hash function used. 
+
+Let $r$ be the final position in bin $B$, and let $r + \ell$ be the largest position containing an element $v$ satisfying $h(v) \in B$. Then $q_B \le |B| + \ell = O(x) + \ell$. Thus, it suffices to bound $\E[\ell]$ by $O(x)$.
+
+Let $I$ be the largest interval of the form $[j, r + \ell]$ such that all of positions $j, j + 1, r + \ell$ are occupied in the hash table. The elements occupying these positions must all have hashes at least $j$ (since position $j - 1$ is empty) and at most $r$ (since the element $v$ in position $r + \ell$ has hash $r$ in the hash table is ordered). Thus the interval $I = [j, r]$ must incur a $1/x$-bolus of size at least $\ell$ on $(S, h)$. As $S$ consists of $\mu n$ elements where $\mu = \Theta(1)$, it follows by Claim \ref{clm:largebolus} that $\E[\ell]$ can be at most $O(x)$. 
+\end{proof}
+
+Next, we consider the insertions that occur between two rebuilds and bound their effect on a given query counter.
+
+\begin{lemma}
+Consider the bin $B$ that a given element $u$ hashes to. Consider the time window between two consecutive rebuilds, and let $I_B$ be the set of elements that were inserted during that time window and that hash to bin $B$. Finally, let $K$ be the largest offset incurred by any element of $I_B$ when it was inserted. Then $\E[K] \le O(x)$.
+\label{lem:counterbetweenrebuilds}
+\end{lemma}
+\begin{proof}
+Let $T$ denote the time window between the two consecutive rebuilds, and let $S$ denote the set of up to $n / (4x)$ elements that are inserted during $T$.
+
+Suppose that, at some time $t \in T$ some element $v$ satisfying $h(v) \in B$ is inserted with an offset of $K$. It follows that all of positions $h(v), \ldots, h(v) + K$ must have been occupied at time $t$. Let $I$ be the largest interval of the form $[j, h(v) + K]$ such that all of the slots $j, \ldots, h(v) + K$ are occupied at time $t$. The elements in the slots all have hashes in $I$. Moreover, at least $|I| / (2x)$ of the elements are in $S$, since they occupy slots that the rebuild turned into tombstones. On the other hand, the \emph{expected} number of elements from $S$ that should hash into $I$ is only $|I| / 4x$ (as $|S| \le n/(4x)$). Thus $I$ is $\frac{1}{2}$-overflowed on $(S, h)$. As $S$ consists of $\mu n$ elements, where $\mu = \Theta(1/x)$, if follows by Claim \ref{clm:largeinterval} that $\E[|I|]$ can be at most $O(\mu^{-1}) = O(x)$. As $I$ contains more than $K$ positions, this implies that $\E[K] = O(1)$. 
+\end{proof}
+
+Combined, the previous lemmas allow for us to bound the expected value of the given query counter at any point in time. This, in turn, allows for us to prove Theorem \ref{thm:graveyard}.
+
+\begin{proof}[Proof of Theorem \ref{thm:graveyard}]
+Lemma \ref{lem:counterbetweenrebuilds} implies that the expected offset incurred by a given insertion can be at most $O(x)$. And Lemmas \ref{lem:counterafterrebuild} and \ref{lem:counterbetweenrebuilds} combined to imply that the bin $B$ that a given key $u$ hashes to will have a query counter $q_B$ with expected value at most $O(x)$. It follows that queries (both positive and negative) and deletions all take expected time $O(x)$. Finally, rebuilds occur every $O(n/x)$ operations and take time $O(n)$, meaning that they contribute amortized cost at most $O(x)$ per insertion.
+\end{proof}
+
+As noted earlier, Claims \ref{clm:largeinterval} and \ref{clm:largebolus} hold even if the hash function $h$ is just $5$-wise independent. Thus we get the following corollary:
+
+\begin{corollary}
+Consider an implicit graveyard hash table implemented using a 5-wise independent hash function. And suppose that the hash table is dynamically resized to have load factor between $1 - 1/x$ and $1 - 0.75/x$ at all points in time. Then queries take expected time $O(x)$ and insertions/deletions take amortized expected time $O(x)$. 
+\end{corollary}
+
+Intuitively, what makes linear probing special in the design space of hash tables is its data locality: each operation accesses just one contiguous region of memory. Of course, by eliminating primary clustering, both graveyard hashing and implicit graveyard hashing achieve \emph{even better data locality}, as the contiguous region of memory now has expected size just $O(x)$. In fact, as observed by \cite{?}, this can be formalized in the external-memory model \cite{?} to obtain a remarkably strong guarantee.
+
+\begin{corollary}
+Break memory into blocks of some size $b = \omega(x)$, and say that an operation incurs $k$ \defn{external-memory I/Os} \cite{vitter} if it touches $k$ such blocks. Consider an implicit graveyard hash table at a load factor of $1 - \Theta(1/x)$. The amortized expected number of I/Os incurred by each operation is $1 + O(x/b) = 1 + o(1)$.
+\label{cor:externalmemory}
+\end{corollary}
+\begin{proof}
+Between rebuilds, each insertion/deletion examines a contiguous region of memory of expected size $O(x)$. The expected number of \emph{block boundaries} that this region of memory crosses is $O(x/b)$. Thus the expected number of blocks examined by the insertion/deletion is $1 + O(x/b)$. Additionally, during rebuilds, $O(n / b)$ I/Os are incurred. Rebuilds occur every $O(n / X)$ operations and therefore contribute an additional $O(x/b)$ amortized I/Os per operation.
+\end{proof}
+
+To appreciate how strong Corollary \ref{cor:externalmemory} is, consider what would happen if the block size $b$ were $o(x)$. The expected number of free slots in a given block would be $o(1)$, so insertions could not possibly hope for a $1 + o(1)$ guarantee on I/Os. On the other hand, Corollary \ref{cor:externalmemory} is saying that as soon as $b$ is even \emph{slightly} larger than $x$, then a $1 + o(1)$ guarantee becomes possible. In contrast, prior to the introduction of graveyard hashing, $1+ o(1)$ guarantees on I/O efficiency had only been achieved for much larger block sizes $b = \Omega(x^2)$ \cite{jensenpagh}.
+
+
+\todo{Could introduce vectorization here if we want...}
 
 \subsection{One More Algorithmic Contribution: Simple In-Place Resizing}
 
+Actually, this already appeared in past work, so probably goes to the hash-table design section...
 
 
 \subsection{...}
